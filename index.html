@@ -35,6 +35,7 @@
       const isPro = !previewFree && (user.plan === 'pro' || user.plan === 'trial');
       if (!isPro) {
         document.querySelectorAll('.pro-preset').forEach(btn => {
+          btn.textContent = btn.textContent.trim() + ' 🔒';
           btn.style.opacity = '0.45';
           btn.style.cursor = 'pointer';
           btn.style.borderStyle = 'dashed';
@@ -96,9 +97,9 @@
       <div class="duration-presets" id="duration-presets">
         <button class="preset-btn" data-mins="10">10m</button>
         <button class="preset-btn active" data-mins="25">25m</button>
-        <button class="preset-btn pro-preset" data-mins="45">45m 🔒</button>
-        <button class="preset-btn pro-preset" data-mins="60">60m 🔒</button>
-        <button class="preset-btn pro-preset" data-mins="90">90m 🔒</button>
+        <button class="preset-btn pro-preset" data-mins="45">45m</button>
+        <button class="preset-btn pro-preset" data-mins="60">60m</button>
+        <button class="preset-btn pro-preset" data-mins="90">90m</button>
       </div>
       <!-- Upgrade nudge for free users -->
       <div id="upgrade-nudge" style="display:none;text-align:center;margin:6px 0 2px;">
