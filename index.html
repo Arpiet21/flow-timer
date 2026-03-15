@@ -30,8 +30,9 @@
         img.style.cssText = 'width:28px;height:28px;border-radius:50%;object-fit:cover;';
         document.querySelector('.header-actions').prepend(img);
       }
-      // Restrict presets for free users
-      const isPro = user.plan === 'pro' || user.plan === 'trial';
+      // Restrict presets for free users (?preview=free to test)
+      const previewFree = new URLSearchParams(location.search).get('preview') === 'free';
+      const isPro = !previewFree && (user.plan === 'pro' || user.plan === 'trial');
       if (!isPro) {
         document.querySelectorAll('.pro-preset').forEach(btn => {
           btn.style.opacity = '0.45';
