@@ -34,10 +34,13 @@
       const isPro = user.plan === 'pro' || user.plan === 'trial';
       if (!isPro) {
         document.querySelectorAll('.pro-preset').forEach(btn => {
-          btn.disabled = true;
-          btn.style.opacity = '0.35';
-          btn.style.cursor = 'not-allowed';
-          btn.onclick = e => { e.preventDefault(); window.location.href = 'upgrade.html'; };
+          btn.style.opacity = '0.45';
+          btn.style.cursor = 'pointer';
+          btn.style.borderStyle = 'dashed';
+          btn.onclick = e => {
+            e.stopImmediatePropagation();
+            window.location.href = 'upgrade.html';
+          };
         });
         document.getElementById('upgrade-nudge').style.display = 'block';
       }
