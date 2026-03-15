@@ -34,6 +34,7 @@
       const previewFree = new URLSearchParams(location.search).get('preview') === 'free';
       const isPro = !previewFree && (user.plan === 'pro' || user.plan === 'trial');
       if (!isPro) {
+        // Lock pro presets
         document.querySelectorAll('.pro-preset').forEach(btn => {
           btn.textContent = btn.textContent.trim() + ' 🔒';
           btn.style.opacity = '0.45';
@@ -45,6 +46,16 @@
           };
         });
         document.getElementById('upgrade-nudge').style.display = 'block';
+
+        // Lock floating widget
+        const pipBtn = document.getElementById('pip-btn');
+        pipBtn.textContent = 'Float Widget 🔒';
+        pipBtn.style.opacity = '0.45';
+        pipBtn.style.borderStyle = 'dashed';
+        pipBtn.onclick = e => {
+          e.stopImmediatePropagation();
+          document.getElementById('pip-lock-msg').style.display = 'block';
+        };
       }
 
       // Show trial countdown banner
@@ -151,6 +162,9 @@
     <!-- Float Widget Button -->
     <div class="pip-bar">
       <button id="pip-btn">Float Widget</button>
+      <div id="pip-lock-msg" style="display:none;font-size:0.75rem;color:#888;margin-top:4px;text-align:center;">
+        🔒 <a href="upgrade.html" style="color:#39ff14;">Upgrade to Pro</a> to use floating widget
+      </div>
     </div>
 
     <!-- Settings Panel -->
