@@ -162,8 +162,8 @@
     const STRIPE_KEY = 'pk_test_51TBJuvECIoDrvWZBUZI0hsz19Hw2LGGmHVkl5tcZi1JGaIwy4CdiLtm0IBFKXlG8nNL2mlFg4ggjwQnUKySuCHcF00D0ABGu7v';
 
     const PLANS = {
-      monthly: { amount: 49900, label: isIndia ? '₹499'    : '$5.99',  period: '/month', sub: 'Billed monthly • Cancel anytime' },
-      yearly:  { amount: 416700, label: isIndia ? '₹4,167' : '$57.99', period: '/year', sub: isIndia ? 'Billed yearly — save ₹831' : 'Billed yearly — save $14' }
+      monthly: { amount: 49900, label: isIndia ? '₹499'    : '$4.99', period: '/month', sub: 'Billed monthly • Cancel anytime' },
+      yearly:  { amount: 416700, label: isIndia ? '₹4,167' : '$50',   period: '/year', sub: isIndia ? 'Billed yearly — save ₹831' : 'Billed yearly — save $9.88' }
     };
 
     let selectedPlan = new URLSearchParams(location.search).get('plan') === 'yearly' ? 'yearly' : 'monthly';

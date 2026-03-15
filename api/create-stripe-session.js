@@ -3,8 +3,8 @@ import Stripe from 'stripe';
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 const PRICES = {
-  monthly: { amount: 599,   label: '$5.99/month' },
-  yearly:  { amount: 5799,  label: '$57.99/year' },
+  monthly: { amount: 499,   label: '$4.99/month' },
+  yearly:  { amount: 5000,  label: '$50/year' },
 };
 
 export default async function handler(req, res) {
