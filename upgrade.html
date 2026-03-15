@@ -180,7 +180,7 @@
     const RAZORPAY_KEY_ID = 'rzp_live_SRZASSkYpaZQGE';
     const STRIPE_KEY = 'pk_test_51TBJuvECIoDrvWZBUZI0hsz19Hw2LGGmHVkl5tcZi1JGaIwy4CdiLtm0IBFKXlG8nNL2mlFg4ggjwQnUKySuCHcF00D0ABGu7v';
 
-    const PLANS = {
+    const PRICE_PLANS = {
       monthly: { amount: 49900, label: isIndia ? '₹499'    : '$4.99', period: '/month', sub: 'Billed monthly • Cancel anytime' },
       yearly:  { amount: 416700, label: isIndia ? '₹4,167' : '$50',   period: '/year', sub: isIndia ? 'Billed yearly — save ₹831' : 'Billed yearly — save $9.88' }
     };
@@ -188,8 +188,8 @@
     let selectedPlan = new URLSearchParams(location.search).get('plan') === 'yearly' ? 'yearly' : 'monthly';
     let currentUser = null;
 
-    // Always update price display on load (fixes currency not updating)
-    const initPlan = PLANS[selectedPlan];
+    // Always update price display on load
+    const initPlan = PRICE_PLANS[selectedPlan];
     document.getElementById('price-amount').textContent = initPlan.label;
     document.getElementById('price-period').textContent = initPlan.period;
     document.getElementById('price-sub').textContent = initPlan.sub;
@@ -220,7 +220,7 @@
       selectedPlan = plan;
       document.getElementById('btn-monthly').classList.toggle('active', plan === 'monthly');
       document.getElementById('btn-yearly').classList.toggle('active', plan === 'yearly');
-      const p = PLANS[plan];
+      const p = PRICE_PLANS[plan];
       document.getElementById('price-amount').textContent = p.label;
       document.getElementById('price-period').textContent = p.period;
       document.getElementById('price-sub').textContent = p.sub;
