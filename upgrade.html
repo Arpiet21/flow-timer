@@ -149,9 +149,12 @@
   <script src="supabase-client.js"></script>
   <script src="auth.js"></script>
   <script>
-    // Detect India
+    // Detect India (override with ?preview=usd or ?preview=inr)
+    const previewParam = new URLSearchParams(location.search).get('preview');
     const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
-    const isIndia = tz.includes('Calcutta') || tz.includes('Kolkata') || navigator.language === 'en-IN';
+    const isIndia = previewParam === 'usd' ? false
+                  : previewParam === 'inr' ? true
+                  : tz.includes('Calcutta') || tz.includes('Kolkata') || navigator.language === 'en-IN';
 
     // Update secure note
     if (!isIndia) {
