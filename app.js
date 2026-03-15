@@ -77,11 +77,18 @@ function resetTimer() {
   updateStartBtn();
 }
 
+function setFocusAssist(on) {
+  if (window.electronAPI && localStorage.getItem('blockNotifications') === 'true') {
+    window.electronAPI.focusAssist(on);
+  }
+}
+
 function startTimer() {
   if (state.status === 'running') return;
   state.status = 'running';
   updateStartBtn();
   tickInterval = setInterval(tick, 1000);
+  setFocusAssist(true);
 }
 
 function pauseTimer() {
@@ -89,6 +96,7 @@ function pauseTimer() {
   clearInterval(tickInterval);
   state.status = 'paused';
   updateStartBtn();
+  setFocusAssist(false);
 }
 
 function tick() {

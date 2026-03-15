@@ -1,5 +1,16 @@
 const { app, BrowserWindow, Tray, Menu, ipcMain, nativeImage, shell } = require('electron');
 const path = require('path');
+const { exec } = require('child_process');
+
+// ─── Windows Focus Assist (Do Not Disturb) ────────────────────────────────────
+function setFocusAssist(enable) {
+  if (process.platform !== 'win32') return;
+  // Disable/enable toast notifications via registry
+  const value = enable ? 0 : 1;
+  exec(`powershell -Command "Set-ItemProperty -Path 'HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\PushNotifications' -Name ToastEnabled -Value ${value} -Type DWord"`,
+    (err) => { if (err) console.log('FocusAssist:', err.message); }
+  );
+}
 
 let mainWindow = null;
 let widgetWindow = null;
@@ -118,8 +129,12 @@ function createTray() {
 // ─── IPC ──────────────────────────────────────────────────────────────────────
 ipcMain.on('open-widget', () => createWidget());
 ipcMain.on('close-widget', () => { if (widgetWindow) widgetWindow.close(); });
+ipcMain.on('focus-assist', (_, on) => setFocusAssist(on));
 ipcMain.on('timer-state', (_, data) => {
   if (widgetWindow) widgetWindow.webContents.send('timer-state', data);
+  // Enable Focus Assist when timer is running, disable when stopped/paused
+  if (data.running) setFocusAssist(true);
+  else setFocusAssist(false);
 });
 
 // ─── App Lifecycle ────────────────────────────────────────────────────────────

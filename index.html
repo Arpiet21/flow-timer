@@ -80,6 +80,17 @@
       }
     }
   });
+
+  // Show block-notifications toggle only in Electron (Windows)
+  if (window.electronAPI && navigator.platform.includes('Win')) {
+    document.getElementById('block-notif-row').style.display = 'block';
+    const toggle = document.getElementById('block-notif-toggle');
+    // Load saved preference
+    toggle.checked = localStorage.getItem('blockNotifications') === 'true';
+    toggle.addEventListener('change', () => {
+      localStorage.setItem('blockNotifications', toggle.checked);
+    });
+  }
 </script>
 
   <header>
@@ -171,6 +182,15 @@
     <div class="card hidden" id="settings-card">
       <div class="settings-panel open" id="settings-panel" style="max-height:none;overflow:visible;">
         <h3>Settings</h3>
+
+        <!-- Block Notifications (Electron only) -->
+        <div class="setting-row" id="block-notif-row" style="display:none;">
+          <label>Block notifications during focus</label>
+          <label class="toggle-switch">
+            <input type="checkbox" id="block-notif-toggle">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
 
         <div class="setting-row">
           <label>Focus Duration <span id="work-val">25 min</span></label>
