@@ -178,8 +178,8 @@
     document.getElementById('price-period').textContent = initPlan.period;
     document.getElementById('price-sub').textContent = initPlan.sub;
     if (selectedPlan === 'yearly') {
-      document.querySelectorAll('.plan-btn').forEach(b => b.classList.remove('active'));
-      document.querySelector('[data-plan="yearly"]').classList.add('active');
+      document.getElementById('btn-monthly').classList.remove('active');
+      document.getElementById('btn-yearly').classList.add('active');
     }
 
     // Load user
