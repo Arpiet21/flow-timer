@@ -30,6 +30,26 @@
         img.style.cssText = 'width:28px;height:28px;border-radius:50%;object-fit:cover;';
         document.querySelector('.header-actions').prepend(img);
       }
+      // Show trial countdown banner
+      if (user.plan === 'trial' && user.trialDaysLeft > 0) {
+        const banner = document.createElement('div');
+        banner.style.cssText = `
+          position:fixed; top:0; left:0; right:0; z-index:999;
+          background:linear-gradient(90deg,#39ff14,#00d4ff);
+          color:#000; text-align:center; padding:8px 16px;
+          font-size:0.82rem; font-weight:700;
+          display:flex; align-items:center; justify-content:center; gap:12px;
+        `;
+        banner.innerHTML = `
+          ⏳ Pro Trial: <strong>${user.trialDaysLeft} day${user.trialDaysLeft !== 1 ? 's' : ''} left</strong>
+          &nbsp;—&nbsp;
+          <a href="upgrade.html" style="color:#000;text-decoration:underline;font-weight:800;">Upgrade Now to keep Pro</a>
+          <span onclick="this.parentElement.remove()" style="cursor:pointer;margin-left:8px;opacity:0.6;">✕</span>
+        `;
+        document.body.prepend(banner);
+        // Push header down
+        document.querySelector('header').style.marginTop = '38px';
+      }
     }
   });
 </script>
