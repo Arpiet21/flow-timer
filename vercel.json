@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "buildCommand": null,
+  "buildCommand": "echo 'Static site'",
   "installCommand": "npm install --omit=dev",
   "outputDirectory": ".",
   "framework": null,
