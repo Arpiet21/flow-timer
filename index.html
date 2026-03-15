@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="A beautiful Flow Timer with floating analog clock widget">
+  <title>Flow Timer</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#39ff14">
+  <link rel="apple-touch-icon" href="assets/icon-192.png">
+</head>
+<body>
+
+<!-- Auth guard -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase-client.js"></script>
+<script src="auth.js"></script>
+<script>
+  document.body.style.visibility = 'hidden';
+  Auth.requireAuth().then(ok => {
+    if (!ok) return;
+    document.body.style.visibility = 'visible';
+    const user = Auth.getUser();
+    if (user) {
+      document.querySelector('.logo').textContent = `⏱ Hi, ${user.name.split(' ')[0]}`;
+      if (user.avatar) {
+        const img = document.createElement('img');
+        img.src = user.avatar;
+        img.style.cssText = 'width:28px;height:28px;border-radius:50%;object-fit:cover;';
+        document.querySelector('.header-actions').prepend(img);
+      }
+    }
+  });
+</script>
+
+  <header>
+    <div class="logo">⏱ Flow Timer</div>
+    <div class="header-actions">
+      <button class="icon-btn" id="theme-btn" title="Toggle theme (T)">☀</button>
+      <button class="icon-btn" id="settings-btn" title="Settings (S)">⚙</button>
+      <button class="icon-btn" id="history-btn" title="Session History (H)">📋</button>
+      <button class="icon-btn" id="signout-btn" title="Sign out" style="font-size:0.7rem;width:auto;padding:0 10px;">Sign out</button>
+    </div>
+  </header>
+
+  <main>
+
+    <!-- Timer Card -->
+    <div class="card">
+
+      <!-- Mode Tabs -->
+      <div class="mode-tabs">
+        <button class="mode-btn active" data-mode="work">Focus</button>
+        <button class="mode-btn" data-mode="short">Short Break</button>
+        <button class="mode-btn" data-mode="long">Long Break</button>
+      </div>
+
+      <!-- Duration Presets (Focus mode only) -->
+      <div class="duration-presets" id="duration-presets">
+        <button class="preset-btn" data-mins="10">10m</button>
+        <button class="preset-btn active" data-mins="25">25m</button>
+        <button class="preset-btn" data-mins="45">45m</button>
+        <button class="preset-btn" data-mins="60">60m</button>
+        <button class="preset-btn" data-mins="90">90m</button>
+      </div>
+
+      <!-- Task Label -->
+      <div class="task-input-wrap">
+        <input type="text" id="task-input" placeholder="What are you working on?" maxlength="60" autocomplete="off">
+      </div>
+
+      <!-- Clock Type Toggle -->
+      <div class="clock-toggle">
+        <button class="clock-type-btn active" data-clock="analog" title="Analog clock">🕐 Analog</button>
+        <button class="clock-type-btn" data-clock="digital" title="Digital clock">⏱ Digital</button>
+      </div>
+
+      <!-- Clock Display -->
+      <div class="clock-area">
+        <!-- Analog -->
+        <div id="analog-wrap">
+          <canvas id="main-clock" width="260" height="260"></canvas>
+          <div id="time-display-analog">25:00</div>
+        </div>
+        <!-- Digital -->
+        <div id="digital-wrap" class="hidden">
+          <div id="time-display-digital">25:00</div>
+          <div id="digital-progress-bar"><div id="digital-progress-fill"></div></div>
+        </div>
+      </div>
+
+      <!-- Controls -->
+      <div class="controls">
+        <button class="btn-primary" id="start-btn" data-action="start">Start</button>
+        <button class="btn-secondary" id="reset-btn" title="Reset (R)">↺</button>
+      </div>
+
+      <!-- Session Dots -->
+      <div class="session-tracker" style="margin-top:20px;">
+        <span class="session-label">Session</span>
+        <div id="session-dots"></div>
+      </div>
+
+    </div>
+
+    <!-- Float Widget Button -->
+    <div class="pip-bar">
+      <button id="pip-btn">Float Widget</button>
+    </div>
+
+    <!-- Settings Panel -->
+    <div class="card hidden" id="settings-card">
+      <div class="settings-panel open" id="settings-panel" style="max-height:none;overflow:visible;">
+        <h3>Settings</h3>
+
+        <div class="setting-row">
+          <label>Focus Duration <span id="work-val">25 min</span></label>
+          <input type="range" id="work-slider" min="5" max="90" step="5" value="25">
+        </div>
+
+        <div class="setting-row">
+          <label>Short Break <span id="short-val">5 min</span></label>
+          <input type="range" id="short-slider" min="1" max="30" step="1" value="5">
+        </div>
+
+        <div class="setting-row">
+          <label>Long Break <span id="long-val">15 min</span></label>
+          <input type="range" id="long-slider" min="5" max="60" step="5" value="15">
+        </div>
+
+        <div class="setting-row">
+          <label>Sessions before long break <span id="sessions-val">4</span></label>
+          <input type="range" id="sessions-slider" min="2" max="8" step="1" value="4">
+        </div>
+
+        <!-- Accent Color -->
+        <div class="setting-row">
+          <label>Accent Color</label>
+          <div class="color-options" id="color-options">
+            <!-- Reds / Pinks -->
+            <button class="color-swatch" data-color="#ff1744" style="background:#ff1744" title="Red"></button>
+            <button class="color-swatch" data-color="#f44336" style="background:#f44336" title="Tomato"></button>
+            <button class="color-swatch" data-color="#e53935" style="background:#e53935" title="Crimson"></button>
+            <button class="color-swatch" data-color="#ff4081" style="background:#ff4081" title="Hot Pink"></button>
+            <button class="color-swatch" data-color="#e91e63" style="background:#e91e63" title="Pink"></button>
+            <button class="color-swatch" data-color="#ff2d92" style="background:#ff2d92" title="Deep Pink"></button>
+            <button class="color-swatch" data-color="#ad1457" style="background:#ad1457" title="Dark Pink"></button>
+            <button class="color-swatch" data-color="#880e4f" style="background:#880e4f" title="Maroon"></button>
+            <!-- Oranges -->
+            <button class="color-swatch" data-color="#ff6d00" style="background:#ff6d00" title="Deep Orange"></button>
+            <button class="color-swatch" data-color="#ff7043" style="background:#ff7043" title="Coral"></button>
+            <button class="color-swatch" data-color="#ff9500" style="background:#ff9500" title="Orange"></button>
+            <button class="color-swatch" data-color="#ffa000" style="background:#ffa000" title="Amber"></button>
+            <button class="color-swatch" data-color="#ff8f00" style="background:#ff8f00" title="Dark Amber"></button>
+            <button class="color-swatch" data-color="#e65100" style="background:#e65100" title="Burnt Orange"></button>
+            <button class="color-swatch" data-color="#bf360c" style="background:#bf360c" title="Rust"></button>
+            <button class="color-swatch" data-color="#d84315" style="background:#d84315" title="Sienna"></button>
+            <!-- Yellows -->
+            <button class="color-swatch" data-color="#ffd60a" style="background:#ffd60a" title="Yellow"></button>
+            <button class="color-swatch" data-color="#ffeb3b" style="background:#ffeb3b" title="Bright Yellow"></button>
+            <button class="color-swatch" data-color="#fdd835" style="background:#fdd835" title="Sunflower"></button>
+            <button class="color-swatch" data-color="#f9a825" style="background:#f9a825" title="Golden"></button>
+            <button class="color-swatch" data-color="#ffca28" style="background:#ffca28" title="Saffron"></button>
+            <button class="color-swatch" data-color="#ffb300" style="background:#ffb300" title="Marigold"></button>
+            <button class="color-swatch" data-color="#cddc39" style="background:#cddc39" title="Lime Yellow"></button>
+            <button class="color-swatch" data-color="#c6ef00" style="background:#c6ef00" title="Chartreuse"></button>
+            <!-- Greens -->
+            <button class="color-swatch active" data-color="#39ff14" style="background:#39ff14" title="Neon Green"></button>
+            <button class="color-swatch" data-color="#00e676" style="background:#00e676" title="Spring Green"></button>
+            <button class="color-swatch" data-color="#4caf50" style="background:#4caf50" title="Green"></button>
+            <button class="color-swatch" data-color="#43a047" style="background:#43a047" title="Forest Green"></button>
+            <button class="color-swatch" data-color="#2e7d32" style="background:#2e7d32" title="Dark Green"></button>
+            <button class="color-swatch" data-color="#8bc34a" style="background:#8bc34a" title="Light Green"></button>
+            <button class="color-swatch" data-color="#76ff03" style="background:#76ff03" title="Acid Green"></button>
+            <button class="color-swatch" data-color="#558b2f" style="background:#558b2f" title="Olive Green"></button>
+            <!-- Teals / Cyans -->
+            <button class="color-swatch" data-color="#00e5ff" style="background:#00e5ff" title="Cyan"></button>
+            <button class="color-swatch" data-color="#00bcd4" style="background:#00bcd4" title="Sky Blue"></button>
+            <button class="color-swatch" data-color="#0097a7" style="background:#0097a7" title="Teal"></button>
+            <button class="color-swatch" data-color="#00897b" style="background:#00897b" title="Dark Teal"></button>
+            <button class="color-swatch" data-color="#26c6da" style="background:#26c6da" title="Aqua"></button>
+            <button class="color-swatch" data-color="#006064" style="background:#006064" title="Deep Teal"></button>
+            <button class="color-swatch" data-color="#1de9b6" style="background:#1de9b6" title="Turquoise"></button>
+            <button class="color-swatch" data-color="#00acc1" style="background:#00acc1" title="Pacific Blue"></button>
+            <!-- Blues -->
+            <button class="color-swatch" data-color="#0a84ff" style="background:#0a84ff" title="Blue"></button>
+            <button class="color-swatch" data-color="#2196f3" style="background:#2196f3" title="Dodger Blue"></button>
+            <button class="color-swatch" data-color="#1976d2" style="background:#1976d2" title="Royal Blue"></button>
+            <button class="color-swatch" data-color="#1565c0" style="background:#1565c0" title="Navy Blue"></button>
+            <button class="color-swatch" data-color="#0d47a1" style="background:#0d47a1" title="Dark Blue"></button>
+            <button class="color-swatch" data-color="#42a5f5" style="background:#42a5f5" title="Cornflower"></button>
+            <button class="color-swatch" data-color="#304ffe" style="background:#304ffe" title="Indigo Blue"></button>
+            <button class="color-swatch" data-color="#1a237e" style="background:#1a237e" title="Midnight Blue"></button>
+            <!-- Purples / Violets -->
+            <button class="color-swatch" data-color="#bf5af2" style="background:#bf5af2" title="Purple"></button>
+            <button class="color-swatch" data-color="#9c27b0" style="background:#9c27b0" title="Violet"></button>
+            <button class="color-swatch" data-color="#7b1fa2" style="background:#7b1fa2" title="Dark Violet"></button>
+            <button class="color-swatch" data-color="#4a148c" style="background:#4a148c" title="Deep Purple"></button>
+            <button class="color-swatch" data-color="#e040fb" style="background:#e040fb" title="Magenta"></button>
+            <button class="color-swatch" data-color="#ab47bc" style="background:#ab47bc" title="Orchid"></button>
+            <button class="color-swatch" data-color="#7c4dff" style="background:#7c4dff" title="Deep Violet"></button>
+            <button class="color-swatch" data-color="#6200ea" style="background:#6200ea" title="Electric Violet"></button>
+            <!-- Neutrals / Special -->
+            <button class="color-swatch" data-color="#ffffff" style="background:#ffffff" title="White"></button>
+            <button class="color-swatch" data-color="#f5f5f5" style="background:#f5f5f5" title="Light Grey"></button>
+            <button class="color-swatch" data-color="#9e9e9e" style="background:#9e9e9e" title="Grey"></button>
+            <button class="color-swatch" data-color="#607d8b" style="background:#607d8b" title="Blue Grey"></button>
+            <button class="color-swatch" data-color="#37474f" style="background:#37474f" title="Dark Slate"></button>
+            <button class="color-swatch" data-color="#795548" style="background:#795548" title="Brown"></button>
+            <button class="color-swatch" data-color="#4e342e" style="background:#4e342e" title="Dark Brown"></button>
+            <button class="color-swatch" data-color="#212121" style="background:#212121" title="Charcoal"></button>
+          </div>
+        </div>
+
+        <!-- Sound Options -->
+        <div class="setting-row">
+          <label>Alarm Sound <span id="sound-val">Bell</span></label>
+          <div class="sound-options">
+            <button class="sound-opt active" data-sound="bell">🔔 Bell</button>
+            <button class="sound-opt" data-sound="beep">📳 Beep</button>
+            <button class="sound-opt" data-sound="chime">🎵 Chime</button>
+            <button class="sound-opt" data-sound="digital">💻 Digital</button>
+          </div>
+        </div>
+
+        <div class="toggle-row">
+          <span>Sound</span>
+          <label class="toggle">
+            <input type="checkbox" id="sound-toggle" checked>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <div class="toggle-row">
+          <span>Desktop Notifications</span>
+          <label class="toggle">
+            <input type="checkbox" id="notif-toggle" checked>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <div class="toggle-row">
+          <span>Auto-start next session</span>
+          <label class="toggle">
+            <input type="checkbox" id="autostart-toggle">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Session History Panel -->
+    <div class="card hidden" id="history-card">
+      <div class="history-panel">
+        <h3>Session History</h3>
+        <div id="history-list"><p class="history-empty">No sessions yet. Start your first session!</p></div>
+      </div>
+    </div>
+
+  </main>
+
+  <p class="kbd-hint">
+    <kbd>Space</kbd> start/pause &nbsp;
+    <kbd>R</kbd> reset &nbsp;
+    <kbd>T</kbd> theme &nbsp;
+    <kbd>S</kbd> settings &nbsp;
+    <kbd>H</kbd> history
+  </p>
+
+  <script src="app.js"></script>
+  <script>
+    document.getElementById('signout-btn').addEventListener('click', () => Auth.signOut());
+  </script>
+</body>
+</html>

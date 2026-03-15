@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Log in — Flow Timer</title>
+  <link rel="stylesheet" href="auth.css">
+  <style>
+    .divider {
+      display: flex; align-items: center; gap: 12px;
+      margin: 20px 0; color: var(--text-muted); font-size: 0.82rem;
+    }
+    .divider::before, .divider::after {
+      content: ''; flex: 1; height: 1px; background: var(--border);
+    }
+    .btn-google {
+      width: 100%; padding: 12px; border-radius: 12px;
+      border: 1px solid var(--border); background: var(--bg);
+      color: var(--text); font-size: 0.95rem; font-weight: 600;
+      cursor: pointer; display: flex; align-items: center;
+      justify-content: center; gap: 10px; transition: border-color 0.2s, background 0.2s;
+    }
+    .btn-google:hover { border-color: #4285f4; background: rgba(66,133,244,0.06); }
+    .btn-google img { width: 18px; height: 18px; }
+  </style>
+</head>
+<body class="auth-page">
+
+  <div class="auth-card">
+    <div class="auth-logo">⏱ Flow Timer</div>
+    <h1 class="auth-title">Welcome back</h1>
+    <p class="auth-sub">Log in to continue your focus sessions</p>
+
+    <!-- Google Login -->
+    <button class="btn-google" id="google-btn">
+      <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google">
+      Continue with Google
+    </button>
+
+    <div class="divider">or</div>
+
+    <div class="form-error" id="error-msg"></div>
+
+    <form id="login-form" novalidate>
+      <div class="form-group">
+        <label for="email">Email</label>
+        <input type="email" id="email" placeholder="you@example.com" autocomplete="email" required>
+      </div>
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input type="password" id="password" placeholder="Your password" autocomplete="current-password" required>
+      </div>
+      <button type="submit" class="btn btn-primary btn-full">Log in</button>
+    </form>
+
+    <p class="auth-divider" style="margin-top:16px;">
+      <a href="#">Forgot password?</a>
+    </p>
+    <p class="auth-divider">
+      Don't have an account? <a href="signup.html">Sign up free</a>
+    </p>
+  </div>
+
+  <p style="margin-top:20px;font-size:0.8rem;">
+    <a href="landing.html" style="color:var(--text-muted)">← Back to home</a>
+  </p>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-client.js"></script>
+  <script src="auth.js"></script>
+  <script>
+    // Already logged in → go to app
+    Auth.init().then(user => { if (user) window.location.href = 'index.html'; });
+
+    const errorEl = document.getElementById('error-msg');
+
+    function showError(msg) {
+      errorEl.textContent = msg;
+      errorEl.classList.add('show');
+    }
+
+    // Google
+    document.getElementById('google-btn').addEventListener('click', async () => {
+      const btn = document.getElementById('google-btn');
+      btn.disabled = true;
+      btn.innerHTML = '<span style="opacity:0.6">Redirecting to Google...</span>';
+      const result = await Auth.signInWithGoogle();
+      if (!result.ok) {
+        showError(result.error.includes('provider') || result.error.includes('not enabled')
+          ? 'Google login is not configured yet. Please use email & password, or set up Google OAuth in Supabase.'
+          : result.error
+        );
+        btn.disabled = false;
+        btn.innerHTML = '<img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google"> Continue with Google';
+      }
+    });
+
+    // Email + password
+    document.getElementById('login-form').addEventListener('submit', async e => {
+      e.preventDefault();
+      errorEl.classList.remove('show');
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+
+      if (!email || !password) return showError('Please fill in all fields.');
+
+      const btn = e.target.querySelector('button[type=submit]');
+      btn.textContent = 'Signing in...';
+      btn.disabled = true;
+
+      const result = await Auth.signIn(email, password);
+      if (result.ok) {
+        window.location.href = 'index.html';
+      } else {
+        showError(result.error);
+        btn.textContent = 'Log in';
+        btn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

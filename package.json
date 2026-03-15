@@ -1,0 +1,51 @@
+{
+  "name": "flow-timer-pwa",
+  "version": "1.0.0",
+  "description": "Flow Timer PWA with floating analog clock widget",
+  "main": "electron-main.js",
+  "scripts": {
+    "start": "npx serve . --listen 3000 --no-clipboard",
+    "dev": "npx serve . --listen 3000",
+    "electron": "electron .",
+    "build": "electron-builder --win --x64",
+    "build:mac": "electron-builder --mac",
+    "build:linux": "electron-builder --linux"
+  },
+  "keywords": [
+    "flow",
+    "timer",
+    "pwa",
+    "productivity"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^31.7.7",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.flowtimer.app",
+    "productName": "Flow Timer",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "**/*",
+      "!dist/**",
+      "!node_modules/**"
+    ],
+    "win": {
+      "target": "portable",
+      "icon": "assets/icon-512.png"
+    },
+    "mac": {
+      "target": "dmg",
+      "icon": "assets/icon-512.png",
+      "category": "public.app-category.productivity"
+    },
+    "linux": {
+      "target": "AppImage",
+      "icon": "assets/icon-512.png",
+      "category": "Utility"
+    }
+  }
+}

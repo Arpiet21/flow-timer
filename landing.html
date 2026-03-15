@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="The most beautiful Flow Timer. Stay focused, beat procrastination, get more done.">
+  <title>Flow Timer — Stay Focused, Do More</title>
+  <link rel="stylesheet" href="auth.css">
+  <style>
+    /* Animated gradient bg */
+    .hero-bg {
+      position: fixed; inset: 0; z-index: -1;
+      background: radial-gradient(ellipse at 20% 50%, rgba(233,69,96,0.06) 0%, transparent 60%),
+                  radial-gradient(ellipse at 80% 20%, rgba(74,144,217,0.06) 0%, transparent 60%),
+                  #1a1a2e;
+    }
+  </style>
+</head>
+<body>
+
+<div class="hero-bg"></div>
+
+<!-- ── Nav ── -->
+<nav>
+  <div class="nav-inner">
+    <a href="landing.html" class="nav-logo">⏱ Flow Timer</a>
+    <div class="nav-links">
+      <a href="#features" class="nav-link">Features</a>
+      <a href="#pricing" class="nav-link">Pricing</a>
+      <a href="login.html" class="btn btn-outline" style="padding:8px 18px;font-size:0.85rem;">Log in</a>
+      <a href="signup.html" class="btn btn-primary" style="padding:8px 18px;font-size:0.85rem;">Get Started Free</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ── Hero ── -->
+<section class="hero">
+  <div class="hero-content">
+    <div class="hero-badge">🚀 Now with floating widget</div>
+    <h1>Focus deeper.<br><span>Do more.</span><br>Burn less out.</h1>
+    <p>The Flow Timer that stays with you — float it over any app, any browser, anywhere on your desktop. Work in deep focus bursts and actually finish things.</p>
+    <div class="hero-ctas">
+      <a href="signup.html" class="btn btn-primary btn-lg">Start for Free</a>
+      <a href="index.html" class="btn btn-outline btn-lg">Try without account</a>
+    </div>
+    <div class="hero-stats">
+      <div class="stat-item">
+        <span class="stat-num">12k+</span>
+        <span class="stat-label">Active users</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-num">4.9★</span>
+        <span class="stat-label">Average rating</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-num">2M+</span>
+        <span class="stat-label">Sessions logged</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mock app preview -->
+  <div class="hero-visual">
+    <div class="mock-app">
+      <div class="mock-tabs">
+        <div class="mock-tab active">Focus</div>
+        <div class="mock-tab">Short</div>
+        <div class="mock-tab">Long</div>
+      </div>
+      <div class="mock-clock-wrap">
+        <svg width="180" height="180" viewBox="0 0 180 180">
+          <!-- bg circle -->
+          <circle cx="90" cy="90" r="80" fill="#0f3460"/>
+          <!-- track -->
+          <circle cx="90" cy="90" r="72" fill="none" stroke="#2a2a4a" stroke-width="10"/>
+          <!-- progress arc ~70% -->
+          <circle cx="90" cy="90" r="72" fill="none" stroke="#39ff14" stroke-width="10"
+            stroke-linecap="round"
+            stroke-dasharray="452" stroke-dashoffset="136"
+            transform="rotate(-90 90 90)"/>
+          <!-- tick marks -->
+          <line x1="90" y1="12" x2="90" y2="22" stroke="#3a3a5a" stroke-width="2"/>
+          <line x1="90" y1="158" x2="90" y2="168" stroke="#3a3a5a" stroke-width="2"/>
+          <line x1="12" y1="90" x2="22" y2="90" stroke="#3a3a5a" stroke-width="2"/>
+          <line x1="158" y1="90" x2="168" y2="90" stroke="#3a3a5a" stroke-width="2"/>
+          <!-- hand -->
+          <line x1="90" y1="90" x2="144" y2="50" stroke="#39ff14" stroke-width="3" stroke-linecap="round"/>
+          <!-- center dot -->
+          <circle cx="90" cy="90" r="5" fill="#39ff14"/>
+        </svg>
+        <div class="mock-time">17:32</div>
+      </div>
+      <button class="mock-btn">Pause</button>
+      <div class="mock-dots">
+        <div class="mock-dot on"></div>
+        <div class="mock-dot on"></div>
+        <div class="mock-dot on"></div>
+        <div class="mock-dot"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Features ── -->
+<section class="section" id="features">
+  <p class="section-label">Why Flow Timer</p>
+  <h2 class="section-title">Everything you need to stay on track</h2>
+  <p class="section-sub">Built for deep work. No clutter, no distractions — just you and your timer.</p>
+
+  <div class="features-grid">
+    <div class="feature-card">
+      <span class="feature-icon">🕐</span>
+      <h3>Analog Floating Clock</h3>
+      <p>A beautiful analog clock that floats over everything — your browser, your desktop, other apps. Always visible, never in the way.</p>
+    </div>
+    <div class="feature-card">
+      <span class="feature-icon">⏱</span>
+      <h3>Flexible Intervals</h3>
+      <p>Set focus sessions from 5 to 90 minutes. Short breaks, long breaks — all customizable with a simple slider.</p>
+    </div>
+    <div class="feature-card">
+      <span class="feature-icon">🔔</span>
+      <h3>Smart Notifications</h3>
+      <p>Desktop notifications and a gentle alarm when your session ends. Never lose track of time again.</p>
+    </div>
+    <div class="feature-card">
+      <span class="feature-icon">🍅</span>
+      <h3>Session Tracking</h3>
+      <p>Visual session dots show your progress. Auto-triggers long breaks after your configured number of sessions.</p>
+    </div>
+    <div class="feature-card">
+      <span class="feature-icon">🌙</span>
+      <h3>Dark & Light Mode</h3>
+      <p>Sleek dark theme by default. Switch to light mode any time — your preference is saved automatically.</p>
+    </div>
+    <div class="feature-card">
+      <span class="feature-icon">📱</span>
+      <h3>Works Everywhere</h3>
+      <p>PWA — install it on desktop or mobile. Works offline. Runs in any modern browser. No app store needed.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ── Pricing ── -->
+<section class="section" id="pricing" style="padding-top:0;">
+  <p class="section-label">Pricing</p>
+  <h2 class="section-title">Simple, transparent pricing</h2>
+  <p class="section-sub">Start free forever. Upgrade when you need more.</p>
+
+  <div class="pricing-grid">
+
+    <div class="pricing-card">
+      <p class="plan-name">Free</p>
+      <div class="plan-price">$0</div>
+      <p class="plan-period">forever</p>
+      <ul class="plan-features">
+        <li>25 min max focus session</li>
+        <li>Short & long breaks</li>
+        <li>Up to 4 sessions/cycle</li>
+        <li>Dark & light mode</li>
+        <li>Sound & notifications</li>
+        <li class="no">Floating analog widget</li>
+        <li class="no">Up to 90 min sessions</li>
+        <li class="no">Session history</li>
+      </ul>
+      <a href="signup.html" class="btn btn-outline btn-full">Get Started Free</a>
+    </div>
+
+    <div class="pricing-card popular">
+      <div class="popular-badge">Most Popular</div>
+      <p class="plan-name">Pro</p>
+      <div class="plan-price"><sup>$</sup>4<span style="font-size:1.4rem;font-weight:400">.99</span></div>
+      <p class="plan-period">per month</p>
+      <ul class="plan-features">
+        <li>Up to 90 min focus sessions</li>
+        <li>Short & long breaks</li>
+        <li>Up to 8 sessions/cycle</li>
+        <li>Dark & light mode</li>
+        <li>Sound & notifications</li>
+        <li>Floating analog widget</li>
+        <li>Session history & stats</li>
+        <li>Priority support</li>
+      </ul>
+      <a href="signup.html" class="btn btn-primary btn-full">Start Pro Free Trial</a>
+    </div>
+
+  </div>
+</section>
+
+<!-- ── Testimonials ── -->
+<section class="section" style="padding-top:0;">
+  <p class="section-label">Loved by focused people</p>
+  <h2 class="section-title">What our users say</h2>
+  <p class="section-sub" style="margin-bottom:40px;">Join thousands who get more done every day.</p>
+
+  <div class="testi-grid">
+    <div class="testi-card">
+      <div class="testi-stars">★★★★★</div>
+      <p class="testi-text">"The floating widget is a game changer. I keep it in the corner of my screen all day and it actually keeps me accountable."</p>
+      <div class="testi-author">
+        <div class="testi-avatar">👩</div>
+        <div>
+          <div class="testi-name">Sarah K.</div>
+          <div class="testi-role">Product Designer</div>
+        </div>
+      </div>
+    </div>
+    <div class="testi-card">
+      <div class="testi-stars">★★★★★</div>
+      <p class="testi-text">"Finally a Flow Timer app that looks good AND works anywhere. The analog clock feels like a real timer on my desk."</p>
+      <div class="testi-author">
+        <div class="testi-avatar">👨</div>
+        <div>
+          <div class="testi-name">Marcus T.</div>
+          <div class="testi-role">Software Engineer</div>
+        </div>
+      </div>
+    </div>
+    <div class="testi-card">
+      <div class="testi-stars">★★★★★</div>
+      <p class="testi-text">"I switched from a physical timer to this. 90-minute deep work sessions with the floating clock — my productivity doubled."</p>
+      <div class="testi-author">
+        <div class="testi-avatar">👩</div>
+        <div>
+          <div class="testi-name">Priya M.</div>
+          <div class="testi-role">Freelance Writer</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── CTA Banner ── -->
+<div class="cta-banner">
+  <h2>Ready to get focused?</h2>
+  <p>Join 12,000+ people who use Flow Timer to do their best work.</p>
+  <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+    <a href="signup.html" class="btn btn-primary btn-lg">Start for Free</a>
+    <a href="index.html" class="btn btn-outline btn-lg">Try the Timer</a>
+  </div>
+</div>
+
+<footer>
+  <p>© 2026 Flow Timer · <a href="#">Privacy</a> · <a href="#">Terms</a></p>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase-client.js"></script>
+<script src="auth.js"></script>
+<script>
+  Auth.init().then(user => {
+    if (user) {
+      const links = document.querySelector('.nav-links');
+      links.innerHTML = `
+        ${user.avatar ? `<img src="${user.avatar}" style="width:28px;height:28px;border-radius:50%;object-fit:cover;">` : ''}
+        <span style="font-size:0.85rem;color:var(--text-muted)">Hi, ${user.name.split(' ')[0]}</span>
+        <a href="index.html" class="btn btn-primary" style="padding:8px 18px;font-size:0.85rem;">Open App</a>
+        <button onclick="Auth.signOut()" class="btn btn-outline" style="padding:8px 18px;font-size:0.85rem;">Sign Out</button>
+      `;
+    }
+  });
+</script>
+</body>
+</html>

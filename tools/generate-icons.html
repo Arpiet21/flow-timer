@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Icon Generator</title>
+  <style>
+    body { font-family: system-ui; background: #1a1a2e; color: #eaeaea; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; gap: 24px; }
+    h2 { color: #39ff14; }
+    .previews { display: flex; gap: 32px; align-items: flex-end; }
+    .preview { text-align: center; }
+    .preview p { font-size: 0.8rem; color: #888; margin-top: 8px; }
+    .btn { padding: 10px 24px; background: #39ff14; color: #fff; border: none; border-radius: 8px; cursor: pointer; font-size: 0.9rem; font-weight: 600; }
+    .btn:hover { opacity: 0.85; }
+    .actions { display: flex; gap: 12px; }
+  </style>
+</head>
+<body>
+  <h2>🍅 PWA Icon Generator</h2>
+  <div class="previews">
+    <div class="preview">
+      <canvas id="c192" width="192" height="192"></canvas>
+      <p>192 × 192</p>
+    </div>
+    <div class="preview">
+      <canvas id="c512" width="512" height="512"></canvas>
+      <p>512 × 512</p>
+    </div>
+  </div>
+  <div class="actions">
+    <button class="btn" onclick="download('c192', 'icon-192.png')">Download icon-192.png</button>
+    <button class="btn" onclick="download('c512', 'icon-512.png')">Download icon-512.png</button>
+  </div>
+  <p style="font-size:0.78rem;color:#555;">Save both files into the <strong style="color:#888">assets/</strong> folder</p>
+
+  <script>
+    function drawIcon(canvas) {
+      const ctx = canvas.getContext('2d');
+      const s = canvas.width;
+      const cx = s / 2, cy = s / 2;
+      const r = s * 0.46;
+
+      // Background
+      const grad = ctx.createRadialGradient(cx, cy * 0.8, 0, cx, cy, s * 0.6);
+      grad.addColorStop(0, '#1e2a4a');
+      grad.addColorStop(1, '#0f1a30');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.roundRect(0, 0, s, s, s * 0.22);
+      ctx.fill();
+
+      // Outer ring track
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.strokeStyle = '#2a3a5a';
+      ctx.lineWidth = s * 0.055;
+      ctx.stroke();
+
+      // Progress arc (~75%)
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * 0.75);
+      ctx.strokeStyle = '#39ff14';
+      ctx.lineWidth = s * 0.055;
+      ctx.lineCap = 'round';
+      ctx.stroke();
+
+      // Clock hand
+      const handAngle = -Math.PI / 2 + Math.PI * 2 * 0.25;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(cx + Math.cos(handAngle) * r * 0.65, cy + Math.sin(handAngle) * r * 0.65);
+      ctx.strokeStyle = '#39ff14';
+      ctx.lineWidth = s * 0.03;
+      ctx.lineCap = 'round';
+      ctx.stroke();
+
+      // Center dot
+      ctx.beginPath();
+      ctx.arc(cx, cy, s * 0.04, 0, Math.PI * 2);
+      ctx.fillStyle = '#39ff14';
+      ctx.fill();
+
+      // Tomato emoji text
+      ctx.font = `bold ${s * 0.18}px Segoe UI`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#eaeaea';
+      ctx.fillText('🍅', cx, cy + r * 0.6);
+    }
+
+    function download(id, filename) {
+      const canvas = document.getElementById(id);
+      const link = document.createElement('a');
+      link.download = filename;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    }
+
+    drawIcon(document.getElementById('c192'));
+    drawIcon(document.getElementById('c512'));
+  </script>
+</body>
+</html>

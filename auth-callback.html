@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Signing in...</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      background: #1a1a2e;
+      color: #eaeaea;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      gap: 16px;
+    }
+    .spinner {
+      width: 40px; height: 40px;
+      border: 3px solid #2a2a4a;
+      border-top-color: #39ff14;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    p { color: #888; font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+  <div class="spinner"></div>
+  <p>Signing you in...</p>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-client.js"></script>
+  <script>
+    // Supabase handles the OAuth token from URL hash automatically
+    _sb.auth.getSession().then(({ data }) => {
+      if (data?.session) {
+        window.location.href = 'index.html';
+      } else {
+        // Retry once after a short delay (token may still be processing)
+        setTimeout(async () => {
+          const { data: retry } = await _sb.auth.getSession();
+          window.location.href = retry?.session ? 'index.html' : 'login.html';
+        }, 1500);
+      }
+    });
+  </script>
+</body>
+</html>
