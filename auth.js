@@ -134,7 +134,7 @@ const Auth = {
       const now = new Date();
       const validUntil = planData.valid_until ? new Date(planData.valid_until) : null;
 
-      if (planData.plan === 'pro' && validUntil && validUntil > now) {
+      if (planData.plan === 'pro' && (!validUntil || validUntil > now)) {
         plan = 'pro';
       } else if (planData.plan === 'trial' && validUntil && validUntil > now) {
         plan = 'trial';

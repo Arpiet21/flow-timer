@@ -2,9 +2,10 @@ import { createClient } from '@supabase/supabase-js';
 
 // Coupon definitions
 const COUPONS = {
-  'FAMILY100': { discount: 100, plan: 'yearly', description: 'Family — 1 year free' },
-  'WELCOME50':  { discount: 50,  plan: 'monthly', description: '50% off first month' },
-  'LAUNCH30':   { discount: 30,  plan: 'monthly', description: '30% off' },
+  'FAMILYLIFE': { discount: 100, plan: 'lifetime', description: 'Family — Lifetime Pro access' },
+  'FAMILY100':  { discount: 100, plan: 'yearly',   description: 'Family — 1 year free' },
+  'WELCOME50':  { discount: 50,  plan: 'monthly',  description: '50% off first month' },
+  'LAUNCH30':   { discount: 30,  plan: 'monthly',  description: '30% off' },
 };
 
 export default async function handler(req, res) {
@@ -24,10 +25,15 @@ export default async function handler(req, res) {
     );
 
     const now = new Date();
-    const validUntil = new Date(now);
-    if (coupon.plan === 'yearly') {
+    let validUntil = null;
+
+    if (coupon.plan === 'lifetime') {
+      validUntil = new Date('2099-12-31T23:59:59Z'); // effectively forever
+    } else if (coupon.plan === 'yearly') {
+      validUntil = new Date(now);
       validUntil.setFullYear(validUntil.getFullYear() + 1);
     } else {
+      validUntil = new Date(now);
       validUntil.setMonth(validUntil.getMonth() + 1);
     }
 
