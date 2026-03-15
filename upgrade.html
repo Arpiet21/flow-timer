@@ -136,7 +136,7 @@
     <!-- Pay Button -->
     <button class="btn-pay" id="pay-btn">Upgrade Now</button>
 
-    <div class="secure-note">🔒 Secure payment powered by Razorpay</div>
+    <div class="secure-note" id="secure-note">🔒 Secure payment powered by Razorpay</div>
 
     <div class="back-to-app">
       <a href="index.html">← Back to app</a>
@@ -149,11 +149,21 @@
   <script src="supabase-client.js"></script>
   <script src="auth.js"></script>
   <script>
+    // Detect India
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+    const isIndia = tz.includes('Calcutta') || tz.includes('Kolkata') || navigator.language === 'en-IN';
+
+    // Update secure note
+    if (!isIndia) {
+      document.getElementById('secure-note').textContent = '🔒 Secure payment powered by Stripe';
+    }
+
     const RAZORPAY_KEY_ID = 'rzp_live_SRZASSkYpaZQGE';
+    const STRIPE_KEY = 'pk_test_51TBJuvECIoDrvWZBUZI0hsz19Hw2LGGmHVkl5tcZi1JGaIwy4CdiLtm0IBFKXlG8nNL2mlFg4ggjwQnUKySuCHcF00D0ABGu7v';
 
     const PLANS = {
-      monthly: { amount: 49900, label: '₹499', period: '/month', sub: 'Billed monthly • Cancel anytime' },
-      yearly:  { amount: 416700, label: '₹4,167', period: '/year', sub: 'Billed yearly — save ₹831' }
+      monthly: { amount: 49900, label: isIndia ? '₹499'    : '$5.99',  period: '/month', sub: 'Billed monthly • Cancel anytime' },
+      yearly:  { amount: 416700, label: isIndia ? '₹4,167' : '$57.99', period: '/year', sub: isIndia ? 'Billed yearly — save ₹831' : 'Billed yearly — save $14' }
     };
 
     let selectedPlan = new URLSearchParams(location.search).get('plan') === 'yearly' ? 'yearly' : 'monthly';
@@ -204,8 +214,33 @@
       if (!currentUser) { window.location.href = 'login.html'; return; }
 
       const btn = document.getElementById('pay-btn');
-      btn.textContent = 'Creating order...';
       btn.disabled = true;
+
+      // ── Stripe (non-India) ───────────────────────────────────────────────
+      if (!isIndia) {
+        btn.textContent = 'Redirecting to checkout...';
+        try {
+          const res = await fetch('/api/create-stripe-session', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ plan: selectedPlan, userId: currentUser.id, userEmail: currentUser.email })
+          });
+          const data = await res.json();
+          if (data.url) {
+            window.location.href = data.url;
+          } else {
+            throw new Error('Session creation failed');
+          }
+        } catch (err) {
+          alert('Something went wrong. Please try again.');
+          btn.textContent = 'Upgrade Now';
+          btn.disabled = false;
+        }
+        return;
+      }
+
+      // ── Razorpay (India) ─────────────────────────────────────────────────
+      btn.textContent = 'Creating order...';
 
       try {
         // Create order via API
