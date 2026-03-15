@@ -147,11 +147,25 @@
   <h2 class="section-title">Simple, transparent pricing</h2>
   <p class="section-sub">Start free forever. Upgrade when you need more.</p>
 
+  <!-- Billing toggle -->
+  <div style="display:flex;justify-content:center;margin-bottom:32px;">
+    <div style="display:flex;background:var(--surface2,#16213e);border-radius:12px;padding:4px;gap:0;">
+      <button id="toggle-monthly" onclick="setBilling('monthly')"
+        style="padding:9px 24px;border:none;border-radius:9px;font-size:0.9rem;font-weight:600;cursor:pointer;transition:all 0.2s;background:var(--accent,#39ff14);color:#000;">
+        Monthly
+      </button>
+      <button id="toggle-yearly" onclick="setBilling('yearly')"
+        style="padding:9px 24px;border:none;border-radius:9px;font-size:0.9rem;font-weight:600;cursor:pointer;transition:all 0.2s;background:transparent;color:#888;">
+        Yearly &nbsp;<span style="background:#ffd60a;color:#000;font-size:0.65rem;font-weight:700;padding:2px 7px;border-radius:20px;">Save 30%</span>
+      </button>
+    </div>
+  </div>
+
   <div class="pricing-grid">
 
     <div class="pricing-card">
       <p class="plan-name">Free</p>
-      <div class="plan-price">$0</div>
+      <div class="plan-price">₹0</div>
       <p class="plan-period">forever</p>
       <ul class="plan-features">
         <li>25 min max focus session</li>
@@ -169,8 +183,9 @@
     <div class="pricing-card popular">
       <div class="popular-badge">Most Popular</div>
       <p class="plan-name">Pro</p>
-      <div class="plan-price"><sup>$</sup>4<span style="font-size:1.4rem;font-weight:400">.99</span></div>
-      <p class="plan-period">per month</p>
+      <div class="plan-price" id="pro-price"><sup>₹</sup>499</div>
+      <p class="plan-period" id="pro-period">per month</p>
+      <p id="pro-sub" style="font-size:0.75rem;color:#888;margin:-8px 0 16px;text-align:center;">Billed monthly</p>
       <ul class="plan-features">
         <li>Up to 90 min focus sessions</li>
         <li>Short & long breaks</li>
@@ -181,11 +196,27 @@
         <li>Session history & stats</li>
         <li>Priority support</li>
       </ul>
-      <a href="signup.html" class="btn btn-primary btn-full">Start Pro Free Trial</a>
+      <a href="upgrade.html" class="btn btn-primary btn-full" id="pro-cta">Upgrade to Pro</a>
     </div>
 
   </div>
 </section>
+
+<script>
+  function setBilling(type) {
+    const isYearly = type === 'yearly';
+    document.getElementById('pro-price').innerHTML = isYearly ? '<sup>₹</sup>4,167' : '<sup>₹</sup>499';
+    document.getElementById('pro-period').textContent = isYearly ? 'per year' : 'per month';
+    document.getElementById('pro-sub').textContent = isYearly ? 'Billed yearly — save ₹831' : 'Billed monthly';
+    document.getElementById('pro-cta').href = isYearly ? 'upgrade.html?plan=yearly' : 'upgrade.html';
+
+    const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent') || '#39ff14';
+    document.getElementById('toggle-monthly').style.background = isYearly ? 'transparent' : (accent.trim() || '#39ff14');
+    document.getElementById('toggle-monthly').style.color = isYearly ? '#888' : '#000';
+    document.getElementById('toggle-yearly').style.background = isYearly ? (accent.trim() || '#39ff14') : 'transparent';
+    document.getElementById('toggle-yearly').style.color = isYearly ? '#000' : '#888';
+  }
+</script>
 
 <!-- ── Testimonials ── -->
 <section class="section" style="padding-top:0;">

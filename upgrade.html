@@ -142,8 +142,18 @@
       yearly:  { amount: 416700, label: '₹4,167', period: '/year', sub: 'Billed yearly — save ₹831' }
     };
 
-    let selectedPlan = 'monthly';
+    let selectedPlan = new URLSearchParams(location.search).get('plan') === 'yearly' ? 'yearly' : 'monthly';
     let currentUser = null;
+
+    // Apply pre-selected plan
+    if (selectedPlan === 'yearly') {
+      document.querySelectorAll('.plan-btn').forEach(b => b.classList.remove('active'));
+      document.querySelector('[data-plan="yearly"]').classList.add('active');
+      const p = PLANS['yearly'];
+      document.getElementById('price-amount').textContent = p.label;
+      document.getElementById('price-period').textContent = p.period;
+      document.getElementById('price-sub').textContent = p.sub;
+    }
 
     // Load user
     Auth.init().then(user => {
