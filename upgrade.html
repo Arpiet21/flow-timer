@@ -104,11 +104,27 @@
     <!-- Price -->
     <div class="price-box">
       <div>
-        <span class="price-amount" id="price-amount">₹499</span>
-        <span class="price-period" id="price-period">/month</span>
+        <span class="price-amount" id="price-amount">...</span>
+        <span class="price-period" id="price-period"></span>
       </div>
-      <div class="price-sub" id="price-sub">Billed monthly • Cancel anytime</div>
+      <div class="price-sub" id="price-sub"></div>
     </div>
+    <script>
+      (function() {
+        var _preview = new URLSearchParams(location.search).get('preview');
+        var _tz = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+        var _india = _preview === 'usd' ? false : _preview === 'inr' ? true
+          : (_tz.includes('Calcutta') || _tz.includes('Kolkata') || navigator.language === 'en-IN');
+        var _plan = new URLSearchParams(location.search).get('plan') === 'yearly' ? 'yearly' : 'monthly';
+        var prices = {
+          monthly: { amount: _india ? '₹499'   : '$4.99', period: '/month', sub: 'Billed monthly • Cancel anytime' },
+          yearly:  { amount: _india ? '₹4,167' : '$50',   period: '/year',  sub: _india ? 'Billed yearly — save ₹831' : 'Billed yearly — save $9.88' }
+        };
+        document.getElementById('price-amount').textContent = prices[_plan].amount;
+        document.getElementById('price-period').textContent = prices[_plan].period;
+        document.getElementById('price-sub').textContent    = prices[_plan].sub;
+      })();
+    </script>
 
     <!-- Features -->
     <ul class="feature-list">
