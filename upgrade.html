@@ -88,9 +88,10 @@
 
   <div class="auth-card upgrade-card">
     <div class="auth-logo">⏱ Flow Timer</div>
-    <div class="current-plan-badge">Current: Free Plan</div>
+    <div class="current-plan-badge" id="plan-badge">Current: Free Plan</div>
+    <div id="trial-banner" style="display:none;background:linear-gradient(135deg,#39ff14,#00d4ff);color:#000;border-radius:10px;padding:10px 14px;margin:10px 0 4px;font-size:0.82rem;font-weight:700;text-align:center;"></div>
     <h1 class="auth-title">Upgrade to Pro</h1>
-    <p class="auth-sub">Unlock full focus potential</p>
+    <p class="auth-sub">Keep all your Pro features after trial</p>
 
     <!-- Monthly / Yearly Toggle -->
     <div class="plan-toggle">
@@ -118,6 +119,19 @@
       <li><span class="check">✓</span> Floating widget on all screens</li>
       <li><span class="check">✓</span> Priority support</li>
     </ul>
+
+    <!-- Coupon Code -->
+    <div style="display:flex;gap:8px;margin-bottom:14px;">
+      <input type="text" id="coupon-input" placeholder="Have a coupon code?"
+        style="flex:1;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);
+               border-radius:10px;color:var(--text);font-size:0.85rem;outline:none;">
+      <button id="coupon-btn" onclick="applyCoupon()"
+        style="padding:10px 16px;background:var(--surface2);border:1px solid var(--border);
+               border-radius:10px;color:var(--text);font-size:0.85rem;font-weight:600;cursor:pointer;">
+        Apply
+      </button>
+    </div>
+    <div id="coupon-msg" style="font-size:0.78rem;margin:-8px 0 12px;text-align:center;display:none;"></div>
 
     <!-- Pay Button -->
     <button class="btn-pay" id="pay-btn">Upgrade Now</button>
@@ -159,9 +173,16 @@
     Auth.init().then(user => {
       if (!user) { window.location.href = 'login.html'; return; }
       currentUser = user;
+
       if (user.plan === 'pro') {
         document.getElementById('pay-btn').textContent = '✓ Already Pro';
         document.getElementById('pay-btn').disabled = true;
+        document.getElementById('plan-badge').textContent = 'Current: Pro Plan';
+      } else if (user.plan === 'trial') {
+        document.getElementById('plan-badge').textContent = 'Current: Pro Trial';
+        const banner = document.getElementById('trial-banner');
+        banner.style.display = 'block';
+        banner.textContent = `⏳ Your free trial ends in ${user.trialDaysLeft} day${user.trialDaysLeft !== 1 ? 's' : ''} — upgrade to keep Pro access`;
       }
     });
 
@@ -248,6 +269,56 @@
         btn.disabled = false;
       }
     });
+
+    // ── Coupon code ────────────────────────────────────────────────────────
+    let appliedDiscount = 0;
+
+    async function applyCoupon() {
+      if (!currentUser) { window.location.href = 'login.html'; return; }
+
+      const code = document.getElementById('coupon-input').value.trim();
+      const msg = document.getElementById('coupon-msg');
+      const btn = document.getElementById('coupon-btn');
+      if (!code) return;
+
+      btn.textContent = '...';
+      btn.disabled = true;
+
+      try {
+        const res = await fetch('/api/apply-coupon', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code, userId: currentUser.id })
+        });
+        const result = await res.json();
+
+        if (!result.ok) {
+          msg.style.color = '#ff4d4d';
+          msg.textContent = result.error || 'Invalid coupon code';
+          msg.style.display = 'block';
+        } else if (result.free) {
+          // 100% off — Pro granted, no payment needed
+          msg.style.color = '#39ff14';
+          msg.textContent = `Coupon applied: ${result.description}`;
+          msg.style.display = 'block';
+          document.getElementById('pay-btn').textContent = '✓ Pro Activated!';
+          document.getElementById('pay-btn').disabled = true;
+          setTimeout(() => { window.location.href = 'index.html?upgraded=true'; }, 1500);
+        } else {
+          appliedDiscount = result.discount;
+          msg.style.color = '#39ff14';
+          msg.textContent = `${result.discount}% discount applied!`;
+          msg.style.display = 'block';
+        }
+      } catch (e) {
+        msg.style.color = '#ff4d4d';
+        msg.textContent = 'Could not apply coupon. Try again.';
+        msg.style.display = 'block';
+      }
+
+      btn.textContent = 'Apply';
+      btn.disabled = false;
+    }
   </script>
 </body>
 </html>

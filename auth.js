@@ -3,24 +3,30 @@
 const Auth = {
   _user: null,
 
-  // ── Get current cached user ──────────────────────────────────────────────
   getUser() { return this._user; },
   isLoggedIn() { return !!this._user; },
 
-  // ── Load session on page start (call before rendering anything) ──────────
+  // ── Load session on page start ───────────────────────────────────────────
   async init() {
     const { data } = await _sb.auth.getSession();
     if (data?.session?.user) {
-      this._user = this._normalize(data.session.user);
+      const planData = await this._getOrCreateTrial(data.session.user.id);
+      this._user = this._normalize(data.session.user, planData);
     }
-    // Listen for auth state changes (login/logout in other tabs)
-    _sb.auth.onAuthStateChange((_event, session) => {
-      this._user = session?.user ? this._normalize(session.user) : null;
+
+    _sb.auth.onAuthStateChange(async (_event, session) => {
+      if (session?.user) {
+        const planData = await this._getOrCreateTrial(session.user.id);
+        this._user = this._normalize(session.user, planData);
+      } else {
+        this._user = null;
+      }
     });
+
     return this._user;
   },
 
-  // ── Sign up with email + password ────────────────────────────────────────
+  // ── Sign up — auto-creates 7-day trial ──────────────────────────────────
   async signUp(name, email, password) {
     const { data, error } = await _sb.auth.signUp({
       email,
@@ -28,21 +34,26 @@ const Auth = {
       options: { data: { full_name: name } }
     });
     if (error) return { ok: false, error: error.message };
-    this._user = data.user ? this._normalize(data.user) : null;
+
+    if (data.user) {
+      const planData = await this._getOrCreateTrial(data.user.id);
+      this._user = this._normalize(data.user, planData);
+    }
+
     return { ok: true, user: this._user };
   },
 
-  // ── Sign in with email + password ────────────────────────────────────────
+  // ── Sign in ──────────────────────────────────────────────────────────────
   async signIn(email, password) {
     const { data, error } = await _sb.auth.signInWithPassword({ email, password });
     if (error) return { ok: false, error: error.message };
-    this._user = this._normalize(data.user);
+    const planData = await this._getOrCreateTrial(data.user.id);
+    this._user = this._normalize(data.user, planData);
     return { ok: true, user: this._user };
   },
 
   // ── Sign in with Google ──────────────────────────────────────────────────
   async signInWithGoogle() {
-    // Handle file:// (opened directly) vs http:// (served via server)
     const origin = location.protocol === 'file:'
       ? 'http://localhost:3000'
       : location.origin;
@@ -55,7 +66,7 @@ const Auth = {
       }
     });
     if (error) return { ok: false, error: error.message };
-    return { ok: true }; // Browser redirects to Google
+    return { ok: true };
   },
 
   // ── Sign out ─────────────────────────────────────────────────────────────
@@ -65,13 +76,10 @@ const Auth = {
     window.location.href = 'landing.html';
   },
 
-  // ── Auth guard — redirect to login if not authenticated ──────────────────
+  // ── Auth guard ───────────────────────────────────────────────────────────
   async requireAuth() {
     await this.init();
-    if (!this._user) {
-      window.location.href = 'login.html';
-      return false;
-    }
+    if (!this._user) { window.location.href = 'login.html'; return false; }
     return true;
   },
 
@@ -95,8 +103,45 @@ const Auth = {
     return data || [];
   },
 
-  // ── Normalize Supabase user object ───────────────────────────────────────
-  _normalize(user) {
+  // ── Fetch plan; create 7-day trial if none exists ────────────────────────
+  async _getOrCreateTrial(userId) {
+    const { data } = await _sb.from('user_plans')
+      .select('plan, valid_until')
+      .eq('user_id', userId)
+      .single();
+
+    if (data) return data;
+
+    // New user — start 7-day trial (no card required)
+    const trialEnd = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    await _sb.from('user_plans').insert({
+      user_id: userId,
+      plan: 'trial',
+      plan_type: 'trial',
+      valid_until: trialEnd.toISOString(),
+      updated_at: new Date().toISOString()
+    });
+
+    return { plan: 'trial', valid_until: trialEnd.toISOString() };
+  },
+
+  // ── Normalize Supabase user + plan into app user object ──────────────────
+  _normalize(user, planData = null) {
+    let plan = 'free';
+    let trialDaysLeft = 0;
+
+    if (planData) {
+      const now = new Date();
+      const validUntil = planData.valid_until ? new Date(planData.valid_until) : null;
+
+      if (planData.plan === 'pro' && validUntil && validUntil > now) {
+        plan = 'pro';
+      } else if (planData.plan === 'trial' && validUntil && validUntil > now) {
+        plan = 'trial';
+        trialDaysLeft = Math.max(1, Math.ceil((validUntil - now) / (1000 * 60 * 60 * 24)));
+      }
+    }
+
     return {
       id: user.id,
       email: user.email,
@@ -104,13 +149,15 @@ const Auth = {
         || user.user_metadata?.name
         || user.email.split('@')[0],
       avatar: user.user_metadata?.avatar_url || null,
-      plan: 'free'
+      plan,
+      trialDaysLeft
     };
   }
 };
 
-// Plan limits
+// Plan limits — trial gets full Pro features
 const PLANS = {
-  free: { workMax: 25, label: 'Free', maxSessions: 4 },
-  pro:  { workMax: 90, label: 'Pro',  maxSessions: 8 }
+  free:  { workMax: 25, label: 'Free',       maxSessions: 4 },
+  trial: { workMax: 90, label: 'Pro Trial',  maxSessions: 8 },
+  pro:   { workMax: 90, label: 'Pro',        maxSessions: 8 }
 };
