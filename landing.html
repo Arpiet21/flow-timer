@@ -165,7 +165,7 @@
 
     <div class="pricing-card">
       <p class="plan-name">Free</p>
-      <div class="plan-price">₹0</div>
+      <div class="plan-price" id="free-price">₹0</div>
       <p class="plan-period">forever</p>
       <ul class="plan-features">
         <li>25 min max focus session</li>
@@ -203,19 +203,37 @@
 </section>
 
 <script>
+  // Detect India by timezone
+  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+  const isIndia = tz.includes('Calcutta') || tz.includes('Kolkata') || navigator.language === 'en-IN';
+
+  const PRICES = isIndia
+    ? { monthly: { price: '<sup>₹</sup>499', period: 'per month', sub: 'Billed monthly', saveSub: 'Billed yearly — save ₹831', yearlyPrice: '<sup>₹</sup>4,167' } }
+    : { monthly: { price: '<sup>$</sup>5.99', period: 'per month', sub: 'Billed monthly', saveSub: 'Billed yearly — save $14', yearlyPrice: '<sup>$</sup>57.99' } };
+
+  const P = PRICES.monthly;
+
+  // Set free plan label
+  document.getElementById('free-price').innerHTML = isIndia ? '₹0' : '$0';
+
+  let currentBilling = 'monthly';
+
   function setBilling(type) {
+    currentBilling = type;
     const isYearly = type === 'yearly';
-    document.getElementById('pro-price').innerHTML = isYearly ? '<sup>₹</sup>4,167' : '<sup>₹</sup>499';
-    document.getElementById('pro-period').textContent = isYearly ? 'per year' : 'per month';
-    document.getElementById('pro-sub').textContent = isYearly ? 'Billed yearly — save ₹831' : 'Billed monthly';
+    document.getElementById('pro-price').innerHTML = isYearly ? P.yearlyPrice : P.price;
+    document.getElementById('pro-period').textContent = isYearly ? 'per year' : P.period;
+    document.getElementById('pro-sub').textContent = isYearly ? P.saveSub : P.sub;
     document.getElementById('pro-cta').href = isYearly ? 'upgrade.html?plan=yearly' : 'upgrade.html';
 
-    const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent') || '#39ff14';
-    document.getElementById('toggle-monthly').style.background = isYearly ? 'transparent' : (accent.trim() || '#39ff14');
+    document.getElementById('toggle-monthly').style.background = isYearly ? 'transparent' : '#39ff14';
     document.getElementById('toggle-monthly').style.color = isYearly ? '#888' : '#000';
-    document.getElementById('toggle-yearly').style.background = isYearly ? (accent.trim() || '#39ff14') : 'transparent';
+    document.getElementById('toggle-yearly').style.background = isYearly ? '#39ff14' : 'transparent';
     document.getElementById('toggle-yearly').style.color = isYearly ? '#000' : '#888';
   }
+
+  // Init with monthly prices
+  setBilling('monthly');
 </script>
 
 <!-- ── Testimonials ── -->
