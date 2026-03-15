@@ -1,5 +1,8 @@
 {
   "version": 2,
+  "buildCommand": null,
+  "outputDirectory": ".",
+  "framework": null,
   "routes": [
     { "src": "/", "dest": "/landing.html" },
     { "src": "/api/(.*)", "dest": "/api/$1" },
