@@ -30,6 +30,18 @@
         img.style.cssText = 'width:28px;height:28px;border-radius:50%;object-fit:cover;';
         document.querySelector('.header-actions').prepend(img);
       }
+      // Restrict presets for free users
+      const isPro = user.plan === 'pro' || user.plan === 'trial';
+      if (!isPro) {
+        document.querySelectorAll('.pro-preset').forEach(btn => {
+          btn.disabled = true;
+          btn.style.opacity = '0.35';
+          btn.style.cursor = 'not-allowed';
+          btn.onclick = e => { e.preventDefault(); window.location.href = 'upgrade.html'; };
+        });
+        document.getElementById('upgrade-nudge').style.display = 'block';
+      }
+
       // Show trial countdown banner
       if (user.plan === 'trial' && user.trialDaysLeft > 0) {
         const banner = document.createElement('div');
@@ -80,9 +92,16 @@
       <div class="duration-presets" id="duration-presets">
         <button class="preset-btn" data-mins="10">10m</button>
         <button class="preset-btn active" data-mins="25">25m</button>
-        <button class="preset-btn" data-mins="45">45m</button>
-        <button class="preset-btn" data-mins="60">60m</button>
-        <button class="preset-btn" data-mins="90">90m</button>
+        <button class="preset-btn pro-preset" data-mins="45">45m 🔒</button>
+        <button class="preset-btn pro-preset" data-mins="60">60m 🔒</button>
+        <button class="preset-btn pro-preset" data-mins="90">90m 🔒</button>
+      </div>
+      <!-- Upgrade nudge for free users -->
+      <div id="upgrade-nudge" style="display:none;text-align:center;margin:6px 0 2px;">
+        <a href="upgrade.html" style="font-size:0.78rem;font-weight:700;color:#39ff14;text-decoration:none;
+          background:rgba(57,255,20,0.1);border:1px solid #39ff14;border-radius:20px;padding:4px 14px;">
+          ⚡ Upgrade to Pro — unlock 45, 60 &amp; 90 min sessions
+        </a>
       </div>
 
       <!-- Task Label -->
