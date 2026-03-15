@@ -4,7 +4,8 @@
   "description": "Flow Timer PWA with floating analog clock widget",
   "main": "electron-main.js",
   "scripts": {
-    "build": "echo 'No build needed'",
+    "build": "node -e \"console.log('ok')\"",
+    "vercel-build": "node -e \"console.log('ok')\"",
     "start": "npx serve . --listen 3000 --no-clipboard",
     "dev": "npx serve . --listen 3000",
     "electron": "electron .",
