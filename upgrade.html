@@ -95,9 +95,9 @@
 
     <!-- Monthly / Yearly Toggle -->
     <div class="plan-toggle">
-      <button class="plan-btn active" data-plan="monthly">Monthly</button>
-      <button class="plan-btn" data-plan="yearly">
-        Yearly <span class="save-badge">Save 16%</span>
+      <button class="plan-btn active" id="btn-monthly" onclick="switchPlan('monthly')">Monthly</button>
+      <button class="plan-btn" id="btn-yearly" onclick="switchPlan('yearly')">
+        Yearly <span class="save-badge" style="pointer-events:none;">Save 16%</span>
       </button>
     </div>
 
@@ -200,17 +200,15 @@
     });
 
     // Plan toggle
-    document.querySelectorAll('.plan-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        selectedPlan = btn.dataset.plan;
-        document.querySelectorAll('.plan-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        const p = PLANS[selectedPlan];
-        document.getElementById('price-amount').textContent = p.label;
-        document.getElementById('price-period').textContent = p.period;
-        document.getElementById('price-sub').textContent = p.sub;
-      });
-    });
+    function switchPlan(plan) {
+      selectedPlan = plan;
+      document.getElementById('btn-monthly').classList.toggle('active', plan === 'monthly');
+      document.getElementById('btn-yearly').classList.toggle('active', plan === 'yearly');
+      const p = PLANS[plan];
+      document.getElementById('price-amount').textContent = p.label;
+      document.getElementById('price-period').textContent = p.period;
+      document.getElementById('price-sub').textContent = p.sub;
+    }
 
     // Pay
     document.getElementById('pay-btn').addEventListener('click', async () => {
