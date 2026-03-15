@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Upgrade to Pro — Flow Timer</title>
+  <link rel="stylesheet" href="auth.css">
+  <style>
+    .upgrade-card { max-width: 420px; width: 100%; }
+
+    .plan-toggle {
+      display: flex; gap: 0; background: var(--surface2);
+      border-radius: 12px; padding: 4px; margin: 24px 0 20px;
+    }
+    .plan-btn {
+      flex: 1; padding: 10px; border: none; background: transparent;
+      color: var(--text-muted); border-radius: 9px; cursor: pointer;
+      font-size: 0.9rem; font-weight: 600; transition: all 0.2s;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    .plan-btn.active { background: var(--accent); color: #000; }
+
+    .save-badge {
+      background: #ffd60a; color: #000; font-size: 0.65rem;
+      font-weight: 700; padding: 2px 7px; border-radius: 20px;
+    }
+
+    .price-box {
+      text-align: center; padding: 20px 0 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .price-amount {
+      font-size: 3rem; font-weight: 800; color: var(--accent);
+      letter-spacing: -1px;
+    }
+    .price-period { font-size: 1rem; color: var(--text-muted); margin-left: 4px; }
+    .price-sub { font-size: 0.78rem; color: var(--text-muted); margin-top: 4px; }
+
+    .feature-list {
+      list-style: none; margin: 20px 0 24px; display: flex;
+      flex-direction: column; gap: 12px;
+    }
+    .feature-list li {
+      display: flex; align-items: center; gap: 10px;
+      font-size: 0.92rem; color: var(--text);
+    }
+    .feature-list li span.check {
+      width: 20px; height: 20px; border-radius: 50%;
+      background: var(--accent); color: #000; display: flex;
+      align-items: center; justify-content: center;
+      font-size: 0.7rem; font-weight: 800; flex-shrink: 0;
+    }
+    .feature-list li span.lock {
+      width: 20px; height: 20px; border-radius: 50%;
+      background: var(--border); color: var(--text-muted); display: flex;
+      align-items: center; justify-content: center;
+      font-size: 0.65rem; flex-shrink: 0;
+    }
+
+    .btn-pay {
+      width: 100%; padding: 14px; background: var(--accent);
+      color: #000; border: none; border-radius: 12px;
+      font-size: 1rem; font-weight: 800; cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s; letter-spacing: 0.5px;
+    }
+    .btn-pay:hover { opacity: 0.9; transform: scale(1.01); }
+    .btn-pay:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .secure-note {
+      text-align: center; font-size: 0.72rem; color: var(--text-muted);
+      margin-top: 14px; display: flex; align-items: center;
+      justify-content: center; gap: 5px;
+    }
+    .back-to-app {
+      text-align: center; margin-top: 20px; font-size: 0.82rem;
+    }
+    .back-to-app a { color: var(--text-muted); text-decoration: none; }
+    .back-to-app a:hover { color: var(--text); }
+
+    .current-plan-badge {
+      display: inline-block; background: var(--surface2);
+      color: var(--text-muted); font-size: 0.72rem; font-weight: 600;
+      padding: 3px 10px; border-radius: 20px; margin-bottom: 8px;
+    }
+  </style>
+</head>
+<body class="auth-page">
+
+  <div class="auth-card upgrade-card">
+    <div class="auth-logo">⏱ Flow Timer</div>
+    <div class="current-plan-badge">Current: Free Plan</div>
+    <h1 class="auth-title">Upgrade to Pro</h1>
+    <p class="auth-sub">Unlock full focus potential</p>
+
+    <!-- Monthly / Yearly Toggle -->
+    <div class="plan-toggle">
+      <button class="plan-btn active" data-plan="monthly">Monthly</button>
+      <button class="plan-btn" data-plan="yearly">
+        Yearly <span class="save-badge">Save 16%</span>
+      </button>
+    </div>
+
+    <!-- Price -->
+    <div class="price-box">
+      <div>
+        <span class="price-amount" id="price-amount">₹499</span>
+        <span class="price-period" id="price-period">/month</span>
+      </div>
+      <div class="price-sub" id="price-sub">Billed monthly • Cancel anytime</div>
+    </div>
+
+    <!-- Features -->
+    <ul class="feature-list">
+      <li><span class="check">✓</span> Focus sessions up to <strong>90 minutes</strong></li>
+      <li><span class="check">✓</span> Up to <strong>8 sessions</strong> before long break</li>
+      <li><span class="check">✓</span> <strong>Unlimited</strong> session history</li>
+      <li><span class="check">✓</span> All color themes &amp; clock styles</li>
+      <li><span class="check">✓</span> Floating widget on all screens</li>
+      <li><span class="check">✓</span> Priority support</li>
+    </ul>
+
+    <!-- Pay Button -->
+    <button class="btn-pay" id="pay-btn">Upgrade Now</button>
+
+    <div class="secure-note">🔒 Secure payment powered by Razorpay</div>
+
+    <div class="back-to-app">
+      <a href="index.html">← Back to app</a>
+    </div>
+  </div>
+
+  <!-- Razorpay SDK -->
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-client.js"></script>
+  <script src="auth.js"></script>
+  <script>
+    const RAZORPAY_KEY_ID = 'rzp_live_SRZASSkYpaZQGE';
+
+    const PLANS = {
+      monthly: { amount: 49900, label: '₹499', period: '/month', sub: 'Billed monthly • Cancel anytime' },
+      yearly:  { amount: 416700, label: '₹4,167', period: '/year', sub: 'Billed yearly — save ₹831' }
+    };
+
+    let selectedPlan = 'monthly';
+    let currentUser = null;
+
+    // Load user
+    Auth.init().then(user => {
+      if (!user) { window.location.href = 'login.html'; return; }
+      currentUser = user;
+      if (user.plan === 'pro') {
+        document.getElementById('pay-btn').textContent = '✓ Already Pro';
+        document.getElementById('pay-btn').disabled = true;
+      }
+    });
+
+    // Plan toggle
+    document.querySelectorAll('.plan-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        selectedPlan = btn.dataset.plan;
+        document.querySelectorAll('.plan-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const p = PLANS[selectedPlan];
+        document.getElementById('price-amount').textContent = p.label;
+        document.getElementById('price-period').textContent = p.period;
+        document.getElementById('price-sub').textContent = p.sub;
+      });
+    });
+
+    // Pay
+    document.getElementById('pay-btn').addEventListener('click', async () => {
+      if (!currentUser) { window.location.href = 'login.html'; return; }
+
+      const btn = document.getElementById('pay-btn');
+      btn.textContent = 'Creating order...';
+      btn.disabled = true;
+
+      try {
+        // Create order via API
+        const res = await fetch('/api/create-order', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ plan: selectedPlan })
+        });
+        const order = await res.json();
+
+        if (!order.id) throw new Error('Order creation failed');
+
+        // Open Razorpay checkout
+        const rzp = new Razorpay({
+          key: RAZORPAY_KEY_ID,
+          amount: order.amount,
+          currency: order.currency,
+          name: 'Flow Timer',
+          description: selectedPlan === 'yearly' ? 'Pro Plan — Yearly' : 'Pro Plan — Monthly',
+          order_id: order.id,
+          prefill: {
+            email: currentUser.email,
+            name: currentUser.name
+          },
+          theme: { color: '#39ff14' },
+          handler: async (response) => {
+            // Verify payment
+            btn.textContent = 'Verifying payment...';
+            const verify = await fetch('/api/verify-payment', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+                plan: selectedPlan,
+                userId: currentUser.id
+              })
+            });
+            const result = await verify.json();
+            if (result.ok) {
+              window.location.href = 'index.html?upgraded=true';
+            } else {
+              alert('Payment verification failed. Please contact support.');
+              btn.textContent = 'Upgrade Now';
+              btn.disabled = false;
+            }
+          },
+          modal: {
+            ondismiss: () => {
+              btn.textContent = 'Upgrade Now';
+              btn.disabled = false;
+            }
+          }
+        });
+        rzp.open();
+
+      } catch (err) {
+        alert('Something went wrong. Please try again.');
+        btn.textContent = 'Upgrade Now';
+        btn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
