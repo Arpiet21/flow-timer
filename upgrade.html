@@ -172,14 +172,14 @@
     let selectedPlan = new URLSearchParams(location.search).get('plan') === 'yearly' ? 'yearly' : 'monthly';
     let currentUser = null;
 
-    // Apply pre-selected plan
+    // Always update price display on load (fixes currency not updating)
+    const initPlan = PLANS[selectedPlan];
+    document.getElementById('price-amount').textContent = initPlan.label;
+    document.getElementById('price-period').textContent = initPlan.period;
+    document.getElementById('price-sub').textContent = initPlan.sub;
     if (selectedPlan === 'yearly') {
       document.querySelectorAll('.plan-btn').forEach(b => b.classList.remove('active'));
       document.querySelector('[data-plan="yearly"]').classList.add('active');
-      const p = PLANS['yearly'];
-      document.getElementById('price-amount').textContent = p.label;
-      document.getElementById('price-period').textContent = p.period;
-      document.getElementById('price-sub').textContent = p.sub;
     }
 
     // Load user
