@@ -561,7 +561,7 @@ kbd {
 
 /* ─── Timer Type Switcher (Work / Workout top-level tabs) ─────────────────────── */
 #timer-type-toggle {
-  background: var(--surface);
+  background: var(--surface2);
   border: 1px solid var(--border);
   border-radius: 14px;
   padding: 5px;
@@ -570,6 +570,9 @@ kbd {
   font-size: 0.9rem;
   padding: 10px 8px;
   border-radius: 10px;
+  background: transparent;
+  color: var(--text-muted);
+  box-shadow: none;
 }
 #timer-type-toggle .mode-btn.active {
   background: var(--accent);
@@ -578,7 +581,7 @@ kbd {
 }
 #timer-type-toggle .mode-btn:not(.active):hover {
   color: var(--text);
-  background: var(--surface2);
+  background: rgba(255,255,255,0.06);
 }
 
 /* ─── Workout Timer ──────────────────────────────────────────────────────────── */
