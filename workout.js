@@ -339,8 +339,14 @@ function woRenderDots() {
 function woUpdateBadges() {
   const w = document.getElementById('wo-work-badge');
   const r = document.getElementById('wo-rest-badge');
+  const t = document.getElementById('wo-total-label');
   if (w) w.textContent = `💪 ${wo.settings.workSecs}s work`;
   if (r) r.textContent = `😮‍💨 ${wo.settings.restSecs}s rest`;
+  if (t) {
+    const s = wo.settings;
+    const total = (s.prepareSecs || 0) + (s.workSecs + s.restSecs) * s.rounds;
+    t.textContent = woFormatTime(total);
+  }
 }
 
 function woUpdateSettingsUI() {
