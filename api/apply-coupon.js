@@ -4,6 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 const COUPONS = {
   'FAMILYLIFE': { discount: 100, plan: 'lifetime', description: 'Family — Lifetime Pro access' },
   'FAMILY100':  { discount: 100, plan: 'yearly',   description: 'Family — 1 year free' },
+  'TRIAL30':    { discount: 100, plan: 'trial30',  description: '30-day free Pro trial' },
   'WELCOME50':  { discount: 50,  plan: 'monthly',  description: '50% off first month' },
   'LAUNCH30':   { discount: 30,  plan: 'monthly',  description: '30% off' },
 };
@@ -28,10 +29,13 @@ export default async function handler(req, res) {
     let validUntil = null;
 
     if (coupon.plan === 'lifetime') {
-      validUntil = new Date('2099-12-31T23:59:59Z'); // effectively forever
+      validUntil = new Date('2099-12-31T23:59:59Z');
     } else if (coupon.plan === 'yearly') {
       validUntil = new Date(now);
       validUntil.setFullYear(validUntil.getFullYear() + 1);
+    } else if (coupon.plan === 'trial30') {
+      validUntil = new Date(now);
+      validUntil.setDate(validUntil.getDate() + 30);
     } else {
       validUntil = new Date(now);
       validUntil.setMonth(validUntil.getMonth() + 1);
@@ -39,7 +43,7 @@ export default async function handler(req, res) {
 
     const { error } = await supabase.from('user_plans').upsert({
       user_id: userId,
-      plan: 'pro',
+      plan: coupon.plan === 'trial30' ? 'trial' : 'pro',
       plan_type: coupon.plan,
       payment_id: `coupon_${code.toUpperCase()}`,
       valid_until: validUntil.toISOString(),
