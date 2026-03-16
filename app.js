@@ -427,7 +427,11 @@ function loadHistory() {
 async function openPip() {
   if ('documentPictureInPicture' in window) {
     try {
-      pipWindow = await window.documentPictureInPicture.requestWindow({ width: 160, height: 200 });
+      const isDigital = state.settings.clockType === 'digital';
+      pipWindow = await window.documentPictureInPicture.requestWindow({
+        width:  isDigital ? 160 : 220,
+        height: isDigital ? 160 : 280
+      });
       // Inline styles — no fetch needed (works with file:// too)
       const style = pipWindow.document.createElement('style');
       style.textContent = PIP_STYLES;
@@ -447,7 +451,7 @@ async function openPip() {
 const PIP_HTML = `
   <span id="pip-mode">Focus</span>
   <div id="pip-analog-wrap">
-    <canvas id="pip-clock" width="90" height="90"></canvas>
+    <canvas id="pip-clock" width="150" height="150"></canvas>
   </div>
   <div id="pip-digital-wrap" style="display:none">
     <span id="pip-time-big">25:00</span>
@@ -468,9 +472,9 @@ const PIP_STYLES = `
     align-items:center;justify-content:center;gap:4px;user-select:none}
   #pip-mode{font-size:.65rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-muted)}
   #pip-analog-wrap{display:flex;align-items:center;justify-content:center}
-  #pip-clock{display:block;width:min(90px,70vmin);height:min(90px,70vmin)}
+  #pip-clock{display:block;width:min(150px,80vmin);height:min(150px,80vmin)}
   #pip-digital-wrap{display:flex;align-items:center;justify-content:center;padding:6px 0}
-  #pip-time-big{font-size:clamp(1.8rem,12vw,2.4rem);font-weight:800;letter-spacing:3px;font-variant-numeric:tabular-nums;color:var(--text)}
+  #pip-time-big{font-size:clamp(1.6rem,14vw,2.2rem);font-weight:800;letter-spacing:1px;font-variant-numeric:tabular-nums;color:var(--text)}
   #pip-task{font-size:.6rem;color:#888;max-width:90%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center}
   .pip-controls{display:flex;gap:6px}
   .pip-btn{width:30px;height:30px;border-radius:50%;border:1px solid var(--border);
@@ -480,7 +484,7 @@ const PIP_STYLES = `
 
 function fallbackPopup() {
   const popup = window.open('', 'flow-timer-pip',
-    'width=160,height=200,resizable=no,scrollbars=no,toolbar=no,menubar=no,location=no,status=no'
+    `width=${state.settings.clockType === 'digital' ? 160 : 220},height=${state.settings.clockType === 'digital' ? 160 : 280},resizable=no,scrollbars=no,toolbar=no,menubar=no,location=no,status=no`
   );
   if (!popup) return;
   // Write content directly — no file load needed
