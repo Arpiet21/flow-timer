@@ -34,6 +34,74 @@ function woSave() {
   localStorage.setItem('flow-workout-state', JSON.stringify({ settings: wo.settings, preset: wo.preset }));
 }
 
+// ─── Saved Custom Workouts ────────────────────────────────────────────────────
+function woLoadSaved() {
+  try { return JSON.parse(localStorage.getItem('flow-workout-saved') || '[]'); } catch (_) { return []; }
+}
+
+function woSaveCustom() {
+  const input = document.getElementById('wo-save-name');
+  const name  = input?.value.trim();
+  if (!name) { input?.focus(); return; }
+  const saved = woLoadSaved();
+  saved.push({ name, settings: { ...wo.settings } });
+  localStorage.setItem('flow-workout-saved', JSON.stringify(saved));
+  if (input) input.value = '';
+  woRenderSavedList();
+  woRenderSavedPills();
+}
+
+function woDeleteSaved(i) {
+  const saved = woLoadSaved();
+  saved.splice(i, 1);
+  localStorage.setItem('flow-workout-saved', JSON.stringify(saved));
+  woRenderSavedList();
+  woRenderSavedPills();
+}
+
+function woLoadSavedWorkout(i) {
+  const saved = woLoadSaved();
+  if (!saved[i]) return;
+  wo.settings = { ...WO_DEFAULT, ...saved[i].settings };
+  wo.preset   = 'custom';
+  woSave();
+  woUpdateBadges();
+  woUpdateCustomSetupUI();
+  woReset();
+  // Switch to workout card view
+  document.getElementById('workout-card').classList.remove('hidden');
+  document.getElementById('wo-custom-setup').classList.add('hidden');
+  document.getElementById('wo-settings-row').classList.remove('hidden');
+}
+
+function woRenderSavedList() {
+  const el    = document.getElementById('wo-saved-list');
+  const saved = woLoadSaved();
+  if (!el) return;
+  el.innerHTML = saved.length ? saved.map((s, i) => `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:0.8rem;">
+      <span style="color:var(--text);">📋 ${s.name}</span>
+      <div style="display:flex;gap:6px;">
+        <button onclick="woLoadSavedWorkout(${i})" style="background:var(--accent);color:#000;border:none;border-radius:6px;padding:3px 10px;font-size:0.75rem;font-weight:700;cursor:pointer;">Load</button>
+        <button onclick="woDeleteSaved(${i})" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:0.9rem;">✕</button>
+      </div>
+    </div>`).join('') : '<p style="font-size:0.75rem;color:var(--text-muted);text-align:center;margin:6px 0;">No saved workouts yet.</p>';
+}
+
+function woRenderSavedPills() {
+  const el    = document.getElementById('wo-saved-pills');
+  const saved = woLoadSaved();
+  if (!el) return;
+  if (!saved.length) { el.style.display = 'none'; return; }
+  el.style.display = 'flex';
+  el.innerHTML = `<span style="font-size:0.72rem;color:var(--text-muted);align-self:center;margin-right:2px;">Saved:</span>` +
+    saved.map((s, i) => `
+      <button onclick="woLoadSavedWorkout(${i})"
+        style="background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:20px;padding:4px 12px;font-size:0.72rem;font-weight:600;cursor:pointer;">
+        ${s.name}
+      </button>`).join('');
+}
+
 // ─── Init ─────────────────────────────────────────────────────────────────────
 function woInit() {
   woLoad();
@@ -42,6 +110,8 @@ function woInit() {
   woUpdatePresetUI();
   woReset();
   woBindEvents();
+  woRenderSavedList();
+  woRenderSavedPills();
 }
 
 // ─── Preset ───────────────────────────────────────────────────────────────────

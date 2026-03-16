@@ -370,6 +370,9 @@
         <button class="plan-btn" data-preset="custom" onclick="woSelectPreset(this,'custom')">Custom</button>
       </div>
 
+      <!-- Saved custom workouts -->
+      <div id="wo-saved-pills" style="display:none;flex-wrap:wrap;gap:6px;margin-bottom:10px;"></div>
+
       <div class="card" id="workout-card">
 
         <!-- Interval Badges -->
@@ -453,6 +456,14 @@
           <span class="wo-setup-val" id="wo-adj-total">02:30</span>
         </div>
         <button class="btn-primary" id="wo-go-btn" style="width:100%;margin-top:20px;font-size:1.05rem;letter-spacing:3px;">GO! ▶</button>
+
+        <!-- Save custom workout -->
+        <div style="margin-top:12px;display:flex;gap:8px;">
+          <input id="wo-save-name" type="text" placeholder="Name this workout…"
+            style="flex:1;padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:0.8rem;">
+          <button onclick="woSaveCustom()" class="btn-secondary" style="padding:8px 14px;font-size:0.8rem;white-space:nowrap;">💾 Save</button>
+        </div>
+        <div id="wo-saved-list" style="margin-top:10px;"></div>
       </div>
 
       <!-- Workout Settings Toggle -->
@@ -558,6 +569,16 @@
             <button onclick="musicYtPrev()" class="btn-secondary" style="padding:6px 14px;font-size:0.8rem;">⏮ Prev</button>
             <button onclick="musicYtNext()" class="btn-secondary" style="padding:6px 14px;font-size:0.8rem;">Next ⏭</button>
           </div>
+
+          <!-- Save playlist -->
+          <div style="margin-top:12px;display:flex;gap:8px;">
+            <input id="music-yt-save-name" type="text" placeholder="Name this playlist…"
+              style="flex:1;padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:0.8rem;">
+            <button onclick="musicYtSave()" class="btn-secondary" style="padding:8px 14px;font-size:0.8rem;white-space:nowrap;">💾 Save</button>
+          </div>
+
+          <!-- Saved playlists -->
+          <div id="music-yt-saved" style="margin-top:10px;"></div>
         </div>
 
       </div>

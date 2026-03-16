@@ -253,6 +253,54 @@ function _renderYtPlaylist() {
     </div>`).join('');
 }
 
+// ─── Save / Load YouTube playlists ───────────────────────────────────────────
+function _ytLoadSaved() {
+  try { return JSON.parse(localStorage.getItem('flow-yt-playlists') || '[]'); } catch (_) { return []; }
+}
+
+function musicYtSave() {
+  const input = document.getElementById('music-yt-save-name');
+  const name  = input?.value.trim();
+  if (!name || !_ytPlaylist.length) { input?.focus(); return; }
+  const saved = _ytLoadSaved();
+  saved.push({ name, tracks: [..._ytPlaylist] });
+  localStorage.setItem('flow-yt-playlists', JSON.stringify(saved));
+  if (input) input.value = '';
+  _renderYtSaved();
+}
+
+function _ytDeleteSaved(i) {
+  const saved = _ytLoadSaved();
+  saved.splice(i, 1);
+  localStorage.setItem('flow-yt-playlists', JSON.stringify(saved));
+  _renderYtSaved();
+}
+
+function _ytLoadPlaylist(i) {
+  const saved = _ytLoadSaved();
+  if (!saved[i]) return;
+  _ytPlaylist.length = 0;
+  saved[i].tracks.forEach(t => _ytPlaylist.push(t));
+  _ytIdx = 0;
+  _renderYtPlaylist();
+  if (!window.YT) _loadYtApi();
+  else if (_ytPlayer) _ytPlayer.cueVideoById(_ytPlaylist[0].videoId);
+}
+
+function _renderYtSaved() {
+  const el    = document.getElementById('music-yt-saved');
+  const saved = _ytLoadSaved();
+  if (!el) return;
+  el.innerHTML = saved.length ? saved.map((s, i) => `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);font-size:0.8rem;">
+      <span style="color:var(--text);">🎵 ${s.name} <span style="color:var(--text-muted);">(${s.tracks.length} tracks)</span></span>
+      <div style="display:flex;gap:6px;">
+        <button onclick="_ytLoadPlaylist(${i})" style="background:var(--accent);color:#000;border:none;border-radius:6px;padding:3px 10px;font-size:0.75rem;font-weight:700;cursor:pointer;">Load</button>
+        <button onclick="_ytDeleteSaved(${i})" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:0.9rem;">✕</button>
+      </div>
+    </div>`).join('') : '<p style="font-size:0.75rem;color:var(--text-muted);text-align:center;margin:6px 0;">No saved playlists yet.</p>';
+}
+
 function _loadYtApi() {
   if (document.getElementById('yt-api-script')) return;
   const s  = document.createElement('script');
@@ -414,4 +462,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('music-yt-input')?.addEventListener('keydown', e => {
     if (e.key === 'Enter') musicYtAdd();
   });
+
+  // Render saved YT playlists on load
+  _renderYtSaved();
 });
