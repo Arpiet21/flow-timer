@@ -544,6 +544,76 @@ kbd {
 /* ─── Hidden utility ─────────────────────────────────────────────────────────── */
 .hidden { display: none !important; }
 
+/* ─── Workout Timer ──────────────────────────────────────────────────────────── */
+
+/* Phase label */
+.wo-phase-label {
+  text-align: center;
+  font-size: 1.55rem;
+  font-weight: 900;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  margin: 4px 0 8px;
+  transition: color 0.3s;
+}
+.wo-phase-idle    { color: var(--text-muted); }
+.wo-phase-prepare { color: #ffd60a; }
+.wo-phase-work    { color: var(--accent); }
+.wo-phase-rest    { color: #30d158; }
+.wo-phase-done    { color: #30d158; }
+
+/* Round text */
+.wo-round-text {
+  text-align: center;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-top: 6px;
+}
+
+/* Interval badges */
+.wo-badge {
+  padding: 4px 14px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+.wo-badge-work {
+  background: rgba(57, 255, 20, 0.1);
+  border: 1px solid var(--accent);
+  color: var(--accent);
+}
+.wo-badge-rest {
+  background: rgba(48, 209, 88, 0.1);
+  border: 1px solid #30d158;
+  color: #30d158;
+}
+
+/* Resting dot (amber) */
+.dot.wo-resting {
+  background: #ffd60a;
+  border-color: #ffd60a;
+  transform: scale(1.2);
+}
+
+/* Settings link button */
+.btn-link-muted {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-family: inherit;
+  transition: color 0.2s, background 0.2s;
+}
+.btn-link-muted:hover {
+  color: var(--text);
+  background: var(--surface2);
+}
+
 /* ─── Responsive ─────────────────────────────────────────────────────────────── */
 @media (max-width: 480px) {
   header { padding: 16px 16px 0; }

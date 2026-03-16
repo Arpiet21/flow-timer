@@ -115,6 +115,15 @@
 
   <main>
 
+    <!-- Timer Type Switcher -->
+    <div class="plan-toggle" id="timer-type-toggle" style="margin-bottom:0;">
+      <button class="plan-btn active" id="btn-work-timer" onclick="switchTimerType('work')">⏱ Work Timer</button>
+      <button class="plan-btn" id="btn-workout-timer" onclick="switchTimerType('workout')">💪 Workout Timer</button>
+    </div>
+
+    <!-- ── Work Timer Section ─────────────────────────────────────────────── -->
+    <div id="flow-section">
+
     <!-- Timer Card -->
     <div class="card">
 
@@ -347,6 +356,81 @@
       </div>
     </div>
 
+    </div><!-- /#flow-section -->
+
+    <!-- ── Workout Timer Section ──────────────────────────────────────────── -->
+    <div id="workout-section" class="hidden">
+
+      <div class="card">
+
+        <!-- Preset Pills -->
+        <div class="plan-toggle" style="margin-bottom:16px;">
+          <button class="plan-btn active" data-preset="tabata" onclick="woSelectPreset(this,'tabata')">Tabata</button>
+          <button class="plan-btn" data-preset="sprint" onclick="woSelectPreset(this,'sprint')">Sprint</button>
+          <button class="plan-btn" data-preset="endurance" onclick="woSelectPreset(this,'endurance')">Endurance</button>
+          <button class="plan-btn" data-preset="custom" onclick="woSelectPreset(this,'custom')">Custom</button>
+        </div>
+
+        <!-- Interval Badges -->
+        <div style="display:flex;gap:10px;justify-content:center;margin-bottom:12px;">
+          <span id="wo-work-badge" class="wo-badge wo-badge-work">💪 20s work</span>
+          <span id="wo-rest-badge" class="wo-badge wo-badge-rest">😮‍💨 10s rest</span>
+        </div>
+
+        <!-- Phase Label -->
+        <div id="wo-phase-label" class="wo-phase-label wo-phase-idle">GET READY</div>
+
+        <!-- Ring Canvas -->
+        <div class="clock-area" style="position:relative;">
+          <canvas id="wo-clock" width="260" height="260"></canvas>
+        </div>
+
+        <!-- Round Counter -->
+        <div id="wo-round-text" class="wo-round-text">8 rounds</div>
+
+        <!-- Round Dots -->
+        <div class="session-tracker" style="margin-top:8px;">
+          <span class="session-label">Rounds</span>
+          <div id="wo-dots"></div>
+        </div>
+
+        <!-- Controls -->
+        <div class="controls" style="margin-top:20px;">
+          <button class="btn-primary" id="wo-start-btn">Start</button>
+          <button class="btn-secondary" id="wo-skip-btn" title="Skip phase">⏭</button>
+          <button class="btn-secondary" id="wo-reset-btn" title="Reset">↺</button>
+        </div>
+
+      </div>
+
+      <!-- Workout Settings Toggle -->
+      <div style="text-align:center;">
+        <button id="wo-settings-btn" class="btn-link-muted">⚙ Customize Workout</button>
+      </div>
+
+      <!-- Workout Settings Card -->
+      <div class="card hidden" id="wo-settings-card">
+        <h3>Workout Settings</h3>
+        <div class="setting-row">
+          <label>Work Duration <span id="wo-work-val">20s</span></label>
+          <input type="range" id="wo-work-slider" min="5" max="120" step="5" value="20">
+        </div>
+        <div class="setting-row">
+          <label>Rest Duration <span id="wo-rest-val">10s</span></label>
+          <input type="range" id="wo-rest-slider" min="5" max="120" step="5" value="10">
+        </div>
+        <div class="setting-row">
+          <label>Rounds <span id="wo-rounds-val">8</span></label>
+          <input type="range" id="wo-rounds-slider" min="1" max="20" step="1" value="8">
+        </div>
+        <div class="setting-row">
+          <label>Prepare Countdown <span id="wo-prepare-val">5s</span></label>
+          <input type="range" id="wo-prepare-slider" min="0" max="30" step="1" value="5">
+        </div>
+      </div>
+
+    </div><!-- /#workout-section -->
+
   </main>
 
   <p class="kbd-hint">
@@ -358,8 +442,26 @@
   </p>
 
   <script src="app.js"></script>
+  <script src="workout.js"></script>
   <script>
     document.getElementById('signout-btn').addEventListener('click', () => Auth.signOut());
+
+    window.activeTimerMode = 'work';
+
+    function switchTimerType(mode) {
+      window.activeTimerMode = mode;
+      const isWork = mode === 'work';
+      document.getElementById('flow-section').classList.toggle('hidden', !isWork);
+      document.getElementById('workout-section').classList.toggle('hidden', isWork);
+      document.getElementById('btn-work-timer').classList.toggle('active', isWork);
+      document.getElementById('btn-workout-timer').classList.toggle('active', !isWork);
+      // Auto-pause running timer when switching
+      if (isWork && typeof wo !== 'undefined' && wo.status === 'running') woPause();
+      if (!isWork && typeof state !== 'undefined' && state.status === 'running') pauseTimer();
+      // Restore page title
+      if (!isWork && typeof renderWo !== 'undefined') renderWo();
+      if (isWork && typeof renderTimer !== 'undefined') renderTimer();
+    }
   </script>
 </body>
 </html>

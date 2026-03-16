@@ -868,6 +868,7 @@ function bindEvents() {
 
   // Keyboard shortcuts
   document.addEventListener('keydown', e => {
+    if (window.activeTimerMode && window.activeTimerMode !== 'work') return;
     if (e.target.tagName === 'INPUT') return;
     if (e.code === 'Space') { e.preventDefault(); toggleStartPause(); }
     if (e.code === 'KeyR') resetTimer();
