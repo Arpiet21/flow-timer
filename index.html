@@ -116,9 +116,9 @@
   <main>
 
     <!-- Timer Type Switcher -->
-    <div class="plan-toggle" id="timer-type-toggle" style="margin-bottom:0;">
-      <button class="plan-btn active" id="btn-work-timer" onclick="switchTimerType('work')">⏱ Work Timer</button>
-      <button class="plan-btn" id="btn-workout-timer" onclick="switchTimerType('workout')">💪 Workout Timer</button>
+    <div class="mode-tabs" id="timer-type-toggle">
+      <button class="mode-btn active" id="btn-work-timer" onclick="switchTimerType('work')">⏱ Work Timer</button>
+      <button class="mode-btn" id="btn-workout-timer" onclick="switchTimerType('workout')">💪 Workout Timer</button>
     </div>
 
     <!-- ── Work Timer Section ─────────────────────────────────────────────── -->
@@ -455,6 +455,7 @@
       document.getElementById('workout-section').classList.toggle('hidden', isWork);
       document.getElementById('btn-work-timer').classList.toggle('active', isWork);
       document.getElementById('btn-workout-timer').classList.toggle('active', !isWork);
+
       // Auto-pause running timer when switching
       if (isWork && typeof wo !== 'undefined' && wo.status === 'running') woPause();
       if (!isWork && typeof state !== 'undefined' && state.status === 'running') pauseTimer();
