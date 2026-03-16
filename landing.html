@@ -149,6 +149,49 @@
         <div class="mock-dot"></div>
       </div>
     </div>
+
+    <!-- Workout Timer Mock -->
+    <div class="mock-app" style="margin-top:16px;background:rgba(15,52,96,0.7);border:1px solid rgba(57,255,20,0.15);">
+      <!-- Timer type tabs — Workout active -->
+      <div class="mock-tabs" style="margin-bottom:8px;">
+        <div class="mock-tab">⏱ Work Timer</div>
+        <div class="mock-tab active">💪 Workout</div>
+      </div>
+      <!-- Preset pills -->
+      <div style="display:flex;gap:5px;justify-content:center;margin-bottom:10px;">
+        <span style="background:#39ff14;color:#000;font-size:0.65rem;font-weight:700;padding:3px 10px;border-radius:20px;">Tabata</span>
+        <span style="background:rgba(255,255,255,0.08);color:#aaa;font-size:0.65rem;font-weight:600;padding:3px 10px;border-radius:20px;">Sprint</span>
+        <span style="background:rgba(255,255,255,0.08);color:#aaa;font-size:0.65rem;font-weight:600;padding:3px 10px;border-radius:20px;">Endurance</span>
+        <span style="background:rgba(255,255,255,0.08);color:#aaa;font-size:0.65rem;font-weight:600;padding:3px 10px;border-radius:20px;">Custom</span>
+      </div>
+      <!-- Badges -->
+      <div style="display:flex;gap:6px;justify-content:center;margin-bottom:4px;">
+        <span style="background:rgba(57,255,20,0.15);color:#39ff14;font-size:0.6rem;font-weight:700;padding:2px 8px;border-radius:12px;">💪 20s work</span>
+        <span style="background:rgba(48,209,88,0.15);color:#30d158;font-size:0.6rem;font-weight:700;padding:2px 8px;border-radius:12px;">😮‍💨 10s rest</span>
+      </div>
+      <!-- Phase label -->
+      <div style="text-align:center;font-size:0.7rem;font-weight:800;letter-spacing:2px;color:#39ff14;margin-bottom:6px;">WORK</div>
+      <!-- Ring SVG -->
+      <div style="display:flex;justify-content:center;margin-bottom:6px;">
+        <svg width="110" height="110" viewBox="0 0 110 110">
+          <!-- Track ring -->
+          <circle cx="55" cy="55" r="44" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="8"/>
+          <!-- Progress arc ~60% (green glow) -->
+          <circle cx="55" cy="55" r="44" fill="none" stroke="#39ff14" stroke-width="8"
+            stroke-linecap="round"
+            stroke-dasharray="276.46" stroke-dashoffset="110"
+            transform="rotate(-90 55 55)"
+            style="filter:drop-shadow(0 0 6px #39ff14);"/>
+          <!-- Time text -->
+          <text x="55" y="50" text-anchor="middle" font-family="Arial,sans-serif" font-size="18" font-weight="800" fill="#fff">0:14</text>
+          <text x="55" y="66" text-anchor="middle" font-family="Arial,sans-serif" font-size="8" fill="#aaa">of 20s</text>
+        </svg>
+      </div>
+      <!-- Round counter -->
+      <div style="text-align:center;font-size:0.65rem;color:#aaa;margin-bottom:8px;">Round <span style="color:#fff;font-weight:700;">3</span> / 8</div>
+      <!-- Controls -->
+      <button class="mock-btn" style="background:#39ff14;color:#000;">Pause</button>
+    </div>
   </div>
 </section>
 
@@ -189,6 +232,89 @@
       <h3>Dark & Light Mode</h3>
       <p>Sleek dark theme by default. Switch to light mode any time — your preference is saved automatically.</p>
     </div>
+  </div>
+</section>
+
+<!-- ── Workout Showcase ── -->
+<section class="section" style="padding-top:0;">
+  <p class="section-label">Workout Timer</p>
+  <h2 class="section-title">Train smarter with built-in HIIT</h2>
+  <p class="section-sub">Switch from focus mode to full interval training in one tap. No separate app needed.</p>
+
+  <div style="display:flex;gap:32px;align-items:center;flex-wrap:wrap;justify-content:center;margin-top:40px;">
+
+    <!-- Left: feature list -->
+    <div style="max-width:340px;">
+      <div style="display:flex;flex-direction:column;gap:20px;">
+        <div style="display:flex;gap:14px;align-items:flex-start;">
+          <span style="font-size:1.6rem;">⚡</span>
+          <div><strong style="color:var(--text,#fff);">4 ready-to-go presets</strong><br><span style="color:#888;font-size:0.85rem;">Tabata (20/10), Sprint (40/20), Endurance (45/15), or fully Custom.</span></div>
+        </div>
+        <div style="display:flex;gap:14px;align-items:flex-start;">
+          <span style="font-size:1.6rem;">🗣</span>
+          <div><strong style="color:var(--text,#fff);">Voice countdown</strong><br><span style="color:#888;font-size:0.85rem;">Hear "3, 2, 1, Change" so you never have to glance at the screen mid-rep.</span></div>
+        </div>
+        <div style="display:flex;gap:14px;align-items:flex-start;">
+          <span style="font-size:1.6rem;">🔢</span>
+          <div><strong style="color:var(--text,#fff);">Adjustable rounds</strong><br><span style="color:#888;font-size:0.85rem;">Tap +/− to set rounds right on the timer screen. Total time updates instantly.</span></div>
+        </div>
+        <div style="display:flex;gap:14px;align-items:flex-start;">
+          <span style="font-size:1.6rem;">🎯</span>
+          <div><strong style="color:var(--text,#fff);">Phase-aware ring</strong><br><span style="color:#888;font-size:0.85rem;">Green ring for work, teal for rest, yellow for prep — know your phase at a glance.</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: large workout mock -->
+    <div style="background:rgba(15,52,96,0.5);border:1px solid rgba(57,255,20,0.2);border-radius:20px;padding:24px;min-width:260px;max-width:300px;">
+      <!-- Tab switcher -->
+      <div style="display:flex;background:rgba(255,255,255,0.06);border-radius:12px;padding:4px;margin-bottom:14px;gap:4px;">
+        <div style="flex:1;text-align:center;padding:7px 4px;border-radius:9px;font-size:0.75rem;color:#888;font-weight:600;">⏱ Work Timer</div>
+        <div style="flex:1;text-align:center;padding:7px 4px;border-radius:9px;font-size:0.75rem;font-weight:700;background:#39ff14;color:#000;">💪 Workout</div>
+      </div>
+      <!-- Preset pills -->
+      <div style="display:flex;gap:5px;justify-content:center;margin-bottom:12px;flex-wrap:wrap;">
+        <span style="background:#39ff14;color:#000;font-size:0.65rem;font-weight:700;padding:4px 12px;border-radius:20px;">Tabata</span>
+        <span style="background:rgba(255,255,255,0.08);color:#aaa;font-size:0.65rem;font-weight:600;padding:4px 12px;border-radius:20px;">Sprint</span>
+        <span style="background:rgba(255,255,255,0.08);color:#aaa;font-size:0.65rem;font-weight:600;padding:4px 12px;border-radius:20px;">Endurance</span>
+        <span style="background:rgba(255,255,255,0.08);color:#aaa;font-size:0.65rem;font-weight:600;padding:4px 12px;border-radius:20px;">Custom</span>
+      </div>
+      <!-- Badges -->
+      <div style="display:flex;gap:8px;justify-content:center;margin-bottom:6px;">
+        <span style="background:rgba(57,255,20,0.15);color:#39ff14;font-size:0.65rem;font-weight:700;padding:3px 10px;border-radius:12px;">💪 20s work</span>
+        <span style="background:rgba(48,209,88,0.15);color:#30d158;font-size:0.65rem;font-weight:700;padding:3px 10px;border-radius:12px;">😮‍💨 10s rest</span>
+      </div>
+      <!-- Rounds + Total -->
+      <div style="display:flex;justify-content:space-between;align-items:center;font-size:0.65rem;color:#888;margin-bottom:10px;padding:0 4px;">
+        <div>Rounds <span style="background:rgba(255,255,255,0.1);padding:1px 8px;border-radius:10px;margin:0 4px;color:#fff;font-weight:700;">8</span></div>
+        <div>Total: <span style="color:#39ff14;font-weight:700;">04:00</span></div>
+      </div>
+      <!-- Phase label -->
+      <div style="text-align:center;font-size:0.75rem;font-weight:800;letter-spacing:3px;color:#39ff14;margin-bottom:8px;text-shadow:0 0 8px rgba(57,255,20,0.6);">WORK</div>
+      <!-- Ring SVG -->
+      <div style="display:flex;justify-content:center;margin-bottom:10px;">
+        <svg width="140" height="140" viewBox="0 0 140 140">
+          <defs>
+            <filter id="glow"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+          </defs>
+          <circle cx="70" cy="70" r="56" fill="none" stroke="rgba(255,255,255,0.07)" stroke-width="10"/>
+          <circle cx="70" cy="70" r="56" fill="none" stroke="#39ff14" stroke-width="10"
+            stroke-linecap="round" stroke-dasharray="351.86" stroke-dashoffset="105"
+            transform="rotate(-90 70 70)" filter="url(#glow)"/>
+          <text x="70" y="64" text-anchor="middle" font-family="Arial,sans-serif" font-size="26" font-weight="800" fill="#fff">0:14</text>
+          <text x="70" y="82" text-anchor="middle" font-family="Arial,sans-serif" font-size="10" fill="#888">of 20s</text>
+        </svg>
+      </div>
+      <!-- Round counter + dots -->
+      <div style="text-align:center;font-size:0.7rem;color:#888;margin-bottom:10px;">Round <strong style="color:#fff;">3</strong> / 8 &nbsp;·&nbsp; <span style="color:#39ff14;">●</span><span style="color:#39ff14;">●</span><span style="color:#888;">●</span><span style="color:#888;">●</span><span style="color:#888;">●</span><span style="color:#888;">●</span><span style="color:#888;">●</span><span style="color:#888;">●</span></div>
+      <!-- Controls -->
+      <div style="display:flex;gap:8px;justify-content:center;">
+        <button style="flex:1;padding:9px;border:none;border-radius:10px;background:#39ff14;color:#000;font-weight:700;font-size:0.8rem;cursor:pointer;">Pause</button>
+        <button style="padding:9px 14px;border:none;border-radius:10px;background:rgba(255,255,255,0.08);color:#fff;font-size:0.9rem;cursor:pointer;">⏭</button>
+        <button style="padding:9px 14px;border:none;border-radius:10px;background:rgba(255,255,255,0.08);color:#fff;font-size:0.9rem;cursor:pointer;">↺</button>
+      </div>
+    </div>
+
   </div>
 </section>
 
