@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Blog Admin — Flow Timer</title>
+  <link rel="stylesheet" href="auth.css">
+  <style>
+    .hero-bg { position:fixed;inset:0;z-index:-1;background:#0d0d1a; }
+    .admin-wrap { max-width:960px;margin:0 auto;padding:40px 24px 80px; }
+    .admin-header { display:flex;align-items:center;justify-content:space-between;margin-bottom:32px;flex-wrap:wrap;gap:12px; }
+    .admin-header h1 { font-size:1.6rem;font-weight:800; }
+    /* Posts list */
+    .posts-list { display:flex;flex-direction:column;gap:12px;margin-bottom:40px; }
+    .post-row { background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap; }
+    .post-row-title { font-weight:600;flex:1;min-width:160px; }
+    .post-row-meta { font-size:.8rem;color:var(--text-muted); }
+    .badge { font-size:.7rem;font-weight:700;padding:3px 9px;border-radius:20px; }
+    .badge-published { background:#39ff1422;color:#39ff14; }
+    .badge-draft { background:#ffd60a22;color:#ffd60a; }
+    .btn-sm { padding:6px 14px;font-size:.8rem;border-radius:8px;border:none;cursor:pointer;font-weight:600;transition:opacity .15s; }
+    .btn-edit { background:var(--surface2);color:var(--text); }
+    .btn-delete { background:#e9284522;color:#e92845; }
+    .btn-edit:hover,.btn-delete:hover { opacity:.8; }
+    /* Editor */
+    #editor-section { display:none; }
+    .editor-card { background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:28px; }
+    .editor-card h2 { font-size:1.2rem;font-weight:700;margin-bottom:24px; }
+    .form-row { margin-bottom:18px; }
+    .form-row label { display:block;font-size:.85rem;color:var(--text-muted);margin-bottom:6px;font-weight:600; }
+    .form-row input, .form-row textarea, .form-row select {
+      width:100%;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:10px 14px;color:var(--text);font-size:.95rem;font-family:inherit;outline:none;transition:border-color .15s;
+    }
+    .form-row input:focus, .form-row textarea:focus { border-color:var(--accent); }
+    .form-row textarea { resize:vertical;min-height:320px;font-family:'Consolas','Courier New',monospace;font-size:.88rem;line-height:1.6; }
+    .form-actions { display:flex;gap:12px;flex-wrap:wrap;margin-top:24px; }
+    .toggle-row { display:flex;align-items:center;gap:12px; }
+    .toggle-label { font-size:.9rem;font-weight:600; }
+    /* Toggle */
+    .toggle-switch { position:relative;display:inline-block;width:44px;height:24px;flex-shrink:0; }
+    .toggle-switch input { opacity:0;width:0;height:0; }
+    .toggle-slider { position:absolute;cursor:pointer;inset:0;background:#444;border-radius:24px;transition:.2s; }
+    .toggle-slider:before { content:'';position:absolute;height:18px;width:18px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.2s; }
+    .toggle-switch input:checked + .toggle-slider { background:var(--accent); }
+    .toggle-switch input:checked + .toggle-slider:before { transform:translateX(20px); }
+    .md-btn { padding:5px 10px;font-size:.78rem;font-weight:600;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:6px;cursor:pointer;transition:background .15s;white-space:nowrap; }
+    .md-btn:hover { background:#0f3460cc; }
+    .post-content h1,.post-content h2,.post-content h3 { color:var(--text);margin:20px 0 8px; }
+    .post-content p { margin-bottom:12px; }
+    .post-content ul,.post-content ol { margin:0 0 12px 20px; }
+    .post-content blockquote { border-left:3px solid var(--accent);padding:8px 14px;margin:16px 0;background:var(--surface);border-radius:0 6px 6px 0;color:var(--text-muted);font-style:italic; }
+    .post-content code { background:var(--surface2);padding:1px 5px;border-radius:3px;font-size:.88em;font-family:monospace; }
+    .post-content pre { background:var(--surface2);padding:12px 16px;border-radius:8px;overflow-x:auto;margin-bottom:12px; }
+    .post-content pre code { background:none;padding:0; }
+    .loading-overlay { position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:200;display:none; }
+    .loading-spinner { width:40px;height:40px;border:3px solid #333;border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    .toast { position:fixed;bottom:28px;right:28px;background:#222;border:1px solid var(--border);border-radius:12px;padding:14px 20px;font-size:.9rem;z-index:300;opacity:0;transform:translateY(12px);transition:all .25s;pointer-events:none; }
+    .toast.show { opacity:1;transform:translateY(0); }
+  </style>
+</head>
+<body>
+<div class="hero-bg"></div>
+
+<div class="loading-overlay" id="loading-overlay">
+  <div class="loading-spinner"></div>
+</div>
+<div class="toast" id="toast"></div>
+
+<nav>
+  <div class="nav-inner">
+    <a href="landing.html" class="nav-logo">⏱ Flow Timer</a>
+    <div class="nav-links">
+      <a href="blog.html" class="nav-link">← Public Blog</a>
+      <a href="index.html" class="btn btn-primary" style="padding:8px 18px;font-size:.85rem;">Open App</a>
+    </div>
+  </div>
+</nav>
+
+<div class="admin-wrap" id="admin-wrap" style="display:none;">
+
+  <!-- Posts list -->
+  <div id="list-section">
+    <div class="admin-header">
+      <div>
+        <h1>Blog Admin</h1>
+        <p style="color:var(--text-muted);font-size:.9rem;margin-top:4px;">Manage your blog posts</p>
+      </div>
+      <button class="btn btn-primary" onclick="newPost()">+ New Post</button>
+    </div>
+    <div class="posts-list" id="posts-list">
+      <div style="color:var(--text-muted);text-align:center;padding:40px;">Loading posts…</div>
+    </div>
+  </div>
+
+  <!-- Editor -->
+  <div id="editor-section">
+    <div class="admin-header">
+      <h1 id="editor-title">New Post</h1>
+      <button class="btn btn-outline" onclick="showList()">← Back to list</button>
+    </div>
+    <div class="editor-card">
+      <div class="form-row">
+        <label>Title</label>
+        <input type="text" id="f-title" placeholder="Post title" oninput="autoSlug()">
+      </div>
+      <div class="form-row">
+        <label>Slug <span style="font-weight:400;color:#666">(URL path, e.g. tips-for-deep-work)</span></label>
+        <input type="text" id="f-slug" placeholder="auto-generated from title">
+      </div>
+      <div class="form-row">
+        <label>Tag / Category <span style="font-weight:400;color:#666">(optional)</span></label>
+        <input type="text" id="f-tag" placeholder="e.g. Productivity, Tips, Focus">
+      </div>
+      <div class="form-row">
+        <label>Excerpt <span style="font-weight:400;color:#666">(shown on blog listing)</span></label>
+        <input type="text" id="f-excerpt" placeholder="Short summary of the post…">
+      </div>
+      <div class="form-row">
+        <label>Cover Image URL <span style="font-weight:400;color:#666">(optional)</span></label>
+        <input type="url" id="f-cover" placeholder="https://…">
+      </div>
+      <div class="form-row">
+        <label>Content</label>
+        <!-- Markdown toolbar -->
+        <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px;">
+          <button type="button" class="md-btn" onclick="mdWrap('**','**')" title="Bold"><b>B</b></button>
+          <button type="button" class="md-btn" onclick="mdWrap('*','*')" title="Italic"><i>I</i></button>
+          <button type="button" class="md-btn" onclick="mdWrap('~~','~~')" title="Strikethrough"><s>S</s></button>
+          <div style="width:1px;background:var(--border);margin:0 4px;"></div>
+          <button type="button" class="md-btn" onclick="mdLine('## ')" title="Heading 2">H2</button>
+          <button type="button" class="md-btn" onclick="mdLine('### ')" title="Heading 3">H3</button>
+          <div style="width:1px;background:var(--border);margin:0 4px;"></div>
+          <button type="button" class="md-btn" onclick="mdLine('- ')" title="Bullet list">• List</button>
+          <button type="button" class="md-btn" onclick="mdLine('1. ')" title="Numbered list">1. List</button>
+          <button type="button" class="md-btn" onclick="mdLine('> ')" title="Blockquote">" Quote</button>
+          <div style="width:1px;background:var(--border);margin:0 4px;"></div>
+          <button type="button" class="md-btn" onclick="mdWrap('`','`')" title="Inline code">&#96;code&#96;</button>
+          <button type="button" class="md-btn" onclick="mdInsert('\n```\n','code here','\n```\n')" title="Code block">```</button>
+          <div style="width:1px;background:var(--border);margin:0 4px;"></div>
+          <button type="button" class="md-btn" onclick="mdInsert('[','link text','](url)')" title="Link">🔗 Link</button>
+          <button type="button" class="md-btn" onclick="mdInsert('![','alt text','](image-url)')" title="Image">🖼 Image</button>
+          <button type="button" class="md-btn" onclick="mdLine('---')" title="Horizontal rule">─ HR</button>
+          <div style="flex:1;"></div>
+          <button type="button" class="md-btn" id="preview-toggle-btn" onclick="toggleMdPreview()" title="Toggle preview" style="background:var(--surface2);color:var(--accent);">👁 Preview</button>
+        </div>
+        <!-- Split editor -->
+        <div id="md-split" style="display:flex;gap:8px;min-height:340px;">
+          <textarea id="f-content" style="flex:1;min-height:340px;" placeholder="Write your post in Markdown…&#10;&#10;## Heading&#10;&#10;Paragraph text here.&#10;&#10;- Bullet point&#10;- Another point&#10;&#10;> Blockquote" oninput="refreshPreview()"></textarea>
+          <div id="md-preview-pane" style="flex:1;display:none;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:16px 20px;overflow-y:auto;min-height:340px;max-height:540px;font-size:.92rem;line-height:1.8;color:#ddd;" class="post-content"></div>
+        </div>
+        <div style="font-size:.75rem;color:var(--text-muted);margin-top:6px;">Supports <strong>Markdown</strong>: **bold**, *italic*, ## heading, - list, > quote, `code`, [link](url)</div>
+      </div>
+      <!-- SEO Section -->
+      <div style="margin-top:28px;padding-top:24px;border-top:1px solid var(--border);">
+        <div style="font-size:.85rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.08em;margin-bottom:16px;">SEO Settings</div>
+        <div class="form-row">
+          <label>SEO Title <span style="font-weight:400;color:#666">(defaults to post title if empty)</span></label>
+          <input type="text" id="f-seo-title" placeholder="Custom title for search engines — keep under 60 chars">
+        </div>
+        <div class="form-row">
+          <label>Meta Description <span style="font-weight:400;color:#666">(defaults to excerpt — keep under 160 chars)</span></label>
+          <input type="text" id="f-seo-desc" placeholder="Short description shown in Google search results…">
+        </div>
+        <div class="form-row" style="margin-bottom:0;">
+          <label>OG Image URL <span style="font-weight:400;color:#666">(social share image — defaults to cover image)</span></label>
+          <input type="url" id="f-og-image" placeholder="https://… (1200×630px recommended)">
+        </div>
+        <div id="seo-preview" style="margin-top:16px;background:#0d0d1a;border:1px solid var(--border);border-radius:10px;padding:16px;display:none;">
+          <div style="font-size:.75rem;color:#888;margin-bottom:8px;">Google Preview</div>
+          <div id="seo-preview-title" style="color:#8ab4f8;font-size:.95rem;font-weight:600;"></div>
+          <div style="color:#4caf50;font-size:.75rem;margin:3px 0;">flow-timer-rho.vercel.app › blog</div>
+          <div id="seo-preview-desc" style="color:#bdc1c6;font-size:.85rem;line-height:1.5;"></div>
+        </div>
+      </div>
+
+      <div class="toggle-row" style="margin-top:24px;">
+        <label class="toggle-switch">
+          <input type="checkbox" id="f-published">
+          <span class="toggle-slider"></span>
+        </label>
+        <span class="toggle-label">Published <span style="font-weight:400;color:var(--text-muted)">(uncheck to save as draft)</span></span>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-primary" onclick="savePost()">Save Post</button>
+        <button class="btn btn-outline" onclick="previewPost()" style="color:var(--accent)">Preview →</button>
+        <button id="delete-btn" class="btn-sm btn-delete" onclick="deletePost()" style="display:none;margin-left:auto;">Delete Post</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div id="access-denied" style="display:none;text-align:center;padding:80px 24px;color:var(--text-muted);">
+  <div style="font-size:3rem;">🔒</div>
+  <h2 style="margin:16px 0 8px;">Admin only</h2>
+  <p>You need to be logged in as <strong>arpietmalpani@gmail.com</strong> to access this page.</p>
+  <a href="login.html" class="btn btn-primary" style="margin-top:24px;display:inline-block;">Log In</a>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="supabase-client.js"></script>
+<script src="auth.js"></script>
+<script>
+  const ADMIN_EMAIL = 'arpietmalpani@gmail.com';
+  let editingId = null;
+
+  // Auth gate
+  Auth.init().then(user => {
+    if (!user || user.email !== ADMIN_EMAIL) {
+      document.getElementById('access-denied').style.display = 'block';
+      return;
+    }
+    document.getElementById('admin-wrap').style.display = 'block';
+    loadPosts();
+  });
+
+  // ── List ──────────────────────────────────────────────────────────────
+  async function loadPosts() {
+    const { data: posts, error } = await _sb
+      .from('blog_posts')
+      .select('id,title,slug,published,created_at,tag')
+      .order('created_at', { ascending: false });
+
+    const list = document.getElementById('posts-list');
+
+    if (error) { list.innerHTML = `<div style="color:#e92845">Error: ${error.message}</div>`; return; }
+    if (!posts || posts.length === 0) {
+      list.innerHTML = '<div style="color:var(--text-muted);text-align:center;padding:40px;">No posts yet. Click "+ New Post" to create one.</div>';
+      return;
+    }
+
+    list.innerHTML = posts.map(p => `
+      <div class="post-row">
+        <div class="post-row-title">${esc(p.title)}</div>
+        <div class="post-row-meta">${fmtDate(p.created_at)}</div>
+        ${p.tag ? `<div class="post-row-meta" style="color:var(--accent)">${esc(p.tag)}</div>` : ''}
+        <span class="badge ${p.published ? 'badge-published' : 'badge-draft'}">${p.published ? 'Published' : 'Draft'}</span>
+        <button class="btn-sm btn-edit" onclick="editPost(${JSON.stringify(p.id)})">Edit</button>
+        <a href="blog-post.html?slug=${encodeURIComponent(p.slug)}" target="_blank" class="btn-sm btn-edit" style="text-decoration:none;">View</a>
+      </div>
+    `).join('');
+  }
+
+  // ── Editor ────────────────────────────────────────────────────────────
+  function showList() {
+    document.getElementById('list-section').style.display = 'block';
+    document.getElementById('editor-section').style.display = 'none';
+    editingId = null;
+    loadPosts();
+  }
+
+  function showEditor() {
+    document.getElementById('list-section').style.display = 'none';
+    document.getElementById('editor-section').style.display = 'block';
+  }
+
+  function newPost() {
+    editingId = null;
+    document.getElementById('editor-title').textContent = 'New Post';
+    document.getElementById('f-title').value = '';
+    document.getElementById('f-slug').value = '';
+    document.getElementById('f-tag').value = '';
+    document.getElementById('f-excerpt').value = '';
+    document.getElementById('f-cover').value = '';
+    document.getElementById('f-content').value = '';
+    document.getElementById('f-seo-title').value = '';
+    document.getElementById('f-seo-desc').value = '';
+    document.getElementById('f-og-image').value = '';
+    document.getElementById('f-published').checked = false;
+    document.getElementById('delete-btn').style.display = 'none';
+    document.getElementById('seo-preview').style.display = 'none';
+    showEditor();
+  }
+
+  async function editPost(id) {
+    setLoading(true);
+    const { data: post, error } = await _sb.from('blog_posts').select('*').eq('id', id).single();
+    setLoading(false);
+    if (error || !post) { toast('Failed to load post', true); return; }
+
+    editingId = id;
+    document.getElementById('editor-title').textContent = 'Edit Post';
+    document.getElementById('f-title').value = post.title || '';
+    document.getElementById('f-slug').value = post.slug || '';
+    document.getElementById('f-tag').value = post.tag || '';
+    document.getElementById('f-excerpt').value = post.excerpt || '';
+    document.getElementById('f-cover').value = post.cover_image || '';
+    document.getElementById('f-content').value = post.content || '';
+    document.getElementById('f-seo-title').value = post.seo_title || '';
+    document.getElementById('f-seo-desc').value = post.seo_description || '';
+    document.getElementById('f-og-image').value = post.og_image || '';
+    document.getElementById('f-published').checked = !!post.published;
+    document.getElementById('delete-btn').style.display = 'inline-block';
+    updateSeoPreview();
+    showEditor();
+  }
+
+  function updateSeoPreview() {
+    const title   = document.getElementById('f-seo-title').value || document.getElementById('f-title').value || 'Post title';
+    const desc    = document.getElementById('f-seo-desc').value || document.getElementById('f-excerpt').value || 'Post description';
+    const preview = document.getElementById('seo-preview');
+    document.getElementById('seo-preview-title').textContent = title.slice(0, 60);
+    document.getElementById('seo-preview-desc').textContent  = desc.slice(0, 160);
+    preview.style.display = 'block';
+  }
+
+  // Wire up live SEO preview
+  ['f-title','f-seo-title','f-excerpt','f-seo-desc'].forEach(id => {
+    document.getElementById(id)?.addEventListener('input', updateSeoPreview);
+  });
+
+  function autoSlug() {
+    if (editingId) return; // don't override slug when editing
+    const title = document.getElementById('f-title').value;
+    document.getElementById('f-slug').value = title
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, '')
+      .trim()
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-');
+  }
+
+  async function savePost() {
+    const title   = document.getElementById('f-title').value.trim();
+    const slug    = document.getElementById('f-slug').value.trim();
+    const content = document.getElementById('f-content').value.trim();
+    if (!title || !slug) { toast('Title and slug are required', true); return; }
+
+    const payload = {
+      title,
+      slug,
+      tag:             document.getElementById('f-tag').value.trim() || null,
+      excerpt:         document.getElementById('f-excerpt').value.trim() || null,
+      cover_image:     document.getElementById('f-cover').value.trim() || null,
+      content,
+      seo_title:       document.getElementById('f-seo-title').value.trim() || null,
+      seo_description: document.getElementById('f-seo-desc').value.trim() || null,
+      og_image:        document.getElementById('f-og-image').value.trim() || null,
+      published:       document.getElementById('f-published').checked,
+      updated_at:      new Date().toISOString(),
+    };
+
+    setLoading(true);
+    let error;
+    if (editingId) {
+      ({ error } = await _sb.from('blog_posts').update(payload).eq('id', editingId));
+    } else {
+      payload.created_at = new Date().toISOString();
+      ({ error } = await _sb.from('blog_posts').insert(payload));
+    }
+    setLoading(false);
+
+    if (error) { toast('Save failed: ' + error.message, true); return; }
+    toast('Post saved!');
+    showList();
+  }
+
+  async function deletePost() {
+    if (!editingId) return;
+    if (!confirm('Delete this post? This cannot be undone.')) return;
+    setLoading(true);
+    const { error } = await _sb.from('blog_posts').delete().eq('id', editingId);
+    setLoading(false);
+    if (error) { toast('Delete failed: ' + error.message, true); return; }
+    toast('Post deleted');
+    showList();
+  }
+
+  function previewPost() {
+    const slug = document.getElementById('f-slug').value.trim();
+    if (!slug) { toast('Enter a slug first', true); return; }
+    window.open(`blog-post.html?slug=${encodeURIComponent(slug)}`, '_blank');
+  }
+
+  // ── Markdown Editor ───────────────────────────────────────────────────
+  let previewOpen = false;
+
+  function toggleMdPreview() {
+    previewOpen = !previewOpen;
+    const pane = document.getElementById('md-preview-pane');
+    const btn  = document.getElementById('preview-toggle-btn');
+    pane.style.display = previewOpen ? 'block' : 'none';
+    btn.style.background = previewOpen ? 'var(--accent)' : 'var(--surface2)';
+    btn.style.color = previewOpen ? '#000' : 'var(--accent)';
+    if (previewOpen) refreshPreview();
+  }
+
+  function refreshPreview() {
+    if (!previewOpen) return;
+    const content = document.getElementById('f-content').value;
+    document.getElementById('md-preview-pane').innerHTML = marked.parse(content || '*Nothing to preview yet.*');
+  }
+
+  function mdWrap(before, after) {
+    const ta = document.getElementById('f-content');
+    const start = ta.selectionStart, end = ta.selectionEnd;
+    const selected = ta.value.slice(start, end) || 'text';
+    ta.value = ta.value.slice(0, start) + before + selected + after + ta.value.slice(end);
+    ta.selectionStart = start + before.length;
+    ta.selectionEnd   = start + before.length + selected.length;
+    ta.focus();
+    refreshPreview();
+  }
+
+  function mdLine(prefix) {
+    const ta = document.getElementById('f-content');
+    const start = ta.selectionStart;
+    const lineStart = ta.value.lastIndexOf('\n', start - 1) + 1;
+    ta.value = ta.value.slice(0, lineStart) + prefix + ta.value.slice(lineStart);
+    ta.selectionStart = ta.selectionEnd = start + prefix.length;
+    ta.focus();
+    refreshPreview();
+  }
+
+  function mdInsert(before, placeholder, after) {
+    const ta = document.getElementById('f-content');
+    const start = ta.selectionStart, end = ta.selectionEnd;
+    const selected = ta.value.slice(start, end) || placeholder;
+    ta.value = ta.value.slice(0, start) + before + selected + after + ta.value.slice(end);
+    ta.selectionStart = start + before.length;
+    ta.selectionEnd   = start + before.length + selected.length;
+    ta.focus();
+    refreshPreview();
+  }
+
+  // ── Helpers ───────────────────────────────────────────────────────────
+  function setLoading(on) {
+    document.getElementById('loading-overlay').style.display = on ? 'flex' : 'none';
+  }
+  function toast(msg, isErr) {
+    const el = document.getElementById('toast');
+    el.textContent = (isErr ? '⚠️ ' : '✅ ') + msg;
+    el.style.borderColor = isErr ? '#e92845' : 'var(--accent)';
+    el.classList.add('show');
+    setTimeout(() => el.classList.remove('show'), 2800);
+  }
+  function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function fmtDate(d) { return new Date(d).toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'}); }
+</script>
+</body>
+</html>

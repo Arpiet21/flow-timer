@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Blog — Flow Timer</title>
+  <!-- Dynamic SEO tags set by JS below -->
+  <meta id="meta-desc" name="description" content="Flow Timer Blog">
+  <meta id="og-title" property="og:title" content="Flow Timer Blog">
+  <meta id="og-desc" property="og:description" content="Tips on focus, productivity, and deep work.">
+  <meta id="og-image" property="og:image" content="">
+  <meta property="og:type" content="article">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="stylesheet" href="auth.css">
+  <style>
+    .hero-bg { position:fixed;inset:0;z-index:-1;background:radial-gradient(ellipse at 20% 50%,rgba(233,69,96,.06) 0%,transparent 60%),radial-gradient(ellipse at 80% 20%,rgba(74,144,217,.06) 0%,transparent 60%),#1a1a2e; }
+    .post-wrap { max-width:720px;margin:0 auto;padding:48px 24px 80px; }
+    .post-back { font-size:.85rem;color:var(--text-muted);display:inline-flex;align-items:center;gap:6px;margin-bottom:32px;text-decoration:none; }
+    .post-back:hover { color:var(--accent); }
+    .post-tag { font-size:.7rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.08em;margin-bottom:14px; }
+    .post-title { font-size:clamp(1.8rem,4vw,2.6rem);font-weight:800;line-height:1.2;margin-bottom:20px; }
+    .post-meta { display:flex;gap:16px;font-size:.85rem;color:var(--text-muted);margin-bottom:32px;flex-wrap:wrap; }
+    .post-cover { width:100%;border-radius:var(--radius);margin-bottom:36px;max-height:420px;object-fit:cover; }
+    .post-content { font-size:1.05rem;line-height:1.8;color:#ddd; }
+    .post-content h1,.post-content h2,.post-content h3 { color:var(--text);margin:32px 0 12px;line-height:1.3; }
+    .post-content h1 { font-size:1.8rem; }
+    .post-content h2 { font-size:1.4rem; }
+    .post-content h3 { font-size:1.15rem; }
+    .post-content p { margin-bottom:18px; }
+    .post-content ul,.post-content ol { margin:0 0 18px 24px; }
+    .post-content li { margin-bottom:6px; }
+    .post-content a { color:var(--accent); }
+    .post-content blockquote { border-left:3px solid var(--accent);padding:12px 20px;margin:24px 0;background:var(--surface);border-radius:0 8px 8px 0;color:var(--text-muted);font-style:italic; }
+    .post-content code { background:var(--surface2);padding:2px 6px;border-radius:4px;font-size:.9em;font-family:monospace; }
+    .post-content pre { background:var(--surface2);padding:16px 20px;border-radius:8px;overflow-x:auto;margin-bottom:18px; }
+    .post-content pre code { background:none;padding:0; }
+    .post-content hr { border:none;border-top:1px solid var(--border);margin:36px 0; }
+    .post-content img { max-width:100%;border-radius:8px; }
+    .not-found { text-align:center;padding:80px 24px;color:var(--text-muted); }
+  </style>
+</head>
+<body>
+<div class="hero-bg"></div>
+
+<nav>
+  <div class="nav-inner">
+    <a href="landing.html" class="nav-logo">⏱ Flow Timer</a>
+    <div class="nav-links">
+      <a href="blog.html" class="nav-link" style="color:var(--accent)">← Blog</a>
+      <a href="index.html" class="btn btn-primary" style="padding:8px 18px;font-size:.85rem;">Open App</a>
+    </div>
+  </div>
+</nav>
+
+<div class="post-wrap">
+  <a href="blog.html" class="post-back">← Back to Blog</a>
+  <div id="post-container">
+    <div style="text-align:center;padding:60px;color:var(--text-muted);">Loading…</div>
+  </div>
+</div>
+
+<footer style="text-align:center;padding:32px 24px;border-top:1px solid var(--border);color:var(--text-muted);font-size:.85rem;">
+  © 2026 Flow Timer · <a href="blog.html">Blog</a> · <a href="landing.html#pricing">Pricing</a>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="supabase-client.js"></script>
+<script>
+  const slug = new URLSearchParams(location.search).get('slug');
+  const container = document.getElementById('post-container');
+
+  if (!slug) {
+    container.innerHTML = '<div class="not-found"><div style="font-size:3rem">🔍</div><p>Post not found.</p><a href="blog.html" class="btn btn-outline" style="margin-top:16px;display:inline-block;">Browse all posts</a></div>';
+  } else {
+    loadPost(slug);
+  }
+
+  async function loadPost(slug) {
+    const { data: post, error } = await _sb
+      .from('blog_posts')
+      .select('*')
+      .eq('slug', slug)
+      .eq('published', true)
+      .single();
+
+    if (error || !post) {
+      container.innerHTML = '<div class="not-found"><div style="font-size:3rem">😕</div><p>Post not found or not published yet.</p><a href="blog.html" class="btn btn-outline" style="margin-top:16px;display:inline-block;">Browse all posts</a></div>';
+      return;
+    }
+
+    // Update page title & SEO meta tags
+    document.title = `${post.seo_title || post.title} — Flow Timer Blog`;
+    const metaDesc = post.seo_description || post.excerpt || '';
+    const ogImg    = post.og_image || post.cover_image || '';
+    document.getElementById('meta-desc').content = metaDesc;
+    document.getElementById('og-title').content  = post.seo_title || post.title;
+    document.getElementById('og-desc').content   = metaDesc;
+    document.getElementById('og-image').content  = ogImg;
+
+    const html = marked.parse(post.content || '');
+    container.innerHTML = `
+      ${post.tag ? `<div class="post-tag">${esc(post.tag)}</div>` : ''}
+      <h1 class="post-title">${esc(post.title)}</h1>
+      <div class="post-meta">
+        <span>🗓 ${fmtDate(post.created_at)}</span>
+        ${post.updated_at && post.updated_at !== post.created_at ? `<span>Updated ${fmtDate(post.updated_at)}</span>` : ''}
+        <span style="margin-left:auto;"><a href="signup.html" class="btn btn-primary" style="padding:6px 16px;font-size:.8rem;">Start Free Trial</a></span>
+      </div>
+      ${post.cover_image ? `<img class="post-cover" src="${esc(post.cover_image)}" alt="${esc(post.title)}">` : ''}
+      <div class="post-content">${html}</div>
+      <hr style="border:none;border-top:1px solid var(--border);margin:48px 0 32px;">
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:28px;text-align:center;">
+        <div style="font-size:1.4rem;font-weight:700;margin-bottom:8px;">Ready to try Flow Timer?</div>
+        <p style="color:var(--text-muted);margin-bottom:20px;">7-day free trial. No credit card required.</p>
+        <a href="signup.html" class="btn btn-primary">Start Free Trial →</a>
+      </div>
+    `;
+  }
+
+  function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  function fmtDate(d) { return new Date(d).toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'}); }
+</script>
+</body>
+</html>

@@ -30,6 +30,12 @@
         img.style.cssText = 'width:28px;height:28px;border-radius:50%;object-fit:cover;';
         document.querySelector('.header-actions').prepend(img);
       }
+      // Show blog admin link for admin user
+      if (user.email === 'arpietmalpani@gmail.com') {
+        document.getElementById('blog-admin-link').style.display = 'inline-flex';
+        document.getElementById('blog-admin-link').style.alignItems = 'center';
+      }
+
       // Restrict presets for free users (?preview=free to test)
       const previewFree = new URLSearchParams(location.search).get('preview') === 'free';
       const isPro = !previewFree && (user.plan === 'pro' || user.plan === 'trial');
@@ -99,6 +105,7 @@
       <button class="icon-btn" id="theme-btn" title="Toggle theme (T)">☀</button>
       <button class="icon-btn" id="settings-btn" title="Settings (S)">⚙</button>
       <button class="icon-btn" id="history-btn" title="Session History (H)">📋</button>
+      <a id="blog-admin-link" href="blog-admin.html" style="display:none;font-size:0.7rem;padding:0 10px;height:36px;line-height:36px;background:var(--accent);color:#000;border-radius:8px;font-weight:700;text-decoration:none;">✍️ Blog</a>
       <button class="icon-btn" id="signout-btn" title="Sign out" style="font-size:0.7rem;width:auto;padding:0 10px;">Sign out</button>
     </div>
   </header>
