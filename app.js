@@ -568,19 +568,16 @@ function syncPip() {
 
   if (isWorkout) {
     const phaseNames = { prepare: 'Prepare', work: 'Work', rest: 'Rest', done: 'Done!', idle: 'Ready' };
-    const mins = Math.floor(wo.timeLeft / 60).toString().padStart(2, '0');
-    const secs = (wo.timeLeft % 60).toString().padStart(2, '0');
     if (modeEl)    modeEl.textContent = `💪 ${phaseNames[wo.phase] || wo.phase}`;
     if (taskEl)    taskEl.textContent = wo.phase !== 'idle' && wo.phase !== 'done'
       ? `Round ${wo.round} / ${wo.settings.rounds}` : '';
     if (playBtn)   playBtn.textContent = wo.status === 'running' ? '⏸' : '▶';
     if (skipBtn)   skipBtn.style.display = 'flex';
     if (toggleBtn) toggleBtn.style.display = 'none';
-    if (timeBigEl) timeBigEl.textContent = `${mins}:${secs}`;
-    // Always analog for workout — draw using workout state
-    if (analogWrap)  analogWrap.style.display = isAnalog ? 'flex' : 'none';
-    if (digitalWrap) digitalWrap.style.display = isAnalog ? 'none' : 'flex';
-    if (isAnalog && canvas) drawPipWorkoutClock(canvas);
+    // Always force analog for workout — no digital option
+    if (analogWrap)  analogWrap.style.display  = 'flex';
+    if (digitalWrap) digitalWrap.style.display = 'none';
+    if (canvas) drawPipWorkoutClock(canvas);
   } else {
     const mins = Math.floor(state.timeLeft / 60).toString().padStart(2, '0');
     const secs = (state.timeLeft % 60).toString().padStart(2, '0');
