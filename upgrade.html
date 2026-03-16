@@ -93,11 +93,14 @@
     <h1 class="auth-title">Upgrade to Pro</h1>
     <p class="auth-sub">Keep all your Pro features after trial</p>
 
-    <!-- Monthly / Yearly Toggle -->
+    <!-- Monthly / Yearly / Lifetime Toggle -->
     <div class="plan-toggle">
       <button class="plan-btn active" id="btn-monthly" onclick="switchPlan('monthly')">Monthly</button>
       <button class="plan-btn" id="btn-yearly" onclick="switchPlan('yearly')">
         Yearly <span class="save-badge" style="pointer-events:none;">Save 16%</span>
+      </button>
+      <button class="plan-btn" id="btn-lifetime" onclick="switchPlan('lifetime')" style="position:relative;">
+        Lifetime <span class="save-badge" style="pointer-events:none;background:#ff6b35;">🔥 Best</span>
       </button>
     </div>
 
@@ -117,8 +120,9 @@
           : (_tz.includes('Calcutta') || _tz.includes('Kolkata') || navigator.language === 'en-IN');
         var _plan = new URLSearchParams(location.search).get('plan') === 'yearly' ? 'yearly' : 'monthly';
         var prices = {
-          monthly: { amount: _india ? '₹499'   : '$4.99', period: '/month', sub: 'Billed monthly • Cancel anytime' },
-          yearly:  { amount: _india ? '₹4,167' : '$50',   period: '/year',  sub: _india ? 'Billed yearly — save ₹831' : 'Billed yearly — save $9.88' }
+          monthly:  { amount: _india ? '₹499'    : '$4.99', period: '/month',    sub: 'Billed monthly • Cancel anytime' },
+          yearly:   { amount: _india ? '₹4,167'  : '$50',   period: '/year',     sub: _india ? 'Billed yearly — save ₹831' : 'Billed yearly — save $9.88' },
+          lifetime: { amount: _india ? '₹10,000' : '$100',  period: ' one-time', sub: 'Pay once, use forever — never billed again' }
         };
         document.getElementById('price-amount').textContent = prices[_plan].amount;
         document.getElementById('price-period').textContent = prices[_plan].period;
@@ -181,11 +185,13 @@
     const STRIPE_KEY = 'pk_test_51TBJuvECIoDrvWZBUZI0hsz19Hw2LGGmHVkl5tcZi1JGaIwy4CdiLtm0IBFKXlG8nNL2mlFg4ggjwQnUKySuCHcF00D0ABGu7v';
 
     const PRICE_PLANS = {
-      monthly: { amount: 49900, label: isIndia ? '₹499'    : '$4.99', period: '/month', sub: 'Billed monthly • Cancel anytime' },
-      yearly:  { amount: 416700, label: isIndia ? '₹4,167' : '$50',   period: '/year', sub: isIndia ? 'Billed yearly — save ₹831' : 'Billed yearly — save $9.88' }
+      monthly:  { amount: 49900,    label: isIndia ? '₹499'    : '$4.99', period: '/month',    sub: 'Billed monthly • Cancel anytime' },
+      yearly:   { amount: 416700,   label: isIndia ? '₹4,167'  : '$50',   period: '/year',     sub: isIndia ? 'Billed yearly — save ₹831' : 'Billed yearly — save $9.88' },
+      lifetime: { amount: 1000000,  label: isIndia ? '₹10,000' : '$100',  period: ' one-time', sub: 'Pay once, use forever — never billed again' }
     };
 
-    let selectedPlan = new URLSearchParams(location.search).get('plan') === 'yearly' ? 'yearly' : 'monthly';
+    const _planParam = new URLSearchParams(location.search).get('plan');
+    let selectedPlan = _planParam === 'yearly' ? 'yearly' : _planParam === 'lifetime' ? 'lifetime' : 'monthly';
     let currentUser = null;
 
     // Always update price display on load
@@ -193,9 +199,10 @@
     document.getElementById('price-amount').textContent = initPlan.label;
     document.getElementById('price-period').textContent = initPlan.period;
     document.getElementById('price-sub').textContent = initPlan.sub;
-    if (selectedPlan === 'yearly') {
+    if (selectedPlan !== 'monthly') {
       document.getElementById('btn-monthly').classList.remove('active');
-      document.getElementById('btn-yearly').classList.add('active');
+      document.getElementById('btn-' + selectedPlan).classList.add('active');
+      if (selectedPlan === 'lifetime') document.getElementById('pay-btn').textContent = 'Get Lifetime Access';
     }
 
     // Load user
@@ -220,10 +227,12 @@
       selectedPlan = plan;
       document.getElementById('btn-monthly').classList.toggle('active', plan === 'monthly');
       document.getElementById('btn-yearly').classList.toggle('active', plan === 'yearly');
+      document.getElementById('btn-lifetime').classList.toggle('active', plan === 'lifetime');
       const p = PRICE_PLANS[plan];
       document.getElementById('price-amount').textContent = p.label;
       document.getElementById('price-period').textContent = p.period;
       document.getElementById('price-sub').textContent = p.sub;
+      document.getElementById('pay-btn').textContent = plan === 'lifetime' ? 'Get Lifetime Access' : 'Upgrade Now';
     }
 
     // Pay

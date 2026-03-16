@@ -37,10 +37,14 @@ export default async function handler(req, res) {
     );
 
     const now = new Date();
-    const validUntil = new Date(now);
-    if (plan === 'yearly') {
+    let validUntil;
+    if (plan === 'lifetime') {
+      validUntil = new Date('2099-12-31T23:59:59Z');
+    } else if (plan === 'yearly') {
+      validUntil = new Date(now);
       validUntil.setFullYear(validUntil.getFullYear() + 1);
     } else {
+      validUntil = new Date(now);
       validUntil.setMonth(validUntil.getMonth() + 1);
     }
 
