@@ -499,6 +499,16 @@
           <button class="plan-btn active" data-music-mode="beat">🥁 Beat</button>
           <button class="plan-btn" data-music-mode="binaural">🧠 Binaural</button>
           <button class="plan-btn" data-music-mode="file">🎧 My Music</button>
+          <button class="plan-btn" data-music-mode="youtube">▶ YouTube</button>
+        </div>
+
+        <!-- Volume -->
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+          <span id="music-vol-icon" style="font-size:1rem;cursor:pointer;" onclick="musicToggleMute()">🔊</span>
+          <input type="range" id="music-vol-slider" min="0" max="100" value="70"
+            style="flex:1;accent-color:var(--accent);"
+            oninput="musicSetVolume(this.value)">
+          <span id="music-vol-val" style="font-size:0.8rem;color:var(--text-muted);min-width:28px;text-align:right;">70%</span>
         </div>
 
         <!-- Beat BPM -->
@@ -523,17 +533,33 @@
           </div>
         </div>
 
-        <!-- File picker -->
+        <!-- File picker + playlist -->
         <div id="music-file-section" class="hidden">
           <label style="display:block;text-align:center;padding:12px;border:1px dashed var(--border);border-radius:10px;cursor:pointer;font-size:0.82rem;color:var(--text-muted);">
-            📂 Choose audio file
-            <input type="file" accept="audio/*" id="music-file-input" style="display:none">
+            📂 Add audio files
+            <input type="file" accept="audio/*" id="music-file-input" style="display:none" multiple>
           </label>
-          <div id="music-filename" style="text-align:center;font-size:0.75rem;color:var(--text-muted);margin-top:6px;"></div>
+          <div id="music-file-playlist" style="margin-top:8px;max-height:140px;overflow-y:auto;"></div>
         </div>
+
+        <!-- YouTube -->
+        <div id="music-youtube-section" class="hidden">
+          <div style="display:flex;gap:6px;margin-bottom:10px;">
+            <input id="music-yt-input" type="text" placeholder="Paste YouTube URL…"
+              style="flex:1;padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:0.8rem;">
+            <button onclick="musicYtAdd()" class="wo-adj-btn" style="padding:0 14px;border-radius:8px;">+</button>
+          </div>
+          <div id="music-yt-playlist" style="max-height:140px;overflow-y:auto;margin-bottom:10px;"></div>
+          <div id="music-yt-container"></div>
+          <div style="display:flex;gap:8px;justify-content:center;margin-top:8px;">
+            <button onclick="musicYtPrev()" class="btn-secondary" style="padding:6px 14px;font-size:0.8rem;">⏮ Prev</button>
+            <button onclick="musicYtNext()" class="btn-secondary" style="padding:6px 14px;font-size:0.8rem;">Next ⏭</button>
+          </div>
+        </div>
+
       </div>
     </div>
-    <audio id="music-audio" loop></audio>
+    <audio id="music-audio"></audio>
 
   </main>
 
