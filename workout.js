@@ -52,10 +52,50 @@ function woSelectPreset(btn, key) {
   wo.preset   = key;
   wo.settings = { ...WO_DEFAULT, ...preset };
   woSave();
-  woUpdateSettingsUI();
-  woUpdateBadges();
   woUpdatePresetUI();
-  woReset();
+
+  if (key === 'custom') {
+    document.getElementById('workout-card').classList.add('hidden');
+    document.getElementById('wo-custom-setup').classList.remove('hidden');
+    document.getElementById('wo-settings-row').classList.add('hidden');
+    document.getElementById('wo-settings-card')?.classList.add('hidden');
+    woUpdateCustomSetupUI();
+  } else {
+    document.getElementById('workout-card').classList.remove('hidden');
+    document.getElementById('wo-custom-setup').classList.add('hidden');
+    document.getElementById('wo-settings-row').classList.remove('hidden');
+    woUpdateBadges();
+    woReset();
+  }
+}
+
+// ─── Custom Setup ─────────────────────────────────────────────────────────────
+function woFormatTime(secs) {
+  return String(Math.floor(secs / 60)).padStart(2, '0') + ':' + String(secs % 60).padStart(2, '0');
+}
+
+function woAdj(field, delta) {
+  const limits = {
+    prepareSecs: { min: 0,  max: 120 },
+    workSecs:    { min: 5,  max: 300 },
+    restSecs:    { min: 5,  max: 300 },
+    rounds:      { min: 1,  max: 30  }
+  };
+  const lim = limits[field];
+  if (!lim) return;
+  wo.settings[field] = Math.max(lim.min, Math.min(lim.max, wo.settings[field] + delta));
+  woSave();
+  woUpdateCustomSetupUI();
+}
+
+function woUpdateCustomSetupUI() {
+  const s = wo.settings;
+  const p   = document.getElementById('wo-adj-prepare'); if (p)   p.textContent   = s.prepareSecs === 0 ? 'Off' : woFormatTime(s.prepareSecs);
+  const w   = document.getElementById('wo-adj-work');    if (w)   w.textContent   = woFormatTime(s.workSecs);
+  const r   = document.getElementById('wo-adj-rest');    if (r)   r.textContent   = woFormatTime(s.restSecs);
+  const rnd = document.getElementById('wo-adj-rounds');  if (rnd) rnd.textContent = s.rounds;
+  const total = (s.prepareSecs || 0) + (s.workSecs + s.restSecs) * s.rounds;
+  const t   = document.getElementById('wo-adj-total');   if (t)   t.textContent   = woFormatTime(total);
 }
 
 function woUpdatePresetUI() {
@@ -367,6 +407,15 @@ function woBindEvents() {
 
   document.getElementById('wo-settings-btn')?.addEventListener('click', () => {
     document.getElementById('wo-settings-card')?.classList.toggle('hidden');
+  });
+
+  document.getElementById('wo-go-btn')?.addEventListener('click', () => {
+    document.getElementById('workout-card').classList.remove('hidden');
+    document.getElementById('wo-custom-setup').classList.add('hidden');
+    document.getElementById('wo-settings-row').classList.remove('hidden');
+    woUpdateBadges();
+    woReset();
+    woStart();
   });
 
   const bindSlider = (id, vid, setter, fmt) => {

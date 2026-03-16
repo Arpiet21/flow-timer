@@ -361,7 +361,7 @@
     <!-- ── Workout Timer Section ──────────────────────────────────────────── -->
     <div id="workout-section" class="hidden">
 
-      <div class="card">
+      <div class="card" id="workout-card">
 
         <!-- Preset Pills -->
         <div class="plan-toggle" style="margin-bottom:16px;">
@@ -403,8 +403,49 @@
 
       </div>
 
+      <!-- Custom Setup Screen -->
+      <div class="card hidden" id="wo-custom-setup">
+        <div class="wo-setup-row">
+          <span class="wo-setup-label">PREP</span>
+          <div class="wo-setup-controls">
+            <button class="wo-adj-btn" onclick="woAdj('prepareSecs',-5)">−</button>
+            <span class="wo-setup-val" id="wo-adj-prepare">00:05</span>
+            <button class="wo-adj-btn" onclick="woAdj('prepareSecs', 5)">+</button>
+          </div>
+        </div>
+        <div class="wo-setup-row">
+          <span class="wo-setup-label">WORK</span>
+          <div class="wo-setup-controls">
+            <button class="wo-adj-btn" onclick="woAdj('workSecs',-5)">−</button>
+            <span class="wo-setup-val" id="wo-adj-work">00:30</span>
+            <button class="wo-adj-btn" onclick="woAdj('workSecs', 5)">+</button>
+          </div>
+        </div>
+        <div class="wo-setup-row">
+          <span class="wo-setup-label">REST</span>
+          <div class="wo-setup-controls">
+            <button class="wo-adj-btn" onclick="woAdj('restSecs',-5)">−</button>
+            <span class="wo-setup-val" id="wo-adj-rest">00:15</span>
+            <button class="wo-adj-btn" onclick="woAdj('restSecs', 5)">+</button>
+          </div>
+        </div>
+        <div class="wo-setup-row">
+          <span class="wo-setup-label">ROUNDS</span>
+          <div class="wo-setup-controls">
+            <button class="wo-adj-btn" onclick="woAdj('rounds',-1)">−</button>
+            <span class="wo-setup-val" id="wo-adj-rounds">5</span>
+            <button class="wo-adj-btn" onclick="woAdj('rounds', 1)">+</button>
+          </div>
+        </div>
+        <div class="wo-setup-row wo-setup-total">
+          <span class="wo-setup-label">TOTAL</span>
+          <span class="wo-setup-val" id="wo-adj-total">02:30</span>
+        </div>
+        <button class="btn-primary" id="wo-go-btn" style="width:100%;margin-top:20px;font-size:1.05rem;letter-spacing:3px;">GO! ▶</button>
+      </div>
+
       <!-- Workout Settings Toggle -->
-      <div style="text-align:center;">
+      <div id="wo-settings-row" style="text-align:center;">
         <button id="wo-settings-btn" class="btn-link-muted">⚙ Customize Workout</button>
       </div>
 

@@ -633,6 +633,68 @@ kbd {
   transform: scale(1.2);
 }
 
+/* Custom Setup Screen */
+.wo-setup-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+}
+.wo-setup-row:last-of-type { border-bottom: none; }
+
+.wo-setup-label {
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  min-width: 80px;
+}
+
+.wo-setup-controls {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.wo-setup-val {
+  font-size: 1.1rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  min-width: 58px;
+  text-align: center;
+  letter-spacing: 1px;
+}
+
+.wo-adj-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  background: var(--surface2);
+  color: var(--text);
+  font-size: 1.3rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+  line-height: 1;
+  font-family: inherit;
+}
+.wo-adj-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(57,255,20,0.08);
+}
+
+.wo-setup-total { padding-top: 16px; }
+.wo-setup-total .wo-setup-label { color: var(--text); font-size: 0.85rem; }
+.wo-setup-total .wo-setup-val   { color: var(--accent); font-size: 1.25rem; }
+
 /* Settings link button */
 .btn-link-muted {
   background: transparent;
