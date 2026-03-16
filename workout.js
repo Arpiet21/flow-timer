@@ -69,6 +69,15 @@ function woSelectPreset(btn, key) {
   }
 }
 
+// ─── Inline Rounds Adjuster (visible on all presets) ──────────────────────────
+function woAdjRounds(delta) {
+  if (wo.status === 'running') return;
+  wo.settings.rounds = Math.max(1, Math.min(30, wo.settings.rounds + delta));
+  woSave();
+  woUpdateBadges();
+  woReset();
+}
+
 // ─── Custom Setup ─────────────────────────────────────────────────────────────
 function woFormatTime(secs) {
   return String(Math.floor(secs / 60)).padStart(2, '0') + ':' + String(secs % 60).padStart(2, '0');
@@ -340,8 +349,10 @@ function woUpdateBadges() {
   const w = document.getElementById('wo-work-badge');
   const r = document.getElementById('wo-rest-badge');
   const t = document.getElementById('wo-total-label');
+  const rn = document.getElementById('wo-rounds-inline');
   if (w) w.textContent = `💪 ${wo.settings.workSecs}s work`;
   if (r) r.textContent = `😮‍💨 ${wo.settings.restSecs}s rest`;
+  if (rn) rn.textContent = wo.settings.rounds;
   if (t) {
     const s = wo.settings;
     const total = (s.prepareSecs || 0) + (s.workSecs + s.restSecs) * s.rounds;
