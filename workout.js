@@ -138,14 +138,17 @@ function woToggle() {
 }
 
 function woTick() {
-  // Countdown beep at 3, 2, 1 seconds remaining
-  if (wo.timeLeft > 0 && wo.timeLeft <= 3) woBeep('countdown');
+  // Speak countdown at 3, 2, 1 seconds remaining
+  if (wo.timeLeft === 3) woSpeak('3');
+  else if (wo.timeLeft === 2) woSpeak('2');
+  else if (wo.timeLeft === 1) woSpeak('1');
   wo.timeLeft--;
   woRender();
   if (wo.timeLeft <= 0) woAdvance();
 }
 
 function woAdvance() {
+  woSpeak('Change');
   woBeep('transition');
 
   if (wo.phase === 'prepare') {
@@ -360,6 +363,18 @@ function woUpdateStartBtn() {
   } else {
     btn.textContent = wo.status === 'running' ? 'Pause' : wo.status === 'paused' ? 'Resume' : 'Start';
   }
+}
+
+// ─── Speech ───────────────────────────────────────────────────────────────────
+function woSpeak(text) {
+  if (typeof state !== 'undefined' && !state.settings.soundEnabled) return;
+  if (!('speechSynthesis' in window)) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.rate   = 1.1;
+  u.pitch  = 1.0;
+  u.volume = 1.0;
+  speechSynthesis.speak(u);
 }
 
 // ─── Sound ────────────────────────────────────────────────────────────────────
