@@ -361,15 +361,15 @@
     <!-- ── Workout Timer Section ──────────────────────────────────────────── -->
     <div id="workout-section" class="hidden">
 
-      <div class="card" id="workout-card">
+      <!-- Preset Pills (always visible) -->
+      <div class="plan-toggle" style="margin-bottom:16px;">
+        <button class="plan-btn active" data-preset="tabata" onclick="woSelectPreset(this,'tabata')">Tabata</button>
+        <button class="plan-btn" data-preset="sprint" onclick="woSelectPreset(this,'sprint')">Sprint</button>
+        <button class="plan-btn" data-preset="endurance" onclick="woSelectPreset(this,'endurance')">Endurance</button>
+        <button class="plan-btn" data-preset="custom" onclick="woSelectPreset(this,'custom')">Custom</button>
+      </div>
 
-        <!-- Preset Pills -->
-        <div class="plan-toggle" style="margin-bottom:16px;">
-          <button class="plan-btn active" data-preset="tabata" onclick="woSelectPreset(this,'tabata')">Tabata</button>
-          <button class="plan-btn" data-preset="sprint" onclick="woSelectPreset(this,'sprint')">Sprint</button>
-          <button class="plan-btn" data-preset="endurance" onclick="woSelectPreset(this,'endurance')">Endurance</button>
-          <button class="plan-btn" data-preset="custom" onclick="woSelectPreset(this,'custom')">Custom</button>
-        </div>
+      <div class="card" id="workout-card">
 
         <!-- Interval Badges -->
         <div style="display:flex;gap:10px;justify-content:center;margin-bottom:12px;">

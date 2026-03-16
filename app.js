@@ -138,7 +138,7 @@ function onTimerEnd() {
 // ─── Mode ─────────────────────────────────────────────────────────────────────
 function switchMode(mode, auto = false) {
   state.mode = mode;
-  document.querySelectorAll('.mode-btn').forEach(b =>
+  document.querySelectorAll('#flow-section .mode-btn').forEach(b =>
     b.classList.toggle('active', b.dataset.mode === mode)
   );
   resetTimer();
@@ -767,7 +767,7 @@ function bindEvents() {
   });
 
   // Mode tabs
-  document.querySelectorAll('.mode-btn').forEach(btn =>
+  document.querySelectorAll('#flow-section .mode-btn').forEach(btn =>
     btn.addEventListener('click', () => switchMode(btn.dataset.mode))
   );
 
