@@ -64,8 +64,9 @@
         };
       }
 
-      // Show trial countdown banner
-      if (user.plan === 'trial' && user.trialDaysLeft > 0) {
+      // Show trial countdown banner (not for admin or paid users)
+      const isAdmin = user.email === 'arpietmalpani@gmail.com';
+      if (!isAdmin && user.plan === 'trial' && user.trialDaysLeft > 0) {
         const banner = document.createElement('div');
         banner.style.cssText = `
           position:fixed; top:0; left:0; right:0; z-index:999;
