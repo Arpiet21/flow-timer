@@ -138,10 +138,10 @@ function woToggle() {
 }
 
 function woTick() {
-  // Speak countdown at 3, 2, 1 seconds remaining
-  if (wo.timeLeft === 3) woSpeak('3');
-  else if (wo.timeLeft === 2) woSpeak('2');
-  else if (wo.timeLeft === 1) woSpeak('1');
+  // Speak countdown at 4, 3, 2 seconds remaining so voice lands on 3, 2, 1
+  if (wo.timeLeft === 4) woSpeak('3');
+  else if (wo.timeLeft === 3) woSpeak('2');
+  else if (wo.timeLeft === 2) woSpeak('1');
   wo.timeLeft--;
   woRender();
   if (wo.timeLeft <= 0) woAdvance();
