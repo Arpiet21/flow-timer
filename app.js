@@ -463,6 +463,7 @@ const PIP_HTML = `
   <div class="pip-controls">
     <button class="pip-btn" id="pip-clock-toggle" title="Toggle analog/digital">⏱</button>
     <button class="pip-btn" id="pip-play" title="Play/Pause">▶</button>
+    <button class="pip-btn" id="pip-skip" title="Skip phase">⏭</button>
     <button class="pip-btn" id="pip-reset" title="Reset">↺</button>
   </div>`;
 
@@ -519,15 +520,27 @@ function updatePipBtn() {
 function initPipControls(win) {
   const doc = win._popup ? win._popup.document : win.document;
   const wnd = win._popup || win;
-  doc.getElementById('pip-play')?.addEventListener('click', () => { toggleStartPause(); syncPip(); });
-  doc.getElementById('pip-reset')?.addEventListener('click', () => { resetTimer(); syncPip(); });
+  doc.getElementById('pip-play')?.addEventListener('click', () => {
+    if (window.activeTimerMode === 'workout' && typeof woToggle === 'function') {
+      if (typeof wo !== 'undefined' && wo.phase === 'done') woReset(); else woToggle();
+    } else { toggleStartPause(); }
+    syncPip();
+  });
+  doc.getElementById('pip-skip')?.addEventListener('click', () => {
+    if (window.activeTimerMode === 'workout' && typeof woSkip === 'function') woSkip();
+    syncPip();
+  });
+  doc.getElementById('pip-reset')?.addEventListener('click', () => {
+    if (window.activeTimerMode === 'workout' && typeof woReset === 'function') woReset();
+    else resetTimer();
+    syncPip();
+  });
   doc.getElementById('pip-clock-toggle')?.addEventListener('click', () => {
     state.settings.clockType = state.settings.clockType === 'analog' ? 'digital' : 'analog';
     saveToStorage();
     applyClockType();
     syncPip();
   });
-  // Auto-switch to digital when widget is resized small
   wnd.addEventListener('resize', () => syncPip());
 }
 
@@ -535,32 +548,52 @@ function syncPip() {
   if (!pipWindow) return;
   const doc = pipWindow._popup ? pipWindow._popup.document : pipWindow.document;
   const wnd = pipWindow._popup || pipWindow;
-  const mins = Math.floor(state.timeLeft / 60).toString().padStart(2, '0');
-  const secs = (state.timeLeft % 60).toString().padStart(2, '0');
-  // Auto-switch: if pip window is too small to show analog, force digital
   const pipW = wnd.innerWidth  || 220;
   const pipH = wnd.innerHeight || 280;
   const isAnalog = state.settings.clockType === 'analog' && pipW >= 150 && pipH >= 150;
+  const isWorkout = window.activeTimerMode === 'workout' && typeof wo !== 'undefined';
 
   const modeEl    = doc.getElementById('pip-mode');
   const taskEl    = doc.getElementById('pip-task');
   const playBtn   = doc.getElementById('pip-play');
+  const skipBtn   = doc.getElementById('pip-skip');
   const toggleBtn = doc.getElementById('pip-clock-toggle');
   const analogWrap  = doc.getElementById('pip-analog-wrap');
   const digitalWrap = doc.getElementById('pip-digital-wrap');
   const timeBigEl   = doc.getElementById('pip-time-big');
   const canvas      = doc.getElementById('pip-clock');
 
-  if (modeEl)    modeEl.textContent = state.mode === 'work' ? 'Focus' : state.mode === 'short' ? 'Short Break' : 'Long Break';
-  if (taskEl)    taskEl.textContent = state.task || '';
-  if (playBtn)   playBtn.textContent = state.status === 'running' ? '⏸' : '▶';
-  if (toggleBtn) toggleBtn.textContent = isAnalog ? '⏱' : '🕐';
-  if (timeBigEl) timeBigEl.textContent = `${mins}:${secs}`;
-  if (analogWrap)  analogWrap.style.display  = isAnalog ? 'flex' : 'none';
-  if (digitalWrap) digitalWrap.style.display = isAnalog ? 'none' : 'flex';
   doc.body?.setAttribute('data-theme', state.theme);
   doc.documentElement?.style.setProperty('--accent', state.settings.accentColor);
-  if (isAnalog && canvas) drawPipClock(canvas);
+
+  if (isWorkout) {
+    const phaseNames = { prepare: 'Prepare', work: 'Work', rest: 'Rest', done: 'Done!', idle: 'Ready' };
+    const mins = Math.floor(wo.timeLeft / 60).toString().padStart(2, '0');
+    const secs = (wo.timeLeft % 60).toString().padStart(2, '0');
+    if (modeEl)    modeEl.textContent = `💪 ${phaseNames[wo.phase] || wo.phase}`;
+    if (taskEl)    taskEl.textContent = wo.phase !== 'idle' && wo.phase !== 'done'
+      ? `Round ${wo.round} / ${wo.settings.rounds}` : '';
+    if (playBtn)   playBtn.textContent = wo.status === 'running' ? '⏸' : '▶';
+    if (skipBtn)   skipBtn.style.display = 'flex';
+    if (toggleBtn) toggleBtn.style.display = 'none';
+    if (timeBigEl) timeBigEl.textContent = `${mins}:${secs}`;
+    // Always analog for workout — draw using workout state
+    if (analogWrap)  analogWrap.style.display = isAnalog ? 'flex' : 'none';
+    if (digitalWrap) digitalWrap.style.display = isAnalog ? 'none' : 'flex';
+    if (isAnalog && canvas) drawPipWorkoutClock(canvas);
+  } else {
+    const mins = Math.floor(state.timeLeft / 60).toString().padStart(2, '0');
+    const secs = (state.timeLeft % 60).toString().padStart(2, '0');
+    if (modeEl)    modeEl.textContent = state.mode === 'work' ? 'Focus' : state.mode === 'short' ? 'Short Break' : 'Long Break';
+    if (taskEl)    taskEl.textContent = state.task || '';
+    if (playBtn)   playBtn.textContent = state.status === 'running' ? '⏸' : '▶';
+    if (skipBtn)   skipBtn.style.display = 'none';
+    if (toggleBtn) toggleBtn.style.display = 'flex';
+    if (timeBigEl) timeBigEl.textContent = `${mins}:${secs}`;
+    if (analogWrap)  analogWrap.style.display  = isAnalog ? 'flex' : 'none';
+    if (digitalWrap) digitalWrap.style.display = isAnalog ? 'none' : 'flex';
+    if (isAnalog && canvas) drawPipClock(canvas);
+  }
 }
 
 function drawPipClock(canvas) {
@@ -659,6 +692,52 @@ function drawPipClock(canvas) {
   ctx.arc(cx - 3, cy - 3, 4, 0, Math.PI * 2);
   ctx.fillStyle = 'rgba(255,255,255,0.5)';
   ctx.fill();
+}
+
+function drawPipWorkoutClock(canvas) {
+  const ctx   = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const cx = W / 2, cy = H / 2;
+  const r = Math.min(cx, cy) - 4;
+  const isDark = state.theme === 'dark';
+  const faceR  = r - 8;
+  const progress = wo.totalTime > 0 ? wo.timeLeft / wo.totalTime : 0;
+  const phaseColor = wo.phase === 'work' ? (state.settings.accentColor || '#39ff14')
+    : wo.phase === 'rest'    ? '#30d158'
+    : wo.phase === 'prepare' ? '#ffd60a'
+    : '#888';
+
+  ctx.clearRect(0, 0, W, H);
+
+  // Outer ring
+  const ringGrad = ctx.createLinearGradient(cx - r, cy - r, cx + r, cy + r);
+  ringGrad.addColorStop(0,   isDark ? '#606070' : '#d8d8d8');
+  ringGrad.addColorStop(0.5, isDark ? '#252530' : '#909090');
+  ringGrad.addColorStop(1,   isDark ? '#505060' : '#c0c0c0');
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.fillStyle = ringGrad; ctx.fill();
+
+  // Face
+  ctx.beginPath(); ctx.arc(cx, cy, faceR, 0, Math.PI * 2);
+  ctx.fillStyle = isDark ? '#dde0e8' : '#f8f8f8'; ctx.fill();
+
+  // Progress sector
+  if (progress > 0.002) {
+    ctx.beginPath(); ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, faceR, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * progress);
+    ctx.closePath();
+    ctx.fillStyle = phaseColor; ctx.globalAlpha = 0.88; ctx.fill(); ctx.globalAlpha = 1;
+  }
+
+  // Face border
+  ctx.beginPath(); ctx.arc(cx, cy, faceR, 0, Math.PI * 2);
+  ctx.strokeStyle = isDark ? '#aaa' : '#bbb'; ctx.lineWidth = 1; ctx.stroke();
+
+  // Round label in center
+  const fontSize = Math.max(7, Math.round(r * 0.12));
+  ctx.font = `700 ${fontSize}px 'Segoe UI',system-ui,sans-serif`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#111';
+  ctx.fillText(`${wo.round}/${wo.settings.rounds}`, cx, cy);
 }
 
 // ─── Sound ────────────────────────────────────────────────────────────────────

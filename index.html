@@ -617,6 +617,8 @@
       // Restore page title
       if (!isWork && typeof renderWo !== 'undefined') renderWo();
       if (isWork && typeof renderTimer !== 'undefined') renderTimer();
+      // Sync floating widget to new mode
+      if (typeof syncPip === 'function') syncPip();
     }
   </script>
 </body>

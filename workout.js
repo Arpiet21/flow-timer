@@ -322,6 +322,8 @@ function woRender() {
     const short = { prepare: 'PREP', work: 'WORK', rest: 'REST', done: 'DONE' };
     document.title = `${m}:${s} ${short[wo.phase] || ''} — Flow Timer`;
   }
+  // Keep floating widget in sync
+  if (typeof syncPip === 'function' && typeof pipWindow !== 'undefined' && pipWindow) syncPip();
 }
 
 function woPhaseColor() {
