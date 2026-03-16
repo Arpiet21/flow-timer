@@ -19,9 +19,12 @@ let   _ytIdx      = 0;
 let   _ytPlayer   = null;    // YT.Player instance
 
 const BINAURAL_PRESETS = {
-  focus:  { base: 200, beat: 10 },
-  energy: { base: 200, beat: 20 },
-  calm:   { base: 200, beat: 6  },
+  focus:     { base: 200, beat: 10 },  // Alpha  — concentration
+  energy:    { base: 200, beat: 20 },  // Beta   — high energy
+  calm:      { base: 200, beat: 6  },  // Theta  — relaxation
+  deepfocus: { base: 200, beat: 40 },  // Gamma  — peak cognition
+  flow:      { base: 200, beat: 8  },  // Alpha  — creative flow
+  sleep:     { base: 200, beat: 2  },  // Delta  — deep rest
 };
 
 // ─── Master gain (beat + binaural) ────────────────────────────────────────────
