@@ -483,6 +483,58 @@
 
     </div><!-- /#workout-section -->
 
+    <!-- ── Shared Music Bar ───────────────────────────────────────────────── -->
+    <div class="card" id="music-bar" style="margin-top:12px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <span style="font-size:0.9rem;font-weight:700;">🎵 Music</span>
+        <label class="toggle-switch">
+          <input type="checkbox" id="music-toggle">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+
+      <div id="music-options" class="hidden" style="margin-top:14px;">
+        <!-- Mode selector -->
+        <div class="plan-toggle" style="margin-bottom:14px;">
+          <button class="plan-btn active" data-music-mode="beat">🥁 Beat</button>
+          <button class="plan-btn" data-music-mode="binaural">🧠 Binaural</button>
+          <button class="plan-btn" data-music-mode="file">🎧 My Music</button>
+        </div>
+
+        <!-- Beat BPM -->
+        <div id="music-beat-section">
+          <div style="display:flex;align-items:center;justify-content:space-between;">
+            <span style="font-size:0.82rem;color:var(--text-muted);">BPM</span>
+            <div style="display:flex;align-items:center;gap:10px;">
+              <button class="wo-adj-btn" onclick="musicBpmAdj(-5)">−</button>
+              <span id="music-bpm-val" style="font-weight:700;min-width:36px;text-align:center;">140</span>
+              <button class="wo-adj-btn" onclick="musicBpmAdj(5)">+</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Binaural presets -->
+        <div id="music-binaural-section" class="hidden">
+          <p style="font-size:0.72rem;color:var(--text-muted);text-align:center;margin-bottom:10px;">🎧 Headphones required for binaural beats</p>
+          <div class="plan-toggle">
+            <button class="plan-btn active" data-binaural="focus">Focus<br><small style="font-weight:400;opacity:0.8;">10Hz Alpha</small></button>
+            <button class="plan-btn" data-binaural="energy">Energy<br><small style="font-weight:400;opacity:0.8;">20Hz Beta</small></button>
+            <button class="plan-btn" data-binaural="calm">Calm<br><small style="font-weight:400;opacity:0.8;">6Hz Theta</small></button>
+          </div>
+        </div>
+
+        <!-- File picker -->
+        <div id="music-file-section" class="hidden">
+          <label style="display:block;text-align:center;padding:12px;border:1px dashed var(--border);border-radius:10px;cursor:pointer;font-size:0.82rem;color:var(--text-muted);">
+            📂 Choose audio file
+            <input type="file" accept="audio/*" id="music-file-input" style="display:none">
+          </label>
+          <div id="music-filename" style="text-align:center;font-size:0.75rem;color:var(--text-muted);margin-top:6px;"></div>
+        </div>
+      </div>
+    </div>
+    <audio id="music-audio" loop></audio>
+
   </main>
 
   <p class="kbd-hint">
@@ -493,6 +545,7 @@
     <kbd>H</kbd> history
   </p>
 
+  <script src="music.js"></script>
   <script src="app.js"></script>
   <script src="workout.js"></script>
   <script>

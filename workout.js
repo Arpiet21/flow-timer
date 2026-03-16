@@ -124,6 +124,7 @@ function woReset() {
   wo.timeLeft  = wo.totalTime;
   woUpdateStartBtn();
   woRender();
+  if (typeof musicStop === 'function') musicStop();
 }
 
 function woStart() {
@@ -131,6 +132,7 @@ function woStart() {
   wo.status = 'running';
   woUpdateStartBtn();
   woInterval = setInterval(woTick, 1000);
+  if (typeof musicStart === 'function') musicStart();
 }
 
 function woPause() {
@@ -139,6 +141,7 @@ function woPause() {
   woInterval = null;
   wo.status = 'paused';
   woUpdateStartBtn();
+  if (typeof musicPause === 'function') musicPause();
 }
 
 function woToggle() {

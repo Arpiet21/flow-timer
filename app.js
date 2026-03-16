@@ -75,6 +75,7 @@ function resetTimer() {
   state.timeLeft = state.totalTime;
   renderTimer();
   updateStartBtn();
+  if (typeof musicStop === 'function') musicStop();
 }
 
 function setFocusAssist(on) {
@@ -89,6 +90,7 @@ function startTimer() {
   updateStartBtn();
   tickInterval = setInterval(tick, 1000);
   setFocusAssist(true);
+  if (typeof musicStart === 'function') musicStart();
 }
 
 function pauseTimer() {
@@ -97,6 +99,7 @@ function pauseTimer() {
   state.status = 'paused';
   updateStartBtn();
   setFocusAssist(false);
+  if (typeof musicPause === 'function') musicPause();
 }
 
 function tick() {
