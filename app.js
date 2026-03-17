@@ -370,6 +370,8 @@ function applyAccentColor() {
     const doc = pipWindow._popup ? pipWindow._popup.document : pipWindow.document;
     doc?.documentElement?.style.setProperty('--accent', color);
   }
+  // Re-render heatmap so cell colors match the new accent
+  renderActivityHeatmap();
 }
 
 function applyTheme() {
@@ -383,6 +385,7 @@ function toggleTheme() {
   applyTheme();
   saveToStorage();
   renderTimer();
+  renderActivityHeatmap();
 }
 
 // ─── History ──────────────────────────────────────────────────────────────────
@@ -1102,6 +1105,30 @@ function registerServiceWorker() {
 }
 
 // ─── Activity Heatmap ─────────────────────────────────────────────────────────
+// Returns 5 shades blending from near-background to the accent color
+function _heatmapShades(hex) {
+  // Parse hex → RGB (handle 3-char shorthand too)
+  let h = hex.replace('#', '');
+  if (h.length === 3) h = h.split('').map(c => c + c).join('');
+  const fr = parseInt(h.slice(0,2), 16);
+  const fg = parseInt(h.slice(2,4), 16);
+  const fb = parseInt(h.slice(4,6), 16);
+
+  // Dark surface color to blend from
+  const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
+  const br = isDark ? 20 : 220;
+  const bg = isDark ? 24 : 224;
+  const bb = isDark ? 40 : 228;
+
+  // 5 levels: empty / very faint / medium / strong / full accent
+  return [0, 0.18, 0.40, 0.68, 1.0].map(t => {
+    const r = Math.round(br + (fr - br) * t);
+    const g = Math.round(bg + (fg - bg) * t);
+    const b = Math.round(bb + (fb - bb) * t);
+    return `rgb(${r},${g},${b})`;
+  });
+}
+
 function renderActivityHeatmap() {
   const grid      = document.getElementById('heatmap-grid');
   const monthsEl  = document.getElementById('heatmap-months');
@@ -1144,10 +1171,9 @@ function renderActivityHeatmap() {
   const startDay = new Date(endDay);
   startDay.setDate(endDay.getDate() - WEEKS * 7 + 1);
 
-  // ── Color scales ────────────────────────────────────────────────────────
-  const focusColors  = ['#1e2a1e', '#1a4a2a', '#1f7a3a', '#26a647', '#39ff14'];
-  const workoutColors= ['#1a1e3a', '#1a2d5a', '#1a4a8a', '#1a6ab0', '#30b0ff'];
-  const colors = isWorkout ? workoutColors : focusColors;
+  // ── Color scale derived from current accent color ───────────────────────
+  const accent = state?.settings?.accentColor || '#39ff14';
+  const colors = _heatmapShades(accent);
 
   function getColor(n) {
     if (n === 0) return colors[0];
