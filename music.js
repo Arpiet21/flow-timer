@@ -352,11 +352,12 @@ function musicToggle(enabled) {
   MUSIC.enabled = enabled;
   const opts = document.getElementById('music-options');
   if (opts) opts.classList.toggle('hidden', !enabled);
-  if (!enabled) { musicStop(); return; }
+  if (!enabled) { musicStop(); if (typeof syncPip === 'function') syncPip(); return; }
   // Auto-start if a timer is running
   const workRunning    = typeof state   !== 'undefined' && state.status   === 'running';
   const workoutRunning = typeof wo      !== 'undefined' && wo.status      === 'running';
   if (workRunning || workoutRunning) musicStart();
+  if (typeof syncPip === 'function') syncPip();
 }
 
 function musicSetMode(mode) {
@@ -420,6 +421,7 @@ function musicToggleMute() {
   if (slider) slider.value     = MUSIC.muted ? 0 : MUSIC.volume * 100;
   const valEl = document.getElementById('music-vol-val');
   if (valEl)  valEl.textContent = MUSIC.muted ? '0%' : `${Math.round(MUSIC.volume * 100)}%`;
+  if (typeof syncPip === 'function') syncPip();
 }
 
 

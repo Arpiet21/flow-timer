@@ -475,6 +475,11 @@ const PIP_HTML = `
     <button class="pip-btn" id="pip-play" title="Play/Pause">▶</button>
     <button class="pip-btn" id="pip-skip" title="Skip phase">⏭</button>
     <button class="pip-btn" id="pip-reset" title="Reset">↺</button>
+  </div>
+  <div class="pip-music-bar" id="pip-music-bar">
+    <button class="pip-btn pip-music-btn" id="pip-music-toggle" title="Toggle music">♪</button>
+    <span id="pip-music-label">Music off</span>
+    <button class="pip-btn pip-music-btn" id="pip-music-mute" title="Mute/Unmute">🔊</button>
   </div>`;
 
 const PIP_STYLES = `
@@ -494,7 +499,13 @@ const PIP_STYLES = `
   .pip-btn{width:30px;height:30px;border-radius:50%;border:1px solid var(--border);
     background:var(--surface);color:var(--text);font-size:.8rem;cursor:pointer;
     display:flex;align-items:center;justify-content:center;transition:background .2s,transform .1s}
-  .pip-btn:hover{transform:scale(1.1);background:var(--border)}`;
+  .pip-btn:hover{transform:scale(1.1);background:var(--border)}
+  .pip-music-bar{display:flex;align-items:center;gap:5px;margin-top:2px;background:rgba(255,255,255,0.05);
+    border-radius:20px;padding:3px 8px 3px 4px;border:1px solid var(--border)}
+  .pip-music-btn{width:24px;height:24px;font-size:.72rem;border:none;flex-shrink:0}
+  #pip-music-label{font-size:.58rem;color:var(--text-muted);white-space:nowrap;overflow:hidden;
+    text-overflow:ellipsis;max-width:70px;flex:1;text-align:center}
+  .pip-music-btn.active{color:#39ff14;border-color:#39ff14}`;
 
 function fallbackPopup() {
   const popup = window.open('', 'flow-timer-pip',
@@ -551,6 +562,19 @@ function initPipControls(win) {
     applyClockType();
     syncPip();
   });
+  doc.getElementById('pip-music-toggle')?.addEventListener('click', () => {
+    if (typeof musicToggle === 'function') {
+      musicToggle(!MUSIC.enabled);
+      // Sync the checkbox in main page
+      const cb = document.getElementById('music-toggle');
+      if (cb) cb.checked = MUSIC.enabled;
+    }
+    syncPip();
+  });
+  doc.getElementById('pip-music-mute')?.addEventListener('click', () => {
+    if (typeof musicToggleMute === 'function') musicToggleMute();
+    syncPip();
+  });
   wnd.addEventListener('resize', () => syncPip());
 }
 
@@ -572,6 +596,29 @@ function syncPip() {
   const digitalWrap = doc.getElementById('pip-digital-wrap');
   const timeBigEl   = doc.getElementById('pip-time-big');
   const canvas      = doc.getElementById('pip-clock');
+  // Music controls
+  const pipMusicToggle = doc.getElementById('pip-music-toggle');
+  const pipMusicMute   = doc.getElementById('pip-music-mute');
+  const pipMusicLabel  = doc.getElementById('pip-music-label');
+  if (typeof MUSIC !== 'undefined') {
+    if (pipMusicToggle) {
+      pipMusicToggle.textContent = MUSIC.enabled ? '♫' : '♪';
+      pipMusicToggle.classList.toggle('active', MUSIC.enabled);
+      pipMusicToggle.title = MUSIC.enabled ? 'Stop music' : 'Play music';
+    }
+    if (pipMusicMute) {
+      pipMusicMute.textContent = MUSIC.muted ? '🔇' : '🔊';
+      pipMusicMute.style.opacity = MUSIC.enabled ? '1' : '0.4';
+    }
+    if (pipMusicLabel) {
+      if (!MUSIC.enabled) {
+        pipMusicLabel.textContent = 'Music off';
+      } else {
+        const modeNames = { beat: 'Beat', binaural: 'Binaural', file: 'My Music', youtube: 'YouTube' };
+        pipMusicLabel.textContent = (MUSIC.muted ? '🔇 ' : '') + (modeNames[MUSIC.mode] || MUSIC.mode);
+      }
+    }
+  }
 
   doc.body?.setAttribute('data-theme', state.theme);
   doc.documentElement?.style.setProperty('--accent', state.settings.accentColor);
@@ -838,6 +885,24 @@ function toggleStartPause() {
   else startTimer();
 }
 
+// ─── Mobile Nav Drawer ────────────────────────────────────────────────────────
+function openNavDrawer() {
+  const drawer = document.getElementById('nav-drawer');
+  if (!drawer) return;
+  drawer.classList.add('open');
+  drawer.setAttribute('aria-hidden', 'false');
+  // Sync theme icon
+  const icon = document.getElementById('nav-theme-icon');
+  if (icon) icon.textContent = state.theme === 'dark' ? '☀' : '☾';
+}
+
+function closeNavDrawer() {
+  const drawer = document.getElementById('nav-drawer');
+  if (!drawer) return;
+  drawer.classList.remove('open');
+  drawer.setAttribute('aria-hidden', 'true');
+}
+
 function bindEvents() {
   document.getElementById('start-btn').addEventListener('click', toggleStartPause);
   document.getElementById('reset-btn').addEventListener('click', resetTimer);
@@ -853,6 +918,29 @@ function bindEvents() {
     document.getElementById('history-card').classList.toggle('hidden');
     document.getElementById('settings-card').classList.add('hidden');
     loadHistory();
+  });
+
+  // Mobile drawer nav items
+  document.getElementById('nav-theme-btn')?.addEventListener('click', () => {
+    toggleTheme();
+    const icon = document.getElementById('nav-theme-icon');
+    if (icon) icon.textContent = state.theme === 'dark' ? '☀' : '☾';
+    closeNavDrawer();
+  });
+  document.getElementById('nav-settings-btn')?.addEventListener('click', () => {
+    closeNavDrawer();
+    document.getElementById('settings-card').classList.remove('hidden');
+    document.getElementById('history-card').classList.add('hidden');
+  });
+  document.getElementById('nav-history-btn')?.addEventListener('click', () => {
+    closeNavDrawer();
+    document.getElementById('history-card').classList.remove('hidden');
+    document.getElementById('settings-card').classList.add('hidden');
+    loadHistory();
+  });
+  document.getElementById('nav-signout-btn')?.addEventListener('click', () => {
+    closeNavDrawer();
+    document.getElementById('signout-btn')?.click();
   });
 
   // Mode tabs

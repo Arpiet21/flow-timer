@@ -31,10 +31,24 @@
         img.style.cssText = 'width:28px;height:28px;border-radius:50%;object-fit:cover;';
         document.querySelector('.header-actions').prepend(img);
       }
+      // Populate drawer user info
+      const navUserInfo = document.getElementById('nav-user-info');
+      if (navUserInfo) {
+        navUserInfo.innerHTML = `
+          <div class="nav-user-card">
+            ${user.avatar ? `<img src="${user.avatar}" class="nav-user-avatar">` : '<div class="nav-user-avatar nav-user-initial">' + user.name[0].toUpperCase() + '</div>'}
+            <div class="nav-user-text">
+              <div class="nav-user-name">${user.name}</div>
+              <div class="nav-user-email">${user.email}</div>
+            </div>
+          </div>`;
+      }
       // Show blog admin link for admin user
       if (user.email === 'arpietmalpani@gmail.com') {
         document.getElementById('blog-admin-link').style.display = 'inline-flex';
         document.getElementById('blog-admin-link').style.alignItems = 'center';
+        const navBlog = document.getElementById('nav-blog-link');
+        if (navBlog) navBlog.style.display = 'flex';
       }
 
       // Restrict presets for free users (?preview=free to test)
@@ -112,7 +126,43 @@
       <a id="blog-admin-link" href="blog-admin.html" style="display:none;font-size:0.7rem;padding:0 10px;height:36px;line-height:36px;background:var(--accent);color:#000;border-radius:8px;font-weight:700;text-decoration:none;">✍️ Blog</a>
       <button class="icon-btn" id="signout-btn" title="Sign out" style="font-size:0.7rem;width:auto;padding:0 10px;">Sign out</button>
     </div>
+    <!-- Mobile hamburger -->
+    <button class="icon-btn" id="hamburger-btn" aria-label="Open menu" onclick="openNavDrawer()">☰</button>
   </header>
+
+  <!-- Mobile nav drawer -->
+  <div id="nav-drawer" aria-hidden="true">
+    <div id="nav-backdrop" onclick="closeNavDrawer()"></div>
+    <div id="nav-panel" role="dialog" aria-label="Navigation menu">
+      <div class="nav-drawer-header">
+        <span class="nav-drawer-title">Menu</span>
+        <button class="icon-btn" onclick="closeNavDrawer()" aria-label="Close menu">✕</button>
+      </div>
+      <div id="nav-user-info"></div>
+      <nav class="nav-drawer-items">
+        <button class="nav-item" id="nav-theme-btn">
+          <span class="nav-item-icon" id="nav-theme-icon">☀</span>
+          <span>Toggle Theme</span>
+        </button>
+        <button class="nav-item" id="nav-settings-btn">
+          <span class="nav-item-icon">⚙</span>
+          <span>Settings</span>
+        </button>
+        <button class="nav-item" id="nav-history-btn">
+          <span class="nav-item-icon">📋</span>
+          <span>Session History</span>
+        </button>
+        <a id="nav-blog-link" href="blog-admin.html" class="nav-item" style="display:none;text-decoration:none;">
+          <span class="nav-item-icon">✍️</span>
+          <span>Blog Admin</span>
+        </a>
+        <button class="nav-item nav-item-danger" id="nav-signout-btn">
+          <span class="nav-item-icon">↗</span>
+          <span>Sign Out</span>
+        </button>
+      </nav>
+    </div>
+  </div>
 
   <main>
 
