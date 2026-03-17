@@ -1105,28 +1105,28 @@ function registerServiceWorker() {
 }
 
 // ─── Activity Heatmap ─────────────────────────────────────────────────────────
-// Returns 5 shades blending from near-background to the accent color
+// Returns 5 shades: index 0 = empty cell, 1-4 = accent intensity levels
 function _heatmapShades(hex) {
-  // Parse hex → RGB (handle 3-char shorthand too)
   let h = hex.replace('#', '');
   if (h.length === 3) h = h.split('').map(c => c + c).join('');
   const fr = parseInt(h.slice(0,2), 16);
   const fg = parseInt(h.slice(2,4), 16);
   const fb = parseInt(h.slice(4,6), 16);
 
-  // Dark surface color to blend from
   const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
-  const br = isDark ? 20 : 220;
-  const bg = isDark ? 24 : 224;
-  const bb = isDark ? 40 : 228;
 
-  // 5 levels: empty / very faint / medium / strong / full accent
-  return [0, 0.18, 0.40, 0.68, 1.0].map(t => {
-    const r = Math.round(br + (fr - br) * t);
-    const g = Math.round(bg + (fg - bg) * t);
-    const b = Math.round(bb + (fb - bb) * t);
+  // Level 0: always a clearly visible "empty" cell (distinct from page bg)
+  const empty = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)';
+
+  // Levels 1-4: accent at 28% / 52% / 76% / 100% — all clearly distinguishable
+  const steps = [0.28, 0.52, 0.76, 1.0].map(t => {
+    const r = Math.round(fr * t);
+    const g = Math.round(fg * t);
+    const b = Math.round(fb * t);
     return `rgb(${r},${g},${b})`;
   });
+
+  return [empty, ...steps];
 }
 
 function renderActivityHeatmap() {
@@ -1191,7 +1191,7 @@ function renderActivityHeatmap() {
   const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
   // Walk day by day, group into week columns
-  const cellSize = 13; // px (must match CSS)
+  const cellSize = 14; // px (must match CSS)
   const gap      = 2;
 
   let col = null;
@@ -1224,8 +1224,8 @@ function renderActivityHeatmap() {
 
     const cell = document.createElement('div');
     cell.className = 'heatmap-cell';
-    cell.style.background = isFuture ? 'transparent' : getColor(count);
-    if (isFuture) cell.style.border = '1px solid var(--border)';
+    // Future cells get same empty shade but dimmer
+    cell.style.background = isFuture ? 'rgba(255,255,255,0.04)' : getColor(count);
 
     const label = isWorkout ? (count === 1 ? '1 workout' : `${count} workouts`)
                             : (count === 1 ? '1 session' : `${count} sessions`);
