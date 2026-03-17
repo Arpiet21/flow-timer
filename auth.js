@@ -37,9 +37,9 @@ const Auth = {
   },
 
   // Returns { allowed: true } or { allowed: false, message, devices }
-  async _checkAndRegisterDevice(userId) {
+  async _checkAndRegisterDevice(userId, email) {
     // Admin is never restricted
-    if (this._user?.email === 'arpietmalpani@gmail.com') return { allowed: true };
+    if (email === 'arpietmalpani@gmail.com') return { allowed: true };
 
     const deviceId   = this._getDeviceId();
     const deviceName = this._getDeviceName();
@@ -98,7 +98,7 @@ const Auth = {
       const userId = data.session.user.id;
 
       // Check device limit on every page load
-      const deviceCheck = await this._checkAndRegisterDevice(userId);
+      const deviceCheck = await this._checkAndRegisterDevice(userId, data.session.user.email);
       if (!deviceCheck.allowed) {
         // Redirect to login with device-limit flag so the page can show a message
         window.location.href = 'login.html?device_limit=1';
@@ -152,7 +152,7 @@ const Auth = {
     if (error) return { ok: false, error: error.message };
 
     // Check device limit before completing login
-    const deviceCheck = await this._checkAndRegisterDevice(data.user.id);
+    const deviceCheck = await this._checkAndRegisterDevice(data.user.id, data.user.email);
     if (!deviceCheck.allowed) {
       return { ok: false, error: deviceCheck.message, deviceLimit: true, devices: deviceCheck.devices };
     }
