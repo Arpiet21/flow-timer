@@ -252,6 +252,9 @@ function woAdvance() {
       woNotify();
       woUpdateStartBtn();
       woRender();
+      // Log workout completion to history
+      woLogCompletion();
+      if (typeof renderActivityHeatmap === 'function') renderActivityHeatmap();
       return;
     }
     wo.phase     = 'rest';
@@ -553,6 +556,18 @@ function woBindEvents() {
     if (e.code === 'Space') { e.preventDefault(); if (wo.phase === 'done') woReset(); else woToggle(); }
     if (e.code === 'KeyR')  woReset();
   });
+}
+
+function woLogCompletion() {
+  try {
+    const history = JSON.parse(localStorage.getItem('flow-workout-history') || '[]');
+    history.unshift({
+      preset: wo.preset,
+      rounds: wo.settings.rounds,
+      completedAt: new Date().toISOString()
+    });
+    localStorage.setItem('flow-workout-history', JSON.stringify(history.slice(0, 500)));
+  } catch (_) {}
 }
 
 window.addEventListener('DOMContentLoaded', woInit);

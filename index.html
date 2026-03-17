@@ -545,6 +545,24 @@
 
     </div><!-- /#workout-section -->
 
+    <!-- ── Activity Heatmap ──────────────────────────────────────────────── -->
+    <div class="card heatmap-card" id="heatmap-card">
+      <div class="heatmap-header">
+        <div class="heatmap-title-row">
+          <span class="heatmap-title" id="heatmap-title">🎯 Focus Activity</span>
+          <span class="heatmap-total" id="heatmap-total"></span>
+        </div>
+        <div class="heatmap-legend" id="heatmap-legend"></div>
+      </div>
+      <div class="heatmap-months" id="heatmap-months"></div>
+      <div class="heatmap-grid-wrap">
+        <div class="heatmap-days-col">
+          <span></span><span>Mon</span><span></span><span>Wed</span><span></span><span>Fri</span><span></span>
+        </div>
+        <div class="heatmap-grid" id="heatmap-grid"></div>
+      </div>
+    </div>
+
     <!-- ── Shared Music Bar ───────────────────────────────────────────────── -->
     <div class="card" id="music-bar" style="margin-top:12px;">
       <div style="display:flex;align-items:center;justify-content:space-between;">
@@ -670,6 +688,8 @@
       if (isWork && typeof renderTimer !== 'undefined') renderTimer();
       // Sync floating widget to new mode
       if (typeof syncPip === 'function') syncPip();
+      // Re-render heatmap for the active timer type
+      if (typeof renderActivityHeatmap === 'function') renderActivityHeatmap();
     }
   </script>
 </body>

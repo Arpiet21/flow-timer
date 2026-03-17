@@ -39,6 +39,7 @@ function init() {
   updateSettingsUI();
   updatePresetUI();
   loadHistory();
+  renderActivityHeatmap();
 }
 
 function todayStr() {
@@ -140,6 +141,7 @@ function onTimerEnd() {
     saveToStorage();
     renderSessionDots();
     loadHistory();
+    renderActivityHeatmap();
 
     const nextMode = state.session === 1 ? 'long' : 'short';
     switchMode(nextMode, state.settings.autoStart);
@@ -1096,6 +1098,145 @@ function bindSlider(sliderId, valId, onChange, format) {
 function registerServiceWorker() {
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js').catch(() => {});
+  }
+}
+
+// ─── Activity Heatmap ─────────────────────────────────────────────────────────
+function renderActivityHeatmap() {
+  const grid      = document.getElementById('heatmap-grid');
+  const monthsEl  = document.getElementById('heatmap-months');
+  const titleEl   = document.getElementById('heatmap-title');
+  const totalEl   = document.getElementById('heatmap-total');
+  const legendEl  = document.getElementById('heatmap-legend');
+  if (!grid) return;
+
+  const isWorkout = window.activeTimerMode === 'workout';
+
+  // ── Build counts map: 'YYYY-MM-DD' → count ─────────────────────────────
+  const counts = {};
+  if (isWorkout) {
+    try {
+      const h = JSON.parse(localStorage.getItem('flow-workout-history') || '[]');
+      h.forEach(e => {
+        const d = e.completedAt?.slice(0, 10);
+        if (d) counts[d] = (counts[d] || 0) + 1;
+      });
+    } catch (_) {}
+  } else {
+    try {
+      const h = JSON.parse(localStorage.getItem('flow-timer-history') || '[]');
+      h.filter(e => e.mode === 'work').forEach(e => {
+        const d = e.completedAt?.slice(0, 10);
+        if (d) counts[d] = (counts[d] || 0) + 1;
+      });
+    } catch (_) {}
+  }
+
+  // ── Date range: last 15 weeks ending today ──────────────────────────────
+  const WEEKS = 15;
+  const today = new Date();
+  today.setHours(23, 59, 59, 0);
+
+  // End on the Saturday of this week
+  const endDay = new Date(today);
+  endDay.setDate(endDay.getDate() + (6 - endDay.getDay()));
+
+  const startDay = new Date(endDay);
+  startDay.setDate(endDay.getDate() - WEEKS * 7 + 1);
+
+  // ── Color scales ────────────────────────────────────────────────────────
+  const focusColors  = ['#1e2a1e', '#1a4a2a', '#1f7a3a', '#26a647', '#39ff14'];
+  const workoutColors= ['#1a1e3a', '#1a2d5a', '#1a4a8a', '#1a6ab0', '#30b0ff'];
+  const colors = isWorkout ? workoutColors : focusColors;
+
+  function getColor(n) {
+    if (n === 0) return colors[0];
+    if (n === 1) return colors[1];
+    if (n === 2) return colors[2];
+    if (n === 3) return colors[3];
+    return colors[4];
+  }
+
+  // ── Build columns (Sun→Sat) ─────────────────────────────────────────────
+  grid.innerHTML     = '';
+  monthsEl.innerHTML = '';
+
+  const totalSessions = Object.values(counts).reduce((a, b) => a + b, 0);
+  const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+  // Walk day by day, group into week columns
+  const cellSize = 13; // px (must match CSS)
+  const gap      = 2;
+
+  let col = null;
+  let monthLabelMap = {}; // weekIndex → month label
+
+  const cur = new Date(startDay);
+  let weekIdx = 0;
+  let lastMonth = -1;
+
+  while (cur <= endDay) {
+    if (cur.getDay() === 0) {
+      // Start new week column
+      col = document.createElement('div');
+      col.className = 'heatmap-col';
+      grid.appendChild(col);
+
+      const mo = cur.getMonth();
+      if (mo !== lastMonth) {
+        monthLabelMap[weekIdx] = monthNames[mo];
+        lastMonth = mo;
+      }
+      weekIdx++;
+    }
+
+    if (!col) { cur.setDate(cur.getDate() + 1); continue; }
+
+    const dateStr = cur.toISOString().slice(0, 10);
+    const count   = counts[dateStr] || 0;
+    const isFuture = cur > today;
+
+    const cell = document.createElement('div');
+    cell.className = 'heatmap-cell';
+    cell.style.background = isFuture ? 'transparent' : getColor(count);
+    if (isFuture) cell.style.border = '1px solid var(--border)';
+
+    const label = isWorkout ? (count === 1 ? '1 workout' : `${count} workouts`)
+                            : (count === 1 ? '1 session' : `${count} sessions`);
+    const dateLabel = cur.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    cell.setAttribute('data-tip', isFuture ? '' : count === 0 ? `${dateLabel} — no activity` : `${dateLabel} — ${label}`);
+
+    col.appendChild(cell);
+    cur.setDate(cur.getDate() + 1);
+  }
+
+  // ── Month labels ────────────────────────────────────────────────────────
+  const totalWeeks = weekIdx;
+  for (let w = 0; w < totalWeeks; w++) {
+    const span = document.createElement('span');
+    span.className = 'heatmap-month-label';
+    span.style.width = `${cellSize + gap}px`;
+    span.textContent = monthLabelMap[w] || '';
+    monthsEl.appendChild(span);
+  }
+
+  // ── Title + total ────────────────────────────────────────────────────────
+  if (titleEl) titleEl.textContent = isWorkout ? '💪 Workout Activity' : '🎯 Focus Activity';
+  if (totalEl) {
+    const period = `last ${WEEKS} weeks`;
+    totalEl.textContent = isWorkout
+      ? `${totalSessions} workout${totalSessions !== 1 ? 's' : ''} · ${period}`
+      : `${totalSessions} session${totalSessions !== 1 ? 's' : ''} · ${period}`;
+  }
+
+  // ── Legend ───────────────────────────────────────────────────────────────
+  if (legendEl) {
+    const labels = isWorkout ? ['0','1','2','3','4+'] : ['0','1','2','3','4+'];
+    legendEl.innerHTML = '<span>Less</span>' +
+      colors.map((c, i) =>
+        `<div class="heatmap-legend-cell" style="background:${c}" title="${labels[i]} ${isWorkout ? 'workout' : 'session'}${i > 0 ? 's' : ''}"></div>`
+      ).join('') +
+      '<span>More</span>';
   }
 }
 
