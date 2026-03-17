@@ -696,6 +696,12 @@ kbd {
 }
 .heatmap-cell:hover::after { opacity: 1; }
 
+/* Top 2 rows — flip tooltip to appear below the cell */
+.heatmap-cell.tip-below::after {
+  bottom: auto;
+  top: calc(100% + 5px);
+}
+
 /* ─── Music Bar ──────────────────────────────────────────────────────────────── */
 #music-bar { transition: all 0.2s; }
 #music-bar [data-binaural] small { display:block; font-size:0.62rem; opacity:0.75; }

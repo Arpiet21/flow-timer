@@ -1223,7 +1223,8 @@ function renderActivityHeatmap() {
     const isFuture = cur > today;
 
     const cell = document.createElement('div');
-    cell.className = 'heatmap-cell';
+    const row = cur.getDay(); // 0=Sun, 1=Mon … 6=Sat
+    cell.className = 'heatmap-cell' + (row <= 1 ? ' tip-below' : '');
     // Future cells get same empty shade but dimmer
     cell.style.background = isFuture ? 'rgba(255,255,255,0.04)' : getColor(count);
 
