@@ -215,6 +215,25 @@ const Auth = {
     return data || [];
   },
 
+  // Returns { 'YYYY-MM-DD': count } for the heatmap (last `weeks` weeks)
+  async getHeatmapData(mode, weeks = 15) {
+    if (!this._user) return null; // null = fall back to localStorage
+    const since = new Date();
+    since.setDate(since.getDate() - weeks * 7);
+    const { data } = await _sb.from('sessions')
+      .select('completed_at')
+      .eq('user_id', this._user.id)
+      .eq('mode', mode)
+      .gte('completed_at', since.toISOString());
+    if (!data) return null;
+    const counts = {};
+    data.forEach(row => {
+      const day = row.completed_at.slice(0, 10);
+      counts[day] = (counts[day] || 0) + 1;
+    });
+    return counts;
+  },
+
   // ── Fetch plan; create 7-day trial if none exists ────────────────────────
   async _getOrCreateTrial(userId) {
     const { data } = await _sb.from('user_plans')

@@ -1159,34 +1159,48 @@ function _heatmapShades(hex) {
 }
 
 function renderActivityHeatmap() {
+  const grid = document.getElementById('heatmap-grid');
+  if (!grid) return;
+  const isWorkout = window.activeTimerMode === 'workout';
+  const sbMode    = isWorkout ? 'workout' : 'work';
+
+  // Try Supabase first; fall back to localStorage
+  if (typeof Auth !== 'undefined' && Auth.isLoggedIn()) {
+    Auth.getHeatmapData(sbMode).then(counts => {
+      _drawHeatmap(counts || _localHeatmapCounts(isWorkout), isWorkout);
+    });
+  } else {
+    _drawHeatmap(_localHeatmapCounts(isWorkout), isWorkout);
+  }
+}
+
+function _localHeatmapCounts(isWorkout) {
+  const counts = {};
+  try {
+    if (isWorkout) {
+      const h = JSON.parse(localStorage.getItem('flow-workout-history') || '[]');
+      h.forEach(e => {
+        const d = e.completedAt?.slice(0, 10);
+        if (d) counts[d] = (counts[d] || 0) + 1;
+      });
+    } else {
+      const h = JSON.parse(localStorage.getItem('flow-timer-history') || '[]');
+      h.filter(e => e.mode === 'work').forEach(e => {
+        const d = e.completedAt?.slice(0, 10);
+        if (d) counts[d] = (counts[d] || 0) + 1;
+      });
+    }
+  } catch (_) {}
+  return counts;
+}
+
+function _drawHeatmap(counts, isWorkout) {
   const grid      = document.getElementById('heatmap-grid');
   const monthsEl  = document.getElementById('heatmap-months');
   const titleEl   = document.getElementById('heatmap-title');
   const totalEl   = document.getElementById('heatmap-total');
   const legendEl  = document.getElementById('heatmap-legend');
   if (!grid) return;
-
-  const isWorkout = window.activeTimerMode === 'workout';
-
-  // ── Build counts map: 'YYYY-MM-DD' → count ─────────────────────────────
-  const counts = {};
-  if (isWorkout) {
-    try {
-      const h = JSON.parse(localStorage.getItem('flow-workout-history') || '[]');
-      h.forEach(e => {
-        const d = e.completedAt?.slice(0, 10);
-        if (d) counts[d] = (counts[d] || 0) + 1;
-      });
-    } catch (_) {}
-  } else {
-    try {
-      const h = JSON.parse(localStorage.getItem('flow-timer-history') || '[]');
-      h.filter(e => e.mode === 'work').forEach(e => {
-        const d = e.completedAt?.slice(0, 10);
-        if (d) counts[d] = (counts[d] || 0) + 1;
-      });
-    } catch (_) {}
-  }
 
   // ── Date range: last 15 weeks ending today ──────────────────────────────
   const WEEKS = 15;

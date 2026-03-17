@@ -559,6 +559,17 @@ function woBindEvents() {
 }
 
 function woLogCompletion() {
+  // Total workout duration in minutes
+  const totalMins = Math.round(
+    (wo.settings.rounds * (wo.settings.workSecs + wo.settings.restSecs) + wo.settings.prepareSecs) / 60
+  ) || 1;
+
+  // Log to Supabase (linked to user ID)
+  if (typeof Auth !== 'undefined' && Auth.isLoggedIn()) {
+    Auth.logSession('workout', totalMins);
+  }
+
+  // Also keep localStorage as offline fallback
   try {
     const history = JSON.parse(localStorage.getItem('flow-workout-history') || '[]');
     history.unshift({
