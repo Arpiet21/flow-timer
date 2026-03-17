@@ -52,9 +52,13 @@ header {
   font-weight: 700;
   color: var(--accent);
   letter-spacing: -0.5px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.header-actions { display: flex; gap: 8px; }
+.header-actions { display: flex; gap: 8px; flex-shrink: 0; align-items: center; }
 
 .icon-btn {
   background: var(--surface);
@@ -722,9 +726,63 @@ kbd {
 
 /* ─── Responsive ─────────────────────────────────────────────────────────────── */
 @media (max-width: 480px) {
-  header { padding: 16px 16px 0; }
-  main { padding: 16px; }
+  /* ── Header ── */
+  header {
+    padding: 12px 14px 0;
+    gap: 6px;
+  }
+  .logo {
+    font-size: 1.1rem;
+    white-space: nowrap;
+  }
+  .header-actions {
+    gap: 5px;
+    flex-shrink: 0;
+  }
+  .icon-btn {
+    width: 32px;
+    height: 32px;
+    font-size: 0.88rem;
+    border-radius: 8px;
+  }
+  /* Shorten "Sign out" to icon on small screens */
+  #signout-btn {
+    font-size: 0;          /* hide text */
+    width: 32px !important;
+    padding: 0 !important;
+  }
+  #signout-btn::before {
+    content: "↗";
+    font-size: 0.88rem;
+  }
+  /* Blog admin link compact */
+  #blog-admin-link {
+    font-size: 0 !important;
+    width: 32px;
+    height: 32px;
+    padding: 0 !important;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+  }
+  #blog-admin-link::before { content: "✍️"; font-size: 0.88rem; }
+
+  /* ── Timer type toggle ── */
+  #timer-type-toggle { gap: 4px; }
+  #timer-type-toggle .mode-btn {
+    font-size: 0.78rem;
+    padding: 8px 6px;
+  }
+
+  /* ── Main content ── */
+  main { padding: 12px 14px; }
   #time-display-digital { font-size: 4rem; }
   .sound-options { gap: 4px; }
   .sound-opt { padding: 5px 8px; font-size: 0.72rem; }
+
+  /* ── Cards ── */
+  .card { padding: 16px 14px; }
+  .mode-tabs { gap: 5px; }
+  .mode-btn { font-size: 0.76rem; padding: 7px 4px; }
 }
