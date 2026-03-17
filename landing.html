@@ -25,14 +25,51 @@
 <nav>
   <div class="nav-inner">
     <a href="landing.html" class="nav-logo">⏱ Flow Timer</a>
-    <div class="nav-links">
+    <div class="nav-links" id="nav-links-desktop">
       <a href="#features" class="nav-link">Features</a>
       <a href="#pricing" class="nav-link">Pricing</a>
       <a href="login.html" class="btn btn-outline" style="padding:8px 18px;font-size:0.85rem;">Log in</a>
       <a href="signup.html" class="btn btn-primary" style="padding:8px 18px;font-size:0.85rem;">Start Free Trial</a>
     </div>
+    <!-- Mobile hamburger -->
+    <button id="landing-ham-btn" class="landing-ham-btn" onclick="toggleLandingMenu()" aria-label="Open menu">☰</button>
+  </div>
+  <!-- Mobile dropdown menu -->
+  <div id="landing-mobile-menu" class="landing-mobile-menu">
+    <div id="landing-mobile-menu-inner">
+      <a href="#features" class="landing-nav-item" onclick="closeLandingMenu()">
+        <span>🔍</span> Features
+      </a>
+      <a href="#pricing" class="landing-nav-item" onclick="closeLandingMenu()">
+        <span>💳</span> Pricing
+      </a>
+      <div class="landing-nav-divider"></div>
+      <a href="login.html" class="landing-nav-item">
+        <span>👤</span> Log in
+      </a>
+      <a href="signup.html" class="landing-nav-cta">Start Free Trial →</a>
+    </div>
   </div>
 </nav>
+
+<script>
+function toggleLandingMenu() {
+  const menu = document.getElementById('landing-mobile-menu');
+  const btn  = document.getElementById('landing-ham-btn');
+  const open = menu.classList.toggle('open');
+  btn.textContent = open ? '✕' : '☰';
+  btn.setAttribute('aria-expanded', open);
+}
+function closeLandingMenu() {
+  document.getElementById('landing-mobile-menu')?.classList.remove('open');
+  const btn = document.getElementById('landing-ham-btn');
+  if (btn) { btn.textContent = '☰'; btn.setAttribute('aria-expanded', false); }
+}
+// Close on outside click
+document.addEventListener('click', e => {
+  if (!e.target.closest('nav')) closeLandingMenu();
+});
+</script>
 
 <!-- ── Hero ── -->
 <section class="hero">
@@ -510,13 +547,35 @@
 <script>
   Auth.init().then(user => {
     if (user) {
-      const links = document.querySelector('.nav-links');
+      // Desktop nav
+      const links = document.querySelector('#nav-links-desktop');
       links.innerHTML = `
         ${user.avatar ? `<img src="${user.avatar}" style="width:28px;height:28px;border-radius:50%;object-fit:cover;">` : ''}
         <span style="font-size:0.85rem;color:var(--text-muted)">Hi, ${user.name.split(' ')[0]}</span>
         <a href="index.html" class="btn btn-primary" style="padding:8px 18px;font-size:0.85rem;">Open App</a>
         <button onclick="Auth.signOut()" class="btn btn-outline" style="padding:8px 18px;font-size:0.85rem;">Sign Out</button>
       `;
+      // Mobile menu
+      const mobileInner = document.getElementById('landing-mobile-menu-inner');
+      if (mobileInner) {
+        mobileInner.innerHTML = `
+          <div class="landing-user-row">
+            ${user.avatar
+              ? `<img src="${user.avatar}" class="landing-user-avatar">`
+              : `<div class="landing-user-avatar landing-user-initial">${user.name[0].toUpperCase()}</div>`}
+            <div>
+              <div class="landing-user-name">${user.name}</div>
+              <div class="landing-user-email">${user.email}</div>
+            </div>
+          </div>
+          <div class="landing-nav-divider"></div>
+          <a href="#features" class="landing-nav-item" onclick="closeLandingMenu()"><span>🔍</span> Features</a>
+          <a href="#pricing"  class="landing-nav-item" onclick="closeLandingMenu()"><span>💳</span> Pricing</a>
+          <div class="landing-nav-divider"></div>
+          <a href="index.html" class="landing-nav-cta">Open App →</a>
+          <button onclick="Auth.signOut()" class="landing-nav-item landing-nav-signout"><span>↗</span> Sign Out</button>
+        `;
+      }
     }
   });
 </script>
