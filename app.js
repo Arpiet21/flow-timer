@@ -307,6 +307,35 @@ function updatePresetUI() {
   document.querySelectorAll('.preset-btn').forEach(btn =>
     btn.classList.toggle('active', parseInt(btn.dataset.mins) === state.settings.work)
   );
+  updateSessionHint();
+}
+
+const SESSION_HINTS = {
+  10:  '⚡ Quick burst — great for small tasks or warm-ups',
+  15:  '🎯 Short sprint — <strong>4 sessions = 1 hr</strong> focused work',
+  20:  '🍅 Short Pomodoro — <strong>3 sessions = 1 hr</strong> focused work',
+  25:  '🍅 Classic Pomodoro — <strong>2 sessions = 50 min</strong> · most popular',
+  30:  '💡 Extended focus — <strong>2 sessions = 1 hr</strong> deep work',
+  45:  '🎯 Deep focus block — <strong>2 × 45 min = 90 min</strong> deep work',
+  50:  '💪 Long session — <strong>2 × 50 min = ~2 hrs</strong> deep work',
+  60:  '🔥 Power hour — <strong>2 × 60 min = 2 hrs</strong> or <strong>1 × 90 min</strong> alternative',
+  75:  '🚀 Extended flow — <strong>2 × 75 min = 2.5 hrs</strong> deep work',
+  90:  '🧠 Flow state session — <strong>1 × 90 min = full deep work</strong> block',
+};
+
+function updateSessionHint() {
+  const el = document.getElementById('session-hint');
+  if (!el) return;
+  if (state.mode !== 'work') { el.textContent = ''; return; }
+  const mins = state.settings.work;
+  const hint = SESSION_HINTS[mins];
+  if (hint) {
+    el.innerHTML = hint;
+  } else {
+    // Generic fallback for slider values not in the map
+    const sessions2 = Math.round((mins * 2) / 5) * 5;
+    el.innerHTML = `⏱ <strong>2 × ${mins} min = ${sessions2} min</strong> total deep work`;
+  }
 }
 
 function modeColor() {
