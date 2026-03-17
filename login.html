@@ -70,14 +70,24 @@
   <script src="supabase-client.js"></script>
   <script src="auth.js"></script>
   <script>
-    // Already logged in → go to app
+    // Already logged in → go to app (device check happens inside init())
     Auth.init().then(user => { if (user) window.location.href = 'index.html'; });
 
     const errorEl = document.getElementById('error-msg');
 
-    function showError(msg) {
-      errorEl.textContent = msg;
+    function showError(msg, isHtml = false) {
+      if (isHtml) errorEl.innerHTML = msg;
+      else errorEl.textContent = msg;
       errorEl.classList.add('show');
+    }
+
+    // Show device-limit message if redirected here from init()
+    if (new URLSearchParams(location.search).get('device_limit') === '1') {
+      showError(
+        '🔒 <strong>Device limit reached.</strong> This account is already signed in on 2 devices. ' +
+        'Sign out from one of those devices (or clear its browser data) and try again.',
+        true
+      );
     }
 
     // Google
@@ -113,7 +123,18 @@
       if (result.ok) {
         window.location.href = 'index.html';
       } else {
-        showError(result.error);
+        if (result.deviceLimit) {
+          const deviceList = (result.devices || [])
+            .map(d => `<li>${d.device_name || 'Unknown device'} — last active ${new Date(d.last_seen).toLocaleDateString()}</li>`)
+            .join('');
+          showError(
+            `🔒 <strong>Device limit reached.</strong> This account is already active on:<ul style="margin:6px 0 0 16px;text-align:left">${deviceList}</ul>` +
+            `Sign out from one of those devices first.`,
+            true
+          );
+        } else {
+          showError(result.error);
+        }
         btn.textContent = 'Log in';
         btn.disabled = false;
       }

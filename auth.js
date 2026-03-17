@@ -1,16 +1,111 @@
 // ─── Auth (Supabase-backed) ───────────────────────────────────────────────────
 
+const DEVICE_LIMIT = 2; // max simultaneous devices per account
+
 const Auth = {
   _user: null,
 
   getUser() { return this._user; },
   isLoggedIn() { return !!this._user; },
 
+  // ── Device helpers ───────────────────────────────────────────────────────
+  _getDeviceId() {
+    let id = localStorage.getItem('flow-device-id');
+    if (!id) {
+      id = (typeof crypto !== 'undefined' && crypto.randomUUID)
+        ? crypto.randomUUID()
+        : Math.random().toString(36).slice(2) + '-' + Date.now().toString(36);
+      localStorage.setItem('flow-device-id', id);
+    }
+    return id;
+  },
+
+  _getDeviceName() {
+    const ua = navigator.userAgent;
+    const browser = ua.includes('Edg/') ? 'Edge'
+      : ua.includes('Chrome')  ? 'Chrome'
+      : ua.includes('Firefox')  ? 'Firefox'
+      : ua.includes('Safari')   ? 'Safari'
+      : 'Browser';
+    const os = ua.includes('Windows') ? 'Windows'
+      : ua.includes('iPhone')  ? 'iPhone'
+      : ua.includes('Android') ? 'Android'
+      : ua.includes('Mac')     ? 'Mac'
+      : ua.includes('Linux')   ? 'Linux'
+      : 'Device';
+    return `${browser} on ${os}`;
+  },
+
+  // Returns { allowed: true } or { allowed: false, message, devices }
+  async _checkAndRegisterDevice(userId) {
+    // Admin is never restricted
+    if (this._user?.email === 'arpietmalpani@gmail.com') return { allowed: true };
+
+    const deviceId   = this._getDeviceId();
+    const deviceName = this._getDeviceName();
+
+    // Fetch all registered devices for this user
+    const { data: devices } = await _sb.from('user_devices')
+      .select('device_id, device_name, last_seen')
+      .eq('user_id', userId);
+
+    const list = devices || [];
+    const existing = list.find(d => d.device_id === deviceId);
+
+    if (existing) {
+      // Refresh last_seen — this device is already registered
+      await _sb.from('user_devices')
+        .update({ last_seen: new Date().toISOString(), device_name: deviceName })
+        .eq('user_id', userId)
+        .eq('device_id', deviceId);
+      return { allowed: true };
+    }
+
+    if (list.length >= DEVICE_LIMIT) {
+      // Too many active devices — sign out and reject
+      await _sb.auth.signOut();
+      this._user = null;
+      return {
+        allowed: false,
+        devices: list,
+        message: `This account is already signed in on ${list.length} device${list.length > 1 ? 's' : ''}. `
+               + `Sign out from one of those devices first, then try again.`
+      };
+    }
+
+    // Register new device (DB INSERT policy is safety-net enforcement too)
+    await _sb.from('user_devices').insert({
+      user_id:     userId,
+      device_id:   deviceId,
+      device_name: deviceName,
+      last_seen:   new Date().toISOString()
+    });
+    return { allowed: true };
+  },
+
+  async _unregisterDevice(userId) {
+    const deviceId = this._getDeviceId();
+    await _sb.from('user_devices')
+      .delete()
+      .eq('user_id', userId)
+      .eq('device_id', deviceId);
+  },
+
   // ── Load session on page start ───────────────────────────────────────────
   async init() {
     const { data } = await _sb.auth.getSession();
     if (data?.session?.user) {
-      const planData = await this._getOrCreateTrial(data.session.user.id);
+      const userId = data.session.user.id;
+
+      // Check device limit on every page load
+      const deviceCheck = await this._checkAndRegisterDevice(userId);
+      if (!deviceCheck.allowed) {
+        // Redirect to login with device-limit flag so the page can show a message
+        window.location.href = 'login.html?device_limit=1';
+        return null;
+      }
+
+      const planData = await this._getOrCreateTrial(userId);
       this._user = this._normalize(data.session.user, planData);
     }
 
@@ -36,6 +131,14 @@ const Auth = {
     if (error) return { ok: false, error: error.message };
 
     if (data.user) {
+      // Register this device (fresh account — limit can't be hit yet)
+      await _sb.from('user_devices').insert({
+        user_id:     data.user.id,
+        device_id:   this._getDeviceId(),
+        device_name: this._getDeviceName(),
+        last_seen:   new Date().toISOString()
+      }).select(); // ignore duplicate error silently
+
       const planData = await this._getOrCreateTrial(data.user.id);
       this._user = this._normalize(data.user, planData);
     }
@@ -47,6 +150,13 @@ const Auth = {
   async signIn(email, password) {
     const { data, error } = await _sb.auth.signInWithPassword({ email, password });
     if (error) return { ok: false, error: error.message };
+
+    // Check device limit before completing login
+    const deviceCheck = await this._checkAndRegisterDevice(data.user.id);
+    if (!deviceCheck.allowed) {
+      return { ok: false, error: deviceCheck.message, deviceLimit: true, devices: deviceCheck.devices };
+    }
+
     const planData = await this._getOrCreateTrial(data.user.id);
     this._user = this._normalize(data.user, planData);
     return { ok: true, user: this._user };
@@ -67,10 +177,12 @@ const Auth = {
     });
     if (error) return { ok: false, error: error.message };
     return { ok: true };
+    // Device check for Google OAuth happens in requireAuth() after redirect
   },
 
   // ── Sign out ─────────────────────────────────────────────────────────────
   async signOut() {
+    if (this._user) await this._unregisterDevice(this._user.id);
     await _sb.auth.signOut();
     this._user = null;
     window.location.href = 'landing.html';
