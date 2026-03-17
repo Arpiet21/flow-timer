@@ -207,16 +207,29 @@ function _ytExtractId(url) {
   } catch (_) { return null; }
 }
 
-function musicYtAdd() {
+async function musicYtAdd() {
   const input = document.getElementById('music-yt-input');
   if (!input) return;
   const url     = input.value.trim();
   const videoId = _ytExtractId(url);
   if (!videoId) return;
-  _ytPlaylist.push({ videoId, title: `Track ${_ytPlaylist.length + 1}` });
   input.value = '';
+
+  const idx = _ytPlaylist.length;
+  _ytPlaylist.push({ videoId, title: '⏳ Loading…' });
   _renderYtPlaylist();
-  // Load YouTube API if not loaded
+
+  // Fetch real title via oEmbed (no API key required)
+  try {
+    const res  = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`);
+    const data = await res.json();
+    _ytPlaylist[idx].title = data.title || `Track ${idx + 1}`;
+  } catch (_) {
+    _ytPlaylist[idx].title = `Track ${idx + 1}`;
+  }
+  _renderYtPlaylist();
+  _saveCurrentYtQueue();
+
   if (!window.YT) _loadYtApi();
   else if (_ytPlayer) _ytPlayer.cueVideoById(_ytPlaylist[_ytIdx].videoId);
 }
@@ -239,6 +252,7 @@ function musicYtRemove(i) {
   _ytPlaylist.splice(i, 1);
   if (_ytIdx >= _ytPlaylist.length) _ytIdx = 0;
   _renderYtPlaylist();
+  _saveCurrentYtQueue();
 }
 
 function _renderYtPlaylist() {
@@ -251,6 +265,21 @@ function _renderYtPlaylist() {
       </span>
       <button onclick="musicYtRemove(${i})" style="margin-left:auto;background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:0.8rem;">✕</button>
     </div>`).join('');
+}
+
+// ─── Persist current queue across page reloads ───────────────────────────────
+function _saveCurrentYtQueue() {
+  localStorage.setItem('flow-yt-current', JSON.stringify(_ytPlaylist));
+}
+
+function _restoreCurrentYtQueue() {
+  try {
+    const q = JSON.parse(localStorage.getItem('flow-yt-current') || '[]');
+    if (q.length) {
+      q.forEach(t => _ytPlaylist.push(t));
+      _renderYtPlaylist();
+    }
+  } catch (_) {}
 }
 
 // ─── Save / Load YouTube playlists ───────────────────────────────────────────
@@ -283,6 +312,7 @@ function _ytLoadPlaylist(i) {
   saved[i].tracks.forEach(t => _ytPlaylist.push(t));
   _ytIdx = 0;
   _renderYtPlaylist();
+  _saveCurrentYtQueue();
   if (!window.YT) _loadYtApi();
   else if (_ytPlayer) _ytPlayer.cueVideoById(_ytPlaylist[0].videoId);
 }
@@ -465,6 +495,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.key === 'Enter') musicYtAdd();
   });
 
-  // Render saved YT playlists on load
+  // Restore current queue and saved playlists on load
+  _restoreCurrentYtQueue();
   _renderYtSaved();
 });
