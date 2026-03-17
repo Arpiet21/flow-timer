@@ -41,13 +41,22 @@ function init() {
   loadHistory();
 }
 
+function todayStr() {
+  return new Date().toISOString().slice(0, 10); // 'YYYY-MM-DD'
+}
+
 function loadFromStorage() {
   try {
     const saved = JSON.parse(localStorage.getItem('flow-timer-state') || '{}');
     if (saved.settings) state.settings = { ...DEFAULT_SETTINGS, ...saved.settings };
-    if (saved.theme)   state.theme = saved.theme;
-    if (saved.session) state.session = saved.session;
-    if (saved.task)    state.task = saved.task;
+    if (saved.theme)    state.theme = saved.theme;
+    if (saved.task)     state.task = saved.task;
+    // Reset session count if it's a new day
+    if (saved.session && saved.sessionDate === todayStr()) {
+      state.session = saved.session;
+    } else {
+      state.session = 1;
+    }
   } catch (_) {}
 }
 
@@ -56,6 +65,7 @@ function saveToStorage() {
     settings: state.settings,
     theme: state.theme,
     session: state.session,
+    sessionDate: todayStr(),
     task: state.task
   }));
 }
