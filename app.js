@@ -443,7 +443,7 @@ async function openPip() {
       const isDigital = state.settings.clockType === 'digital';
       pipWindow = await window.documentPictureInPicture.requestWindow({
         width:  isDigital ? 160 : 220,
-        height: isDigital ? 160 : 280
+        height: isDigital ? 200 : 320
       });
       // Inline styles — no fetch needed (works with file:// too)
       const style = pipWindow.document.createElement('style');
@@ -466,11 +466,12 @@ const PIP_HTML = `
   <div id="pip-analog-wrap">
     <canvas id="pip-clock" width="150" height="150"></canvas>
   </div>
+  <span id="pip-analog-time" style="display:none">25:00</span>
   <div id="pip-digital-wrap" style="display:none">
     <span id="pip-time-big">25:00</span>
   </div>
   <span id="pip-task"></span>
-  <div class="pip-controls">
+  <div class="pip-controls" id="pip-controls">
     <button class="pip-btn" id="pip-clock-toggle" title="Toggle analog/digital">⏱</button>
     <button class="pip-btn" id="pip-play" title="Play/Pause">▶</button>
     <button class="pip-btn" id="pip-skip" title="Skip phase">⏭</button>
@@ -491,9 +492,10 @@ const PIP_STYLES = `
     align-items:center;justify-content:center;gap:4px;user-select:none}
   #pip-mode{font-size:.65rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-muted)}
   #pip-analog-wrap{display:flex;align-items:center;justify-content:center}
-  #pip-clock{display:block;width:min(150px,80vmin);height:min(150px,80vmin)}
+  #pip-clock{display:block;width:min(130px,70vw,70vh);height:min(130px,70vw,70vh)}
   #pip-digital-wrap{display:flex;align-items:center;justify-content:center;padding:6px 0}
   #pip-time-big{font-size:clamp(1.6rem,14vw,2.2rem);font-weight:800;letter-spacing:1px;font-variant-numeric:tabular-nums;color:var(--text)}
+  #pip-analog-time{font-size:1.4rem;font-weight:800;letter-spacing:1px;font-variant-numeric:tabular-nums;color:var(--text);line-height:1}
   #pip-task{font-size:.6rem;color:#888;max-width:90%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center}
   .pip-controls{display:flex;gap:6px}
   .pip-btn{width:30px;height:30px;border-radius:50%;border:1px solid var(--border);
@@ -509,7 +511,7 @@ const PIP_STYLES = `
 
 function fallbackPopup() {
   const popup = window.open('', 'flow-timer-pip',
-    `width=${state.settings.clockType === 'digital' ? 160 : 220},height=${state.settings.clockType === 'digital' ? 160 : 280},resizable=no,scrollbars=no,toolbar=no,menubar=no,location=no,status=no`
+    `width=${state.settings.clockType === 'digital' ? 160 : 220},height=${state.settings.clockType === 'digital' ? 200 : 320},resizable=no,scrollbars=no,toolbar=no,menubar=no,location=no,status=no`
   );
   if (!popup) return;
   // Write content directly — no file load needed
@@ -587,15 +589,25 @@ function syncPip() {
   const isAnalog = state.settings.clockType === 'analog' && pipW >= 150 && pipH >= 150;
   const isWorkout = window.activeTimerMode === 'workout' && typeof wo !== 'undefined';
 
-  const modeEl    = doc.getElementById('pip-mode');
-  const taskEl    = doc.getElementById('pip-task');
-  const playBtn   = doc.getElementById('pip-play');
-  const skipBtn   = doc.getElementById('pip-skip');
-  const toggleBtn = doc.getElementById('pip-clock-toggle');
+  const modeEl      = doc.getElementById('pip-mode');
+  const taskEl      = doc.getElementById('pip-task');
+  const playBtn     = doc.getElementById('pip-play');
+  const skipBtn     = doc.getElementById('pip-skip');
+  const toggleBtn   = doc.getElementById('pip-clock-toggle');
   const analogWrap  = doc.getElementById('pip-analog-wrap');
+  const analogTime  = doc.getElementById('pip-analog-time');
   const digitalWrap = doc.getElementById('pip-digital-wrap');
   const timeBigEl   = doc.getElementById('pip-time-big');
   const canvas      = doc.getElementById('pip-clock');
+  const controlsEl  = doc.getElementById('pip-controls');
+  const musicBar    = doc.getElementById('pip-music-bar');
+
+  // Responsive visibility — hide secondary elements when window is small
+  const showFull    = pipH >= 260;
+  const showControls = pipH >= 180;
+  if (taskEl)    taskEl.style.display    = showFull ? '' : 'none';
+  if (musicBar)  musicBar.style.display  = showFull ? 'flex' : 'none';
+  if (controlsEl) controlsEl.style.display = showControls ? 'flex' : 'none';
   // Music controls
   const pipMusicToggle = doc.getElementById('pip-music-toggle');
   const pipMusicMute   = doc.getElementById('pip-music-mute');
@@ -624,6 +636,9 @@ function syncPip() {
   doc.documentElement?.style.setProperty('--accent', state.settings.accentColor);
 
   if (isWorkout) {
+    const wMins = Math.floor((wo.timeLeft || 0) / 60).toString().padStart(2, '0');
+    const wSecs = ((wo.timeLeft || 0) % 60).toString().padStart(2, '0');
+    const timeStr = `${wMins}:${wSecs}`;
     const phaseNames = { prepare: 'Prepare', work: 'Work', rest: 'Rest', done: 'Done!', idle: 'Ready' };
     if (modeEl)    modeEl.textContent = `💪 ${phaseNames[wo.phase] || wo.phase}`;
     if (taskEl)    taskEl.textContent = wo.phase !== 'idle' && wo.phase !== 'done'
@@ -634,18 +649,22 @@ function syncPip() {
     // Always force analog for workout — no digital option
     if (analogWrap)  analogWrap.style.display  = 'flex';
     if (digitalWrap) digitalWrap.style.display = 'none';
+    if (analogTime)  { analogTime.textContent = timeStr; analogTime.style.display = ''; }
     if (canvas) drawPipWorkoutClock(canvas);
   } else {
     const mins = Math.floor(state.timeLeft / 60).toString().padStart(2, '0');
     const secs = (state.timeLeft % 60).toString().padStart(2, '0');
+    const timeStr = `${mins}:${secs}`;
     if (modeEl)    modeEl.textContent = state.mode === 'work' ? 'Focus' : state.mode === 'short' ? 'Short Break' : 'Long Break';
     if (taskEl)    taskEl.textContent = state.task || '';
     if (playBtn)   playBtn.textContent = state.status === 'running' ? '⏸' : '▶';
     if (skipBtn)   skipBtn.style.display = 'none';
     if (toggleBtn) toggleBtn.style.display = 'flex';
-    if (timeBigEl) timeBigEl.textContent = `${mins}:${secs}`;
+    if (timeBigEl) timeBigEl.textContent = timeStr;
+    // Analog mode: show clock + time text; Digital mode: show time only
     if (analogWrap)  analogWrap.style.display  = isAnalog ? 'flex' : 'none';
     if (digitalWrap) digitalWrap.style.display = isAnalog ? 'none' : 'flex';
+    if (analogTime)  { analogTime.textContent = timeStr; analogTime.style.display = isAnalog ? '' : 'none'; }
     if (isAnalog && canvas) drawPipClock(canvas);
   }
 }
