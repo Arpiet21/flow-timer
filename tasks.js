@@ -465,16 +465,17 @@ const TaskManager = {
     const uid = typeof Auth !== 'undefined' && Auth.isLoggedIn() ? Auth.getUser()?.id : null;
     if (!uid) { this._toast('⚠️ Not logged in — task not saved', 4000); return; }
 
-    // Optimistic: show task immediately with a temp ID
-    const tempId = crypto.randomUUID();
+    // Client generates the UUID — same ID used in UI and Supabase, always in sync
     const task = {
-      id: tempId, title, category,
+      id: crypto.randomUUID(), title, category,
       estimated_minutes: estMins, priority: this._priority, tags,
       scheduled_date: scheduledDate,
       recurring_days: recurringDays.length > 0 ? recurringDays : null,
       completed: false, completed_at: null,
       created_at: new Date().toISOString()
     };
+
+    // Show immediately — never block on network
     this._tasks.push(task);
     this._saveCache();
     this.hideAddForm();
@@ -485,23 +486,17 @@ const TaskManager = {
       this._toast(`✅ Scheduled for ${d}/${m}/${y} — see Weekly Plan ↓`);
     }
 
-    // Sync to Supabase in background — update temp ID with real UUID on success
-    _sb.from('tasks').insert({ ...task, user_id: uid }).select('*').limit(1)
-      .then(({ data, error }) => {
-        if (error || !data?.[0]) {
-          // Revert optimistic update
-          this._tasks = this._tasks.filter(t => t.id !== tempId);
+    // Sync to Supabase — client UUID is sent as the primary key, no mismatch possible
+    _sb.from('tasks').insert({ ...task, user_id: uid })
+      .then(({ error }) => {
+        if (error) {
+          this._tasks = this._tasks.filter(t => t.id !== task.id);
           this._saveCache(); this._render();
           this._toast('⚠️ Cloud sync failed — task removed. Check connection.', 5000);
-          return;
         }
-        // Replace temp ID with real Supabase UUID
-        const t = this._tasks.find(t => t.id === tempId);
-        if (t) { Object.assign(t, data[0]); this._saveCache(); }
-        else { _sb.from('tasks').delete().eq('id', data[0].id).catch(() => {}); } // deleted while pending
       })
       .catch(() => {
-        this._tasks = this._tasks.filter(t => t.id !== tempId);
+        this._tasks = this._tasks.filter(t => t.id !== task.id);
         this._saveCache(); this._render();
         this._toast('⚠️ Cloud sync failed — task removed. Check connection.', 5000);
       });
