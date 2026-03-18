@@ -750,7 +750,10 @@ const WeekPlanner = {
     });
   },
 
-  _ds(date) { return date.toISOString().slice(0, 10); },
+  _ds(date) {
+    // Use local date, not UTC — toISOString() shifts day in non-UTC timezones
+    return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
+  },
 
   addItem(ds, text) {
     if (!text) return;
