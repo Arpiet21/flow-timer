@@ -686,9 +686,13 @@ const TaskManager = {
       el.replaceChild(slider, placeholder);
     } else {
       // Recurring → per-day toggle; one-off → global toggle
-      el.querySelector('.task-check').addEventListener('click', () =>
-        isRecurring ? this.toggleDoneOn(task.id, todayDs) : this.toggleComplete(task.id)
-      );
+      el.querySelector('.task-check').addEventListener('click', (e) => {
+        if (!isDone) {
+          const r = e.currentTarget.getBoundingClientRect();
+          this._triggerSparkle(r.left + r.width / 2, r.top + r.height / 2);
+        }
+        isRecurring ? this.toggleDoneOn(task.id, todayDs) : this.toggleComplete(task.id);
+      });
     }
 
     el.querySelector('.task-del-btn').addEventListener('click', () => this.deleteTask(task.id));
