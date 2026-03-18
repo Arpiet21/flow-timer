@@ -128,6 +128,7 @@ const TaskCalendar = {
 const TaskManager = {
   _tasks:      [],
   _categories: [],
+  _recurDone:  {},  // { taskId: ['YYYY-MM-DD', ...] } — per-day completion for recurring
   _priority:   2,
   _showDone:   false,
   _bound:      false,
@@ -135,6 +136,7 @@ const TaskManager = {
   // ── Init ──────────────────────────────────────────────────────────────────
   async init() {
     this._loadCategories();
+    this._loadRecurDone();
     await this._load();
     this._populateCategorySelect();
     this._render();
@@ -172,6 +174,32 @@ const TaskManager = {
 
   _saveCategories() {
     try { localStorage.setItem('flow-task-categories', JSON.stringify(this._categories)); } catch (_) {}
+  },
+
+  // ── Per-day recurring completion ──────────────────────────────────────────
+  _loadRecurDone() {
+    try { this._recurDone = JSON.parse(localStorage.getItem('flow-recur-done') || '{}'); }
+    catch(_) { this._recurDone = {}; }
+  },
+
+  _saveRecurDone() {
+    try { localStorage.setItem('flow-recur-done', JSON.stringify(this._recurDone)); } catch(_) {}
+  },
+
+  // Is a recurring task done on a specific date?
+  isDoneOn(taskId, ds) {
+    return !!(this._recurDone[taskId] || []).includes(ds);
+  },
+
+  // Toggle done for a specific date (recurring tasks only)
+  toggleDoneOn(taskId, ds) {
+    if (!this._recurDone[taskId]) this._recurDone[taskId] = [];
+    const idx = this._recurDone[taskId].indexOf(ds);
+    if (idx === -1) this._recurDone[taskId].push(ds);
+    else            this._recurDone[taskId].splice(idx, 1);
+    this._saveRecurDone();
+    this._render();
+    if (typeof WeekPlanner !== 'undefined') WeekPlanner._render();
   },
 
   _populateCategorySelect() {
@@ -527,9 +555,11 @@ const TaskManager = {
   _isToday(task) {
     const todayDs = this._todayDs();
     const dow     = new Date().getDay();
+    // Recurring tasks: always show today if the day matches (completion is per-day)
+    if (task.recurring_days?.length) return task.recurring_days.includes(dow);
+    // One-off completed task: only show on the day it was completed
     if (task.completed) return task.completed_at?.slice(0, 10) === todayDs;
     if (task.scheduled_date) return task.scheduled_date === todayDs;
-    if (task.recurring_days?.length) return task.recurring_days.includes(dow);
     return true; // unscheduled tasks always show today
   },
 
@@ -541,8 +571,9 @@ const TaskManager = {
   _renderStats() {
     const todayDs    = this._todayDs();
     const todayTasks = this._tasks.filter(t => this._isToday(t));
-    const incomplete = todayTasks.filter(t => !t.completed);
-    const doneToday  = todayTasks.filter(t => t.completed);
+    const isEffDone  = t => t.recurring_days?.length ? this.isDoneOn(t.id, todayDs) : t.completed;
+    const incomplete = todayTasks.filter(t => !isEffDone(t));
+    const doneToday  = todayTasks.filter(t =>  isEffDone(t));
     const estSecs    = incomplete.reduce((a, t) => a + (t.estimated_minutes || 0) * 60, 0);
     const fmt = s => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
     const estEl  = document.getElementById('task-est-time');
@@ -558,9 +589,11 @@ const TaskManager = {
     if (!list) return;
     list.innerHTML = '';
 
-    // Only show today's tasks
-    const todayIncomplete = this._tasks.filter(t => !t.completed && this._isToday(t));
-    const doneToday       = this._tasks.filter(t =>  t.completed && this._isToday(t));
+    // Only show today's tasks — use per-day done for recurring
+    const todayDs    = this._todayDs();
+    const isEffDone  = t => t.recurring_days?.length ? this.isDoneOn(t.id, todayDs) : t.completed;
+    const todayIncomplete = this._tasks.filter(t => this._isToday(t) && !isEffDone(t));
+    const doneToday       = this._tasks.filter(t => this._isToday(t) &&  isEffDone(t));
 
     // Count upcoming (scheduled future, not today, not recurring)
     const todayDs   = this._todayDs();
@@ -628,12 +661,18 @@ const TaskManager = {
       ? `<span class="task-recur-badge">🔁 ${task.recurring_days.map(d => dayNames[d]).join(' ')}</span>`
       : '';
 
-    const checkIcon = task.completed
+    // For recurring tasks use per-day completion; for one-off use global flag
+    const isRecurring = task.recurring_days?.length > 0;
+    const todayDs     = this._todayDs();
+    const isDone      = isRecurring ? this.isDoneOn(task.id, todayDs) : task.completed;
+
+    const checkIcon = isDone
       ? `<svg viewBox="0 0 12 12" fill="none"><polyline points="1.5,6 5,9.5 10.5,2.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`
       : '';
 
+    el.className = 'task-item' + (isDone ? ' task-item-done' : '');
     el.innerHTML = `
-      <button class="task-check${task.completed ? ' checked' : ''}">${checkIcon}</button>
+      <button class="task-check${isDone ? ' checked' : ''}">${checkIcon}</button>
       <div class="task-body">
         <div class="task-title">${this._esc(task.title)}</div>
         <div class="task-meta">
@@ -644,11 +683,13 @@ const TaskManager = {
           ${task.estimated_minutes ? `<span class="task-est-badge">${task.estimated_minutes}m</span>` : ''}
         </div>
       </div>
-      ${!task.completed ? `<button class="task-play-btn" title="Focus on this">▶</button>` : ''}
+      ${!isDone ? `<button class="task-play-btn" title="Focus on this">▶</button>` : ''}
       <button class="task-del-btn" title="Delete">✕</button>`;
 
-    // Bind via addEventListener (not onclick attributes)
-    el.querySelector('.task-check').addEventListener('click', () => this.toggleComplete(task.id));
+    // Recurring → per-day toggle; one-off → global toggle
+    el.querySelector('.task-check').addEventListener('click', () =>
+      isRecurring ? this.toggleDoneOn(task.id, todayDs) : this.toggleComplete(task.id)
+    );
     el.querySelector('.task-del-btn').addEventListener('click', () => this.deleteTask(task.id));
     el.querySelector('.task-play-btn')?.addEventListener('click', () => this.startFocus(task.id));
 
@@ -826,16 +867,16 @@ const WeekPlanner = {
       const isToday = ds === todayDs;
 
       // Synced tasks from TaskManager:
-      // 1. Scheduled to this exact date
-      // 2. Recurring on this day-of-week
-      // 3. Fallback: created on this date (no schedule set)
+      // 1. Scheduled to this exact date (not recurring)
+      // 2. Recurring on this day-of-week (not globally completed)
+      // 3. Fallback: created on this date (no schedule set, not recurring)
       const dow = date.getDay(); // 0=Sun
       const dayTasks = typeof TaskManager !== 'undefined'
-        ? TaskManager._tasks.filter(t =>
-            (t.scheduled_date && t.scheduled_date === ds) ||
-            (t.recurring_days?.includes(dow)) ||
-            (!t.scheduled_date && !t.recurring_days?.length && t.created_at?.slice(0, 10) === ds)
-          )
+        ? TaskManager._tasks.filter(t => {
+            if (t.recurring_days?.length) return t.recurring_days.includes(dow);
+            if (t.scheduled_date) return t.scheduled_date === ds;
+            return !t.scheduled_date && t.created_at?.slice(0, 10) === ds;
+          })
         : [];
 
       const row = document.createElement('div');
@@ -868,14 +909,27 @@ const WeekPlanner = {
         content.appendChild(itemsDiv);
       }
 
-      // Synced tasks (read-only, shows tasks created that day)
+      // Synced tasks — checkable per-day for recurring, global for one-off
       if (dayTasks.length > 0) {
         const tasksDiv = document.createElement('div');
         tasksDiv.className = 'week-day-items';
         dayTasks.forEach(t => {
+          const isRecurring = t.recurring_days?.length > 0;
+          const isDone = isRecurring
+            ? (typeof TaskManager !== 'undefined' && TaskManager.isDoneOn(t.id, ds))
+            : t.completed;
+
           const el = document.createElement('div');
-          el.className = 'week-task-item' + (t.completed ? ' done-task' : '');
-          el.innerHTML = `<span class="week-task-badge">task</span><span class="week-task-text">${this._esc(t.title)}</span>`;
+          el.className = 'week-day-item';
+          el.innerHTML = `
+            <div class="week-item-check${isDone ? ' done' : ''}"></div>
+            <span class="week-item-text${isDone ? ' done' : ''}">${this._esc(t.title)}</span>
+            <span class="week-task-badge">task</span>`;
+          el.querySelector('.week-item-check').addEventListener('click', () => {
+            if (typeof TaskManager === 'undefined') return;
+            if (isRecurring) TaskManager.toggleDoneOn(t.id, ds);
+            else TaskManager.toggleComplete(t.id);
+          });
           tasksDiv.appendChild(el);
         });
         content.appendChild(tasksDiv);
