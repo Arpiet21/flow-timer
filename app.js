@@ -968,6 +968,35 @@ function bindEvents() {
   document.getElementById('settings-btn').addEventListener('click', () => {
     document.getElementById('settings-card').classList.toggle('hidden');
     document.getElementById('history-card').classList.add('hidden');
+    _initTimezoneSelector();
+  });
+
+  // Timezone selector
+  function _initTimezoneSelector() {
+    const sel  = document.getElementById('tz-select');
+    const hint = document.getElementById('tz-detected');
+    if (!sel) return;
+    const detected = typeof Auth !== 'undefined' ? Auth.getDetectedTimezone() : Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const saved    = typeof Auth !== 'undefined' ? Auth.getTimezone() : detected;
+    // Pre-select saved or detected timezone
+    const match = [...sel.options].find(o => o.value === saved) || [...sel.options].find(o => o.value === detected);
+    if (match) sel.value = match.value;
+    if (hint) hint.textContent = saved !== detected ? `auto-detected: ${detected}` : `auto-detected ✓`;
+  }
+
+  document.getElementById('tz-save-btn')?.addEventListener('click', async () => {
+    const tz  = document.getElementById('tz-select')?.value;
+    const btn = document.getElementById('tz-save-btn');
+    if (!tz) return;
+    if (btn) { btn.textContent = 'Saving…'; btn.disabled = true; }
+    if (typeof Auth !== 'undefined' && Auth.isLoggedIn()) {
+      await Auth.saveTimezone(tz);
+    } else {
+      try { localStorage.setItem('flow-timezone', tz); } catch(_) {}
+    }
+    if (btn) { btn.textContent = 'Saved ✓'; setTimeout(() => { btn.textContent = 'Save Timezone'; btn.disabled = false; }, 1500); }
+    const hint = document.getElementById('tz-detected');
+    if (hint) hint.textContent = `saved ✓`;
   });
 
   document.getElementById('history-btn').addEventListener('click', () => {

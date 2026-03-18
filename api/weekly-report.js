@@ -25,10 +25,10 @@ export default async function handler(req, res) {
   const twoWeeksAgo = new Date(now);
   twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
 
-  // Fetch all Pro/Trial users
+  // Fetch all Pro/Trial users (include timezone for localized report dates)
   const { data: plans } = await sb
     .from('user_plans')
-    .select('user_id, plan')
+    .select('user_id, plan, timezone')
     .in('plan', ['pro', 'trial']);
 
   if (!plans || plans.length === 0) return res.json({ sent: 0 });
@@ -51,9 +51,13 @@ export default async function handler(req, res) {
     .gte('completed_at', twoWeeksAgo.toISOString())
     .lt('completed_at', weekAgo.toISOString());
 
+  // Build timezone map
+  const tzMap = {};
+  (plans || []).forEach(p => { tzMap[p.user_id] = p.timezone || 'UTC'; });
+
   // Group by user
   const byUser = {};
-  for (const uid of userIds) byUser[uid] = { sessions: [], lastWeek: [] };
+  for (const uid of userIds) byUser[uid] = { sessions: [], lastWeek: [], tz: tzMap[uid] };
   (sessions || []).forEach(s => byUser[s.user_id]?.sessions.push(s));
   (lastWeekSessions || []).forEach(s => byUser[s.user_id]?.lastWeek.push(s));
 
@@ -69,7 +73,8 @@ export default async function handler(req, res) {
     const info = emailMap[uid];
     if (!info?.email) continue;
 
-    const { sessions: thisSessions, lastWeek } = byUser[uid];
+    const { sessions: thisSessions, lastWeek, tz } = byUser[uid];
+    const userTz = tz || 'UTC';
     const workSessions   = thisSessions.filter(s => s.mode === 'work');
     const workoutSessions = thisSessions.filter(s => s.mode === 'workout');
     const totalMins = workSessions.reduce((a, s) => a + (s.duration_minutes || 0), 0);
@@ -79,10 +84,15 @@ export default async function handler(req, res) {
     const mins = totalMins % 60;
     const timeStr = hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m`;
 
-    // Build a simple day-by-day breakdown
+    // Format dates in user's local timezone
+    const fmtDate = (d, opts) => new Date(d).toLocaleDateString('en-US', { ...opts, timeZone: userTz });
+    const weekStart = fmtDate(weekAgo, { month: 'short', day: 'numeric' });
+    const weekEnd   = fmtDate(now,     { month: 'short', day: 'numeric', year: 'numeric' });
+
+    // Build a day-by-day breakdown using user's timezone
     const dayMap = {};
     workSessions.forEach(s => {
-      const d = new Date(s.completed_at).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+      const d = fmtDate(s.completed_at, { weekday: 'short', month: 'short', day: 'numeric' });
       dayMap[d] = (dayMap[d] || 0) + 1;
     });
     const dayRows = Object.entries(dayMap)
@@ -98,7 +108,7 @@ export default async function handler(req, res) {
     <div style="text-align:center;margin-bottom:28px;">
       <div style="font-size:2rem;margin-bottom:8px;">⏱</div>
       <h1 style="margin:0;font-size:1.4rem;font-weight:800;color:#eaeaea;">Your Weekly Flow Report</h1>
-      <p style="margin:6px 0 0;font-size:0.85rem;color:#888;">Week of ${weekAgo.toLocaleDateString('en-US',{month:'short',day:'numeric'})} – ${now.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</p>
+      <p style="margin:6px 0 0;font-size:0.85rem;color:#888;">Week of ${weekStart} – ${weekEnd}</p>
     </div>
 
     <div style="background:#16213e;border-radius:16px;padding:24px;margin-bottom:16px;text-align:center;">

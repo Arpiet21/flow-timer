@@ -107,12 +107,14 @@ const Auth = {
 
       const planData = await this._getOrCreateTrial(userId);
       this._user = this._normalize(data.session.user, planData);
+      this._loadTimezone(userId); // async, don't await — non-blocking
     }
 
     _sb.auth.onAuthStateChange(async (_event, session) => {
       if (session?.user) {
         const planData = await this._getOrCreateTrial(session.user.id);
         this._user = this._normalize(session.user, planData);
+        this._loadTimezone(session.user.id);
       } else {
         this._user = null;
       }
@@ -374,6 +376,42 @@ const Auth = {
     return counts;
   },
 
+  // ── Timezone ──────────────────────────────────────────────────────────────
+  getDetectedTimezone() {
+    try { return Intl.DateTimeFormat().resolvedOptions().timeZone; } catch(_) { return 'UTC'; }
+  },
+
+  getTimezone() {
+    return this._user?.timezone || this.getDetectedTimezone();
+  },
+
+  async saveTimezone(tz) {
+    if (!this._user) return;
+    await _sb.from('user_plans')
+      .update({ timezone: tz, updated_at: new Date().toISOString() })
+      .eq('user_id', this._user.id);
+    this._user.timezone = tz;
+    try { localStorage.setItem('flow-timezone', tz); } catch(_) {}
+  },
+
+  async _loadTimezone(userId) {
+    try {
+      const { data } = await _sb.from('user_plans')
+        .select('timezone')
+        .eq('user_id', userId)
+        .single();
+      if (data?.timezone) {
+        this._user.timezone = data.timezone;
+        try { localStorage.setItem('flow-timezone', data.timezone); } catch(_) {}
+        return data.timezone;
+      }
+    } catch(_) {}
+    // No saved timezone — detect and save
+    const detected = this.getDetectedTimezone();
+    await this.saveTimezone(detected);
+    return detected;
+  },
+
   // ── Fetch plan; create 7-day trial if none exists ────────────────────────
   async _getOrCreateTrial(userId) {
     const { data } = await _sb.from('user_plans')
@@ -421,7 +459,8 @@ const Auth = {
         || user.email.split('@')[0],
       avatar: user.user_metadata?.avatar_url || null,
       plan,
-      trialDaysLeft
+      trialDaysLeft,
+      timezone: localStorage.getItem('flow-timezone') || null
     };
   }
 };
