@@ -1413,23 +1413,17 @@ window._currentTeam = null;
 async function initTeamAndReferral() {
   if (typeof Auth === 'undefined' || !Auth.isLoggedIn()) return;
 
-  // Referral card
-  const refCard = document.getElementById('referral-card');
+  // Referral (now inside settings panel)
   const refInput = document.getElementById('referral-link-input');
-  if (refCard && refInput) {
+  if (refInput) {
     refInput.value = Auth.getReferralLink() || '';
-    refCard.style.display = '';
     Auth.getReferralCount().then(n => {
       const el = document.getElementById('referral-count');
       if (el) el.textContent = n > 0 ? `${n} friend${n > 1 ? 's' : ''} invited` : '';
     });
   }
 
-  // Team card
-  const teamCard = document.getElementById('team-card');
-  if (!teamCard) return;
-  teamCard.style.display = '';
-
+  // Team (now inside settings panel)
   const team = await Auth.getTeam();
   if (team) {
     window._currentTeam = team;

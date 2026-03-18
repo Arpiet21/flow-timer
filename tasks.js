@@ -188,15 +188,19 @@ const TaskManager = {
     });
 
     // Category select — show new-cat form or reason hint
-    document.getElementById('task-category-select')?.addEventListener('change', e => {
-      if (e.target.value === '__new__') {
+    const _handleCatSelect = (val) => {
+      if (val === '__new__') {
         document.getElementById('new-cat-form').style.display = '';
         document.getElementById('new-cat-name')?.focus();
         document.getElementById('cat-reason-hint').style.display = 'none';
       } else {
         document.getElementById('new-cat-form').style.display = 'none';
-        this._showCatReason(e.target.value);
+        this._showCatReason(val);
       }
+    };
+    document.getElementById('task-category-select')?.addEventListener('change', e => _handleCatSelect(e.target.value));
+    document.getElementById('task-category-select')?.addEventListener('click', e => {
+      if (e.target.value === '__new__') _handleCatSelect('__new__');
     });
 
     // Save new category
@@ -326,6 +330,10 @@ const TaskManager = {
     document.getElementById('task-add-trigger').style.display = 'none';
     document.getElementById('task-add-form').style.display    = 'flex';
     document.getElementById('task-title-input')?.focus();
+    // If no categories yet, auto-open the new category form
+    if (this._categories.length === 0) {
+      document.getElementById('new-cat-form').style.display = '';
+    }
   },
 
   hideAddForm() {
