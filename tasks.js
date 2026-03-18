@@ -80,17 +80,9 @@ const TaskCalendar = {
   }
 };
 
-const _DEFAULT_CATEGORIES = [
-  { name: 'Work',     reason: '' },
-  { name: 'Study',    reason: '' },
-  { name: 'Personal', reason: '' },
-  { name: 'Health',   reason: '' },
-  { name: 'Other',    reason: '' }
-];
-
 const TaskManager = {
   _tasks:      [],
-  _categories: [..._DEFAULT_CATEGORIES],
+  _categories: [],
   _priority:   2,
   _showDone:   false,
   _bound:      false,
@@ -141,18 +133,23 @@ const TaskManager = {
     const sel = document.getElementById('task-category-select');
     if (!sel) return;
     const current = sel.value;
-    sel.innerHTML = this._categories.map(c =>
-      `<option value="${this._esc(c.name)}">${this._esc(c.name)}</option>`
-    ).join('') + `<option value="__new__">+ New category…</option>`;
-    if (current && [...sel.options].some(o => o.value === current)) sel.value = current;
+    if (this._categories.length === 0) {
+      sel.innerHTML = `<option value="__new__">+ Create a category first…</option>`;
+    } else {
+      sel.innerHTML = this._categories.map(c =>
+        `<option value="${this._esc(c.name)}">${this._esc(c.name)}</option>`
+      ).join('') + `<option value="__new__">+ New category…</option>`;
+      if (current && [...sel.options].some(o => o.value === current)) sel.value = current;
+    }
   },
 
   _showCatReason(name) {
     const cat = this._categories.find(c => c.name === name);
     const hint = document.getElementById('cat-reason-hint');
     if (!hint) return;
-    if (cat?.reason) {
-      hint.textContent = `💡 ${cat.reason}`;
+    const reasons = (cat?.reasons || []).filter(Boolean);
+    if (reasons.length) {
+      hint.innerHTML = reasons.map((r, i) => `<span class="cat-reason-line">💡 ${this._esc(r)}</span>`).join('');
       hint.style.display = '';
     } else {
       hint.style.display = 'none';
@@ -196,22 +193,27 @@ const TaskManager = {
   },
 
   _saveNewCategory() {
-    const nameEl   = document.getElementById('new-cat-name');
-    const reasonEl = document.getElementById('new-cat-reason');
-    const name = nameEl?.value.trim();
+    const nameEl = document.getElementById('new-cat-name');
+    const name   = nameEl?.value.trim();
     if (!name) { nameEl?.classList.add('task-field-error'); setTimeout(() => nameEl?.classList.remove('task-field-error'), 800); return; }
 
-    // Don't duplicate
+    const reasons = [
+      document.getElementById('new-cat-reason-1')?.value.trim() || '',
+      document.getElementById('new-cat-reason-2')?.value.trim() || '',
+      document.getElementById('new-cat-reason-3')?.value.trim() || ''
+    ].filter(Boolean);
+
     if (!this._categories.find(c => c.name.toLowerCase() === name.toLowerCase())) {
-      this._categories.push({ name, reason: reasonEl?.value.trim() || '' });
+      this._categories.push({ name, reasons });
       this._saveCategories();
     }
     this._populateCategorySelect();
     const sel = document.getElementById('task-category-select');
     if (sel) sel.value = name;
     this._showCatReason(name);
-    if (nameEl) nameEl.value = '';
-    if (reasonEl) reasonEl.value = '';
+    ['new-cat-name','new-cat-reason-1','new-cat-reason-2','new-cat-reason-3'].forEach(id => {
+      const el = document.getElementById(id); if (el) el.value = '';
+    });
     document.getElementById('new-cat-form').style.display = 'none';
   },
 
@@ -248,7 +250,12 @@ const TaskManager = {
       return;
     }
 
-    const category = document.getElementById('task-category-select')?.value || 'Personal';
+    const category = document.getElementById('task-category-select')?.value;
+    if (!category || category === '__new__') {
+      document.getElementById('new-cat-form').style.display = '';
+      document.getElementById('new-cat-name')?.focus();
+      return;
+    }
     const estMins  = parseInt(document.getElementById('task-est-select')?.value || '25');
     const tagsRaw  = document.getElementById('task-tags-input')?.value.trim() || '';
     const tags = tagsRaw
@@ -368,9 +375,11 @@ const TaskManager = {
     incomplete.forEach(t => { (groups[t.category] = groups[t.category] || []).push(t); });
     Object.entries(groups).forEach(([cat, tasks]) => {
       const catData = this._categories.find(c => c.name === cat);
+      const reasons = (catData?.reasons || []).filter(Boolean);
       const g = document.createElement('div');
       g.className = 'task-group';
-      g.innerHTML = `<div class="task-group-label">${this._esc(cat)}${catData?.reason ? `<span class="task-group-reason"> — ${this._esc(catData.reason)}</span>` : ''}</div>`;
+      g.innerHTML = `<div class="task-group-label">${this._esc(cat)}</div>`
+        + (reasons.length ? `<div class="task-group-reasons">${reasons.map(r => `<span class="task-group-reason-item">💡 ${this._esc(r)}</span>`).join('')}</div>` : '');
       tasks.forEach(t => g.appendChild(this._taskEl(t)));
       list.appendChild(g);
     });

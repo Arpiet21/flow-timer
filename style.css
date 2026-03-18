@@ -1511,18 +1511,28 @@ kbd {
   border-radius: 10px;
 }
 .cat-reason-hint {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: rgba(57,255,20,0.06);
+  border-radius: 8px;
+  padding: 6px 10px;
+}
+.cat-reason-line {
   font-size: 0.74rem;
   color: var(--accent);
-  background: rgba(57,255,20,0.07);
-  border-radius: 8px;
-  padding: 5px 10px;
+  display: block;
 }
-.task-group-reason {
-  font-weight: 400;
+.task-group-reasons {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: -2px 0 6px 2px;
+}
+.task-group-reason-item {
+  font-size: 0.65rem;
   color: var(--text-muted);
-  font-size: 0.62rem;
-  text-transform: none;
-  letter-spacing: 0;
+  font-style: italic;
 }
 
 .task-show-completed-btn {
