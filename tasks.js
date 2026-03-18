@@ -153,23 +153,23 @@ const TaskManager = {
 
   // ── Persistence ───────────────────────────────────────────────────────────
   async _load() {
-    try {
-      if (typeof Auth !== 'undefined' && Auth.isLoggedIn()) {
+    if (typeof Auth !== 'undefined' && Auth.isLoggedIn()) {
+      try {
         const { data } = await _sb.from('tasks')
           .select('*')
           .eq('user_id', Auth.getUser().id)
           .order('created_at', { ascending: true });
         this._tasks = data || [];
-      } else {
-        this._tasks = JSON.parse(localStorage.getItem('flow-tasks') || '[]');
-      }
-    } catch (_) { this._tasks = []; }
+        this._saveLocal(); // keep local cache in sync
+        return;
+      } catch (_) { /* Supabase failed — fall back to local cache */ }
+    }
+    try { this._tasks = JSON.parse(localStorage.getItem('flow-tasks') || '[]'); }
+    catch (_) { this._tasks = []; }
   },
 
   _saveLocal() {
-    if (!(typeof Auth !== 'undefined' && Auth.isLoggedIn())) {
-      try { localStorage.setItem('flow-tasks', JSON.stringify(this._tasks)); } catch (_) {}
-    }
+    try { localStorage.setItem('flow-tasks', JSON.stringify(this._tasks)); } catch (_) {}
   },
 
   // ── Category persistence ──────────────────────────────────────────────────
@@ -472,21 +472,29 @@ const TaskManager = {
       created_at:        new Date().toISOString()
     };
 
-    // Save to Supabase (fire-and-forget; don't let failures block the UI)
-    if (typeof Auth !== 'undefined' && Auth.isLoggedIn()) {
-      try {
-        const { data } = await _sb.from('tasks')
-          .insert({ ...task, user_id: Auth.getUser().id })
-          .select('id')
-          .limit(1);
-        if (data?.[0]?.id) task.id = data[0].id;
-      } catch (_) { /* Supabase error — task still saved locally */ }
-    }
-
+    // Update UI immediately — never block on network
     this._tasks.push(task);
     this._saveLocal();
     this.hideAddForm();
     this._render();
+
+    // Sync to Supabase in the background (true fire-and-forget)
+    try {
+      const uid = typeof Auth !== 'undefined' && Auth.isLoggedIn() ? Auth.getUser()?.id : null;
+      if (uid) {
+        _sb.from('tasks')
+          .insert({ ...task, user_id: uid })
+          .select('id')
+          .limit(1)
+          .then(({ data }) => {
+            if (data?.[0]?.id) {
+              const t = this._tasks.find(t => t.id === task.id);
+              if (t) { t.id = data[0].id; this._saveLocal(); }
+            }
+          })
+          .catch(() => {});
+      }
+    } catch (_) {}
 
     // If scheduled for a future date, show a toast so user knows it was saved
     if (task.scheduled_date && task.scheduled_date > this._todayDs()) {
@@ -511,17 +519,18 @@ const TaskManager = {
   },
 
   // ── Toggle complete ────────────────────────────────────────────────────────
-  async toggleComplete(id) {
+  toggleComplete(id) {
     const task = this._tasks.find(t => t.id === id);
     if (!task) return;
     task.completed    = !task.completed;
     task.completed_at = task.completed ? new Date().toISOString() : null;
-    if (typeof Auth !== 'undefined' && Auth.isLoggedIn()) {
-      try { await _sb.from('tasks').update({ completed: task.completed, completed_at: task.completed_at }).eq('id', id); }
-      catch (_) {}
-    }
     this._saveLocal();
     this._render();
+    if (typeof WeekPlanner !== 'undefined') WeekPlanner._render();
+    // Sync to Supabase in background
+    if (typeof Auth !== 'undefined' && Auth.isLoggedIn()) {
+      _sb.from('tasks').update({ completed: task.completed, completed_at: task.completed_at }).eq('id', id).catch(() => {});
+    }
   },
 
   // ── Delete ────────────────────────────────────────────────────────────────
@@ -583,8 +592,11 @@ const TaskManager = {
   // Returns true if a task belongs to today
   _isToday(task) {
     const todayDs = this._todayDs();
-    // Recurring tasks: always visible (completion is tracked per-day separately)
-    if (task.recurring_days?.length) return true;
+    // Recurring tasks: visible from their scheduled_date onwards (or always if no start date)
+    if (task.recurring_days?.length) {
+      if (task.scheduled_date && todayDs < task.scheduled_date) return false;
+      return true;
+    }
     // One-off completed task: only show on the day it was completed
     if (task.completed) return task.completed_at?.slice(0, 10) === todayDs;
     if (task.scheduled_date) return task.scheduled_date === todayDs;
@@ -994,7 +1006,12 @@ const WeekPlanner = {
       const dow = date.getDay(); // 0=Sun
       const dayTasks = typeof TaskManager !== 'undefined'
         ? TaskManager._tasks.filter(t => {
-            if (t.recurring_days?.length) return t.recurring_days.includes(dow);
+            if (t.recurring_days?.length) {
+              if (!t.recurring_days.includes(dow)) return false;
+              // Respect scheduled_date as a start date for recurring tasks
+              if (t.scheduled_date && ds < t.scheduled_date) return false;
+              return true;
+            }
             if (t.scheduled_date) return t.scheduled_date === ds;
             return !t.scheduled_date && t.created_at?.slice(0, 10) === ds;
           })
