@@ -590,15 +590,12 @@ const TaskManager = {
     list.innerHTML = '';
 
     // Only show today's tasks — use per-day done for recurring
-    const todayDs    = this._todayDs();
-    const isEffDone  = t => t.recurring_days?.length ? this.isDoneOn(t.id, todayDs) : t.completed;
+    const todayDs         = this._todayDs();
+    const isEffDone       = t => t.recurring_days?.length ? this.isDoneOn(t.id, todayDs) : t.completed;
     const todayIncomplete = this._tasks.filter(t => this._isToday(t) && !isEffDone(t));
     const doneToday       = this._tasks.filter(t => this._isToday(t) &&  isEffDone(t));
-
-    // Count upcoming (scheduled future, not today, not recurring)
-    const todayDs   = this._todayDs();
-    const upcoming  = this._tasks.filter(t =>
-      !t.completed && t.scheduled_date && t.scheduled_date > todayDs
+    const upcoming        = this._tasks.filter(t =>
+      !isEffDone(t) && !t.recurring_days?.length && t.scheduled_date && t.scheduled_date > todayDs
     );
 
     if (todayIncomplete.length === 0 && doneToday.length === 0) {
@@ -618,21 +615,13 @@ const TaskManager = {
         list.appendChild(g);
       });
 
-      // Today's completed (collapsible)
+      // Today's completed — always visible, with a divider label
       if (doneToday.length > 0) {
-        const toggle = document.createElement('button');
-        toggle.className = 'task-show-completed-btn';
-        toggle.textContent = `▾ Show ${doneToday.length} completed today`;
-        const doneWrap = document.createElement('div');
-        doneWrap.style.display = 'none';
-        toggle.addEventListener('click', () => {
-          this._showDone = !this._showDone;
-          doneWrap.style.display = this._showDone ? '' : 'none';
-          toggle.textContent = this._showDone ? '▴ Hide completed' : `▾ Show ${doneToday.length} completed today`;
-        });
-        doneToday.forEach(t => doneWrap.appendChild(this._taskEl(t)));
-        list.appendChild(toggle);
-        list.appendChild(doneWrap);
+        const divider = document.createElement('div');
+        divider.className = 'task-done-divider';
+        divider.textContent = `✓ Completed today (${doneToday.length})`;
+        list.appendChild(divider);
+        doneToday.forEach(t => list.appendChild(this._taskEl(t)));
       }
     }
 
