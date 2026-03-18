@@ -584,11 +584,7 @@
           <input type="text" id="task-title-input" class="task-field" placeholder="Task name…" maxlength="120">
           <div class="task-form-row">
             <select id="task-category-select" class="task-select">
-              <option value="Work">Work</option>
-              <option value="Study">Study</option>
-              <option value="Personal" selected>Personal</option>
-              <option value="Health">Health</option>
-              <option value="Other">Other</option>
+              <!-- populated by TaskManager._populateCategorySelect() -->
             </select>
             <select id="task-est-select" class="task-select">
               <option value="10">10m</option>
@@ -606,6 +602,18 @@
               <span class="task-dot"></span>
             </div>
           </div>
+          <!-- New category inline form -->
+          <div id="new-cat-form" style="display:none" class="new-cat-form">
+            <input type="text" id="new-cat-name" class="task-field" placeholder="Category name…" maxlength="40">
+            <input type="text" id="new-cat-reason" class="task-field" placeholder="Why are you working on this? (optional)">
+            <div class="task-form-actions">
+              <button class="btn-accent-sm" id="new-cat-save-btn">Save Category</button>
+              <button class="task-cancel-btn" id="new-cat-cancel-btn">Cancel</button>
+            </div>
+          </div>
+          <!-- Category reason hint (shown when category has a reason) -->
+          <div id="cat-reason-hint" class="cat-reason-hint" style="display:none"></div>
+
           <input type="text" id="task-tags-input" class="task-field" placeholder="Tags: #work #urgent (optional)">
           <div class="task-form-actions">
             <button class="btn-accent-sm" id="task-submit-btn">Add Task</button>

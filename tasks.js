@@ -1,14 +1,25 @@
 // ─── Task Manager ─────────────────────────────────────────────────────────────
 
+const _DEFAULT_CATEGORIES = [
+  { name: 'Work',     reason: '' },
+  { name: 'Study',    reason: '' },
+  { name: 'Personal', reason: '' },
+  { name: 'Health',   reason: '' },
+  { name: 'Other',    reason: '' }
+];
+
 const TaskManager = {
-  _tasks:    [],
-  _priority: 2,
-  _showDone: false,
-  _bound:    false,   // prevent duplicate event listener bindings
+  _tasks:      [],
+  _categories: [..._DEFAULT_CATEGORIES],
+  _priority:   2,
+  _showDone:   false,
+  _bound:      false,
 
   // ── Init ──────────────────────────────────────────────────────────────────
   async init() {
+    this._loadCategories();
     await this._load();
+    this._populateCategorySelect();
     this._render();
     if (!this._bound) { this._bindButtons(); this._bound = true; }
   },
@@ -34,26 +45,94 @@ const TaskManager = {
     }
   },
 
+  // ── Category persistence ──────────────────────────────────────────────────
+  _loadCategories() {
+    try {
+      const saved = JSON.parse(localStorage.getItem('flow-task-categories') || 'null');
+      if (Array.isArray(saved) && saved.length) this._categories = saved;
+    } catch (_) {}
+  },
+
+  _saveCategories() {
+    try { localStorage.setItem('flow-task-categories', JSON.stringify(this._categories)); } catch (_) {}
+  },
+
+  _populateCategorySelect() {
+    const sel = document.getElementById('task-category-select');
+    if (!sel) return;
+    const current = sel.value;
+    sel.innerHTML = this._categories.map(c =>
+      `<option value="${this._esc(c.name)}">${this._esc(c.name)}</option>`
+    ).join('') + `<option value="__new__">+ New category…</option>`;
+    if (current && [...sel.options].some(o => o.value === current)) sel.value = current;
+  },
+
+  _showCatReason(name) {
+    const cat = this._categories.find(c => c.name === name);
+    const hint = document.getElementById('cat-reason-hint');
+    if (!hint) return;
+    if (cat?.reason) {
+      hint.textContent = `💡 ${cat.reason}`;
+      hint.style.display = '';
+    } else {
+      hint.style.display = 'none';
+    }
+  },
+
   // ── Bind all interactive buttons once ─────────────────────────────────────
   _bindButtons() {
-    // Trigger → show form
     document.getElementById('task-add-trigger')?.addEventListener('click', () => this.showAddForm());
-
-    // Add Task button
     document.getElementById('task-submit-btn')?.addEventListener('click', () => this.submitAdd());
-
-    // Cancel button
     document.getElementById('task-cancel-btn')?.addEventListener('click', () => this.hideAddForm());
-
-    // Enter key in title input
     document.getElementById('task-title-input')?.addEventListener('keydown', e => {
       if (e.key === 'Enter') { e.preventDefault(); this.submitAdd(); }
     });
-
-    // Priority dots
     document.querySelectorAll('#task-priority-pick .task-dot').forEach((el, i) => {
       el.addEventListener('click', () => this.setPriority(i + 1));
     });
+
+    // Category select — show new-cat form or reason hint
+    document.getElementById('task-category-select')?.addEventListener('change', e => {
+      if (e.target.value === '__new__') {
+        document.getElementById('new-cat-form').style.display = '';
+        document.getElementById('new-cat-name')?.focus();
+        document.getElementById('cat-reason-hint').style.display = 'none';
+      } else {
+        document.getElementById('new-cat-form').style.display = 'none';
+        this._showCatReason(e.target.value);
+      }
+    });
+
+    // Save new category
+    document.getElementById('new-cat-save-btn')?.addEventListener('click', () => this._saveNewCategory());
+    document.getElementById('new-cat-cancel-btn')?.addEventListener('click', () => {
+      document.getElementById('new-cat-form').style.display = 'none';
+      const sel = document.getElementById('task-category-select');
+      if (sel) sel.value = this._categories[0]?.name || 'Personal';
+    });
+    document.getElementById('new-cat-name')?.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); this._saveNewCategory(); }
+    });
+  },
+
+  _saveNewCategory() {
+    const nameEl   = document.getElementById('new-cat-name');
+    const reasonEl = document.getElementById('new-cat-reason');
+    const name = nameEl?.value.trim();
+    if (!name) { nameEl?.classList.add('task-field-error'); setTimeout(() => nameEl?.classList.remove('task-field-error'), 800); return; }
+
+    // Don't duplicate
+    if (!this._categories.find(c => c.name.toLowerCase() === name.toLowerCase())) {
+      this._categories.push({ name, reason: reasonEl?.value.trim() || '' });
+      this._saveCategories();
+    }
+    this._populateCategorySelect();
+    const sel = document.getElementById('task-category-select');
+    if (sel) sel.value = name;
+    this._showCatReason(name);
+    if (nameEl) nameEl.value = '';
+    if (reasonEl) reasonEl.value = '';
+    document.getElementById('new-cat-form').style.display = 'none';
   },
 
   // ── Add form show / hide ───────────────────────────────────────────────────
@@ -207,9 +286,10 @@ const TaskManager = {
     const groups = {};
     incomplete.forEach(t => { (groups[t.category] = groups[t.category] || []).push(t); });
     Object.entries(groups).forEach(([cat, tasks]) => {
+      const catData = this._categories.find(c => c.name === cat);
       const g = document.createElement('div');
       g.className = 'task-group';
-      g.innerHTML = `<div class="task-group-label">${cat}</div>`;
+      g.innerHTML = `<div class="task-group-label">${this._esc(cat)}${catData?.reason ? `<span class="task-group-reason"> — ${this._esc(catData.reason)}</span>` : ''}</div>`;
       tasks.forEach(t => g.appendChild(this._taskEl(t)));
       list.appendChild(g);
     });
