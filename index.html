@@ -553,6 +553,19 @@
     <!-- ── Task Manager Section ──────────────────────────────────────────── -->
     <div id="task-section" class="hidden">
 
+      <!-- Activity Calendar -->
+      <div class="card task-calendar-card" id="task-calendar-card">
+        <div class="tcal-header">
+          <button class="tcal-nav-btn" id="tcal-prev">‹</button>
+          <span class="tcal-month-label" id="tcal-month-label"></span>
+          <button class="tcal-nav-btn" id="tcal-next">›</button>
+        </div>
+        <div class="tcal-weekdays">
+          <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
+        </div>
+        <div class="tcal-grid" id="tcal-grid"></div>
+      </div>
+
       <!-- Stats bar -->
       <div class="card task-stats-card">
         <div class="task-stat">

@@ -1,5 +1,85 @@
 // ─── Task Manager ─────────────────────────────────────────────────────────────
 
+// ─── Task Activity Calendar ────────────────────────────────────────────────────
+
+const TaskCalendar = {
+  _year:  new Date().getFullYear(),
+  _month: new Date().getMonth(), // 0-based
+  _bound: false,
+
+  init(tasks) {
+    this._renderCalendar(tasks);
+    if (!this._bound) {
+      document.getElementById('tcal-prev')?.addEventListener('click', () => {
+        if (this._month === 0) { this._month = 11; this._year--; }
+        else this._month--;
+        this._renderCalendar(TaskManager._tasks);
+      });
+      document.getElementById('tcal-next')?.addEventListener('click', () => {
+        if (this._month === 11) { this._month = 0; this._year++; }
+        else this._month++;
+        this._renderCalendar(TaskManager._tasks);
+      });
+      this._bound = true;
+    }
+  },
+
+  _renderCalendar(tasks) {
+    const grid    = document.getElementById('tcal-grid');
+    const label   = document.getElementById('tcal-month-label');
+    if (!grid || !label) return;
+
+    const y = this._year, m = this._month;
+    const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    label.textContent = `${monthNames[m]} ${y}`;
+
+    // Build counts map: 'YYYY-MM-DD' → completed task count
+    const counts = {};
+    (tasks || []).forEach(t => {
+      if (t.completed && t.completed_at) {
+        const d = t.completed_at.slice(0, 10);
+        counts[d] = (counts[d] || 0) + 1;
+      }
+      // Also count created tasks for the day (even if not completed)
+      if (t.created_at) {
+        const d = t.created_at.slice(0, 10);
+        if (!counts[d]) counts[d] = 0; // mark as active day even if 0 completions
+      }
+    });
+
+    const firstDay  = new Date(y, m, 1).getDay(); // 0=Sun
+    const daysInMonth = new Date(y, m + 1, 0).getDate();
+    const today = new Date().toISOString().slice(0, 10);
+
+    grid.innerHTML = '';
+
+    // Leading empty cells
+    for (let i = 0; i < firstDay; i++) {
+      const empty = document.createElement('div');
+      empty.className = 'tcal-cell tcal-empty';
+      grid.appendChild(empty);
+    }
+
+    // Day cells
+    for (let d = 1; d <= daysInMonth; d++) {
+      const ds = `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      const count = counts[ds];
+      const isToday = ds === today;
+      const isFuture = ds > today;
+
+      const cell = document.createElement('div');
+      cell.className = 'tcal-cell' +
+        (isToday   ? ' tcal-today'  : '') +
+        (isFuture  ? ' tcal-future' : '') +
+        (count > 0 ? ' tcal-active' : '');
+
+      cell.innerHTML = `<span class="tcal-day-num">${d}</span>${count > 0 ? `<span class="tcal-count">${count}</span>` : ''}`;
+      if (count > 0) cell.title = `${count} task${count !== 1 ? 's' : ''} completed`;
+      grid.appendChild(cell);
+    }
+  }
+};
+
 const _DEFAULT_CATEGORIES = [
   { name: 'Work',     reason: '' },
   { name: 'Study',    reason: '' },
@@ -253,6 +333,7 @@ const TaskManager = {
   _render() {
     this._renderStats();
     this._renderList();
+    TaskCalendar.init(this._tasks);
   },
 
   _renderStats() {
