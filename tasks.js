@@ -138,6 +138,14 @@ const TaskManager = {
     this._loadCategories();
     this._loadRecurDone();
     await this._load();
+    // If categories were lost (localStorage cleared / new device), rebuild from task data
+    if (this._categories.length === 0 && this._tasks.length > 0) {
+      const names = [...new Set(this._tasks.map(t => t.category).filter(Boolean))];
+      if (names.length) {
+        this._categories = names.map(name => ({ name, reasons: [] }));
+        this._saveCategories();
+      }
+    }
     this._populateCategorySelect();
     this._render();
     if (!this._bound) { this._bindButtons(); this._bound = true; }
@@ -479,6 +487,26 @@ const TaskManager = {
     this._saveLocal();
     this.hideAddForm();
     this._render();
+
+    // If scheduled for a future date, show a toast so user knows it was saved
+    if (task.scheduled_date && task.scheduled_date > this._todayDs()) {
+      const [y, m, d] = task.scheduled_date.split('-');
+      this._toast(`✅ Scheduled for ${d}/${m}/${y} — see Weekly Plan ↓`);
+    }
+  },
+
+  _toast(msg, durationMs = 3000) {
+    const t = document.createElement('div');
+    t.textContent = msg;
+    t.style.cssText = `
+      position:fixed; bottom:80px; left:50%; transform:translateX(-50%);
+      background:#1e2d1e; color:#39ff14; border:1px solid rgba(57,255,20,0.3);
+      padding:10px 20px; border-radius:12px; font-size:0.82rem; font-weight:600;
+      z-index:9999; white-space:nowrap; box-shadow:0 4px 20px rgba(0,0,0,0.5);
+      animation: toast-in 0.2s ease;
+    `;
+    document.body.appendChild(t);
+    setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity 0.3s'; setTimeout(() => t.remove(), 300); }, durationMs);
   },
 
   // ── Toggle complete ────────────────────────────────────────────────────────
