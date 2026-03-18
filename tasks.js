@@ -654,6 +654,12 @@ const TaskManager = {
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
   },
 
+  _dsAdd(days) {
+    const d = new Date();
+    d.setDate(d.getDate() + days);
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  },
+
   _renderStats() {
     const todayDs    = this._todayDs();
     const todayTasks = this._tasks.filter(t => this._isToday(t));
@@ -675,19 +681,22 @@ const TaskManager = {
     if (!list) return;
     list.innerHTML = '';
 
-    // Only show today's tasks — use per-day done for recurring
-    const todayDs         = this._todayDs();
-    const isEffDone       = t => t.recurring_days?.length ? this.isDoneOn(t.id, todayDs) : t.completed;
+    const todayDs    = this._todayDs();
+    const tomorrowDs = this._dsAdd(1);
+    const dayAfterDs = this._dsAdd(2);
+    const isEffDone  = t => t.recurring_days?.length ? this.isDoneOn(t.id, todayDs) : t.completed;
+
     const todayIncomplete = this._tasks.filter(t => this._isToday(t) && !isEffDone(t));
     const doneToday       = this._tasks.filter(t => this._isToday(t) &&  isEffDone(t));
-    const upcoming        = this._tasks.filter(t =>
-      !isEffDone(t) && !t.recurring_days?.length && t.scheduled_date && t.scheduled_date > todayDs
-    );
+    const tomorrowTasks   = this._tasks.filter(t => !t.recurring_days?.length && t.scheduled_date === tomorrowDs && !t.completed);
+    const dayAfterTasks   = this._tasks.filter(t => !t.recurring_days?.length && t.scheduled_date === dayAfterDs && !t.completed);
 
+    const fmtDs = ds => new Date(ds + 'T00:00:00').toLocaleDateString('default', { weekday: 'short', day: 'numeric', month: 'short' });
+
+    // ── Today ──────────────────────────────────────────────────────────────
     if (todayIncomplete.length === 0 && doneToday.length === 0) {
       list.innerHTML = '<p class="task-empty">Nothing for today — add a task or check the Weekly Plan ↓</p>';
     } else {
-      // Group today's incomplete by category
       const groups = {};
       todayIncomplete.forEach(t => { (groups[t.category] = groups[t.category] || []).push(t); });
       Object.entries(groups).forEach(([cat, tasks]) => {
@@ -701,7 +710,6 @@ const TaskManager = {
         list.appendChild(g);
       });
 
-      // Today's completed — always visible, with a divider label
       if (doneToday.length > 0) {
         const divider = document.createElement('div');
         divider.className = 'task-done-divider';
@@ -711,12 +719,22 @@ const TaskManager = {
       }
     }
 
-    // Upcoming tasks notice (scheduled for future dates)
-    if (upcoming.length > 0) {
-      const notice = document.createElement('p');
-      notice.className = 'task-upcoming-notice';
-      notice.textContent = `📅 ${upcoming.length} upcoming task${upcoming.length > 1 ? 's' : ''} scheduled — see Weekly Plan ↓`;
-      list.appendChild(notice);
+    // ── Tomorrow ───────────────────────────────────────────────────────────
+    if (tomorrowTasks.length > 0) {
+      const sec = document.createElement('div');
+      sec.className = 'task-date-section';
+      sec.innerHTML = `<div class="task-date-section-label">Tomorrow — ${fmtDs(tomorrowDs)}</div>`;
+      tomorrowTasks.forEach(t => sec.appendChild(this._taskEl(t)));
+      list.appendChild(sec);
+    }
+
+    // ── Day after tomorrow ─────────────────────────────────────────────────
+    if (dayAfterTasks.length > 0) {
+      const sec = document.createElement('div');
+      sec.className = 'task-date-section';
+      sec.innerHTML = `<div class="task-date-section-label">${fmtDs(dayAfterDs)}</div>`;
+      dayAfterTasks.forEach(t => sec.appendChild(this._taskEl(t)));
+      list.appendChild(sec);
     }
   },
 

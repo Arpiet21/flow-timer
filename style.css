@@ -1755,6 +1755,20 @@ kbd {
   margin-top: 12px;
   margin-bottom: 4px;
 }
+.task-date-section {
+  margin-top: 18px;
+}
+.task-date-section-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--accent);
+  border-top: 1px solid rgba(255,255,255,0.07);
+  padding-top: 10px;
+  margin-bottom: 6px;
+  opacity: 0.85;
+}
 .task-upcoming-notice {
   font-size: 0.76rem;
   color: rgba(120, 140, 200, 0.75);
