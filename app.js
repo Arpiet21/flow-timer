@@ -969,7 +969,25 @@ function bindEvents() {
     document.getElementById('settings-card').classList.toggle('hidden');
     document.getElementById('history-card').classList.add('hidden');
     _initTimezoneSelector();
+    _initCompleteStyleToggle();
   });
+
+  // Task completion style toggle
+  function _initCompleteStyleToggle() {
+    const saved = localStorage.getItem('flow-task-complete-style') || 'checkbox';
+    document.querySelectorAll('#complete-style-toggle .complete-style-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.style === saved);
+    });
+  }
+  document.querySelectorAll('#complete-style-toggle .complete-style-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      localStorage.setItem('flow-task-complete-style', btn.dataset.style);
+      document.querySelectorAll('#complete-style-toggle .complete-style-btn')
+        .forEach(b => b.classList.toggle('active', b === btn));
+      if (typeof TaskManager !== 'undefined') TaskManager._render();
+    });
+  });
+  _initCompleteStyleToggle();
 
   // Timezone selector
   function _initTimezoneSelector() {

@@ -1664,6 +1664,81 @@ kbd {
   font-size: 0.82rem;
   padding: 24px 0 12px;
 }
+/* ─── Completion Style Toggle (Settings) ────────────────────────────────────── */
+.complete-style-toggle {
+  display: flex; gap: 4px;
+}
+.complete-style-btn {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 7px;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  padding: 5px 10px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.complete-style-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #111;
+  font-weight: 700;
+}
+
+/* ─── Swipe-to-complete Slider ───────────────────────────────────────────────── */
+.task-slider-wrap {
+  position: relative;
+  width: 72px;
+  height: 26px;
+  background: rgba(255,255,255,0.07);
+  border-radius: 13px;
+  overflow: hidden;
+  cursor: grab;
+  flex-shrink: 0;
+  user-select: none;
+  touch-action: none;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+.task-slider-wrap:active { cursor: grabbing; }
+.task-slider-fill {
+  position: absolute;
+  left: 0; top: 0; height: 100%;
+  background: linear-gradient(90deg, var(--accent), rgba(57,255,20,0.55));
+  border-radius: 13px;
+  width: 0%;
+  pointer-events: none;
+}
+.task-slider-handle {
+  position: absolute;
+  top: 3px; left: 3px;
+  width: 20px; height: 20px;
+  background: var(--accent);
+  border-radius: 50%;
+  pointer-events: none;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.4);
+}
+.task-slider-label {
+  position: absolute;
+  right: 5px; top: 0; height: 100%;
+  display: flex; align-items: center;
+  font-size: 0.58rem;
+  color: rgba(255,255,255,0.3);
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+/* ─── Sparkle Burst ──────────────────────────────────────────────────────────── */
+@keyframes sparkle-fly {
+  0%   { transform: translate(0, 0) scale(1); opacity: 1; }
+  100% { transform: translate(var(--dx), var(--dy)) scale(0); opacity: 0; }
+}
+.sparkle-particle {
+  position: fixed;
+  pointer-events: none;
+  z-index: 9999;
+  animation: sparkle-fly var(--dur, 0.7s) ease-out forwards;
+}
+
 .task-done-divider {
   font-size: 0.72rem;
   color: var(--text-muted);

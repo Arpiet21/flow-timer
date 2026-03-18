@@ -659,9 +659,12 @@ const TaskManager = {
       ? `<svg viewBox="0 0 12 12" fill="none"><polyline points="1.5,6 5,9.5 10.5,2.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`
       : '';
 
+    const completeStyle = this._getCompleteStyle();
+    const useSlider = completeStyle === 'slider' && !isDone;
+
     el.className = 'task-item' + (isDone ? ' task-item-done' : '');
     el.innerHTML = `
-      <button class="task-check${isDone ? ' checked' : ''}">${checkIcon}</button>
+      ${isDone || !useSlider ? `<button class="task-check${isDone ? ' checked' : ''}">${checkIcon}</button>` : '<span class="task-slider-placeholder"></span>'}
       <div class="task-body">
         <div class="task-title">${this._esc(task.title)}</div>
         <div class="task-meta">
@@ -675,14 +678,103 @@ const TaskManager = {
       ${!isDone ? `<button class="task-play-btn" title="Focus on this">▶</button>` : ''}
       <button class="task-del-btn" title="Delete">✕</button>`;
 
-    // Recurring → per-day toggle; one-off → global toggle
-    el.querySelector('.task-check').addEventListener('click', () =>
-      isRecurring ? this.toggleDoneOn(task.id, todayDs) : this.toggleComplete(task.id)
-    );
+    if (useSlider) {
+      // Replace placeholder with drag slider
+      const placeholder = el.querySelector('.task-slider-placeholder');
+      const onComplete = () => isRecurring ? this.toggleDoneOn(task.id, todayDs) : this.toggleComplete(task.id);
+      const slider = this._makeSlider(onComplete);
+      el.replaceChild(slider, placeholder);
+    } else {
+      // Recurring → per-day toggle; one-off → global toggle
+      el.querySelector('.task-check').addEventListener('click', () =>
+        isRecurring ? this.toggleDoneOn(task.id, todayDs) : this.toggleComplete(task.id)
+      );
+    }
+
     el.querySelector('.task-del-btn').addEventListener('click', () => this.deleteTask(task.id));
     el.querySelector('.task-play-btn')?.addEventListener('click', () => this.startFocus(task.id));
 
     return el;
+  },
+
+  // ── Completion style ──────────────────────────────────────────────────────
+  _getCompleteStyle() {
+    try { return localStorage.getItem('flow-task-complete-style') || 'checkbox'; } catch(_) { return 'checkbox'; }
+  },
+
+  // ── Sparkle burst at (x, y) ───────────────────────────────────────────────
+  _triggerSparkle(x, y) {
+    const colors  = ['#39ff14','#ffd60a','#ff453a','#0a84ff','#ff2d92','#ffffff','#ff9500'];
+    const symbols = ['✦','✧','★','•','✿','❋','◆'];
+    for (let i = 0; i < 18; i++) {
+      const el = document.createElement('span');
+      el.className = 'sparkle-particle';
+      el.textContent = symbols[Math.floor(Math.random() * symbols.length)];
+      const angle = (i / 18) * 360 + Math.random() * 20;
+      const dist  = 50 + Math.random() * 60;
+      const rad   = angle * Math.PI / 180;
+      el.style.cssText = `
+        left:${x}px; top:${y}px;
+        color:${colors[Math.floor(Math.random() * colors.length)]};
+        font-size:${8 + Math.random() * 10}px;
+        --dx:${Math.cos(rad) * dist}px;
+        --dy:${Math.sin(rad) * dist}px;
+        --dur:${0.5 + Math.random() * 0.4}s;
+        animation-delay:${Math.random() * 0.08}s;
+      `;
+      document.body.appendChild(el);
+      el.addEventListener('animationend', () => el.remove());
+    }
+  },
+
+  // ── Swipe slider element ──────────────────────────────────────────────────
+  _makeSlider(onComplete) {
+    const wrap   = document.createElement('div');
+    wrap.className = 'task-slider-wrap';
+    wrap.innerHTML = `<div class="task-slider-fill"></div><div class="task-slider-handle"></div><span class="task-slider-label">slide</span>`;
+    const fill   = wrap.querySelector('.task-slider-fill');
+    const handle = wrap.querySelector('.task-slider-handle');
+
+    let dragging = false;
+
+    const update = (clientX) => {
+      if (!dragging) return;
+      const rect = wrap.getBoundingClientRect();
+      const pct  = Math.min(100, Math.max(0, ((clientX - rect.left - 13) / (rect.width - 26)) * 100));
+      fill.style.width   = pct + '%';
+      handle.style.left  = `calc(${pct}% - ${pct > 50 ? 10 : 3}px)`;
+      if (pct >= 90) {
+        dragging = false;
+        fill.style.width = '100%';
+        handle.style.left = 'calc(100% - 23px)';
+        const r = wrap.getBoundingClientRect();
+        this._triggerSparkle(r.right - 10, r.top + r.height / 2);
+        setTimeout(() => onComplete(), 250);
+      }
+    };
+
+    const reset = () => {
+      if (!dragging) return;
+      dragging = false;
+      fill.style.width  = '0%';
+      handle.style.left = '3px';
+    };
+
+    wrap.addEventListener('mousedown',  e => { dragging = true; update(e.clientX); });
+    wrap.addEventListener('touchstart', e => { dragging = true; update(e.touches[0].clientX); }, { passive: true });
+
+    // Use document-level listeners to track drag outside the element
+    const _mm = e => update(e.clientX);
+    const _tm = e => update(e.touches[0].clientX);
+    const _mu = () => reset();
+    const _tu = () => reset();
+    document.addEventListener('mousemove', _mm);
+    document.addEventListener('touchmove', _tm, { passive: true });
+    document.addEventListener('mouseup',   _mu);
+    document.addEventListener('touchend',  _tu);
+    // Clean up when element removed (MutationObserver not needed — small leak acceptable)
+
+    return wrap;
   },
 
   _esc(s) {
