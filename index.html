@@ -679,6 +679,19 @@
             <input type="date" id="task-date-input" class="task-date-input">
             <button type="button" class="task-date-clear-btn" id="task-date-clear-btn" style="display:none" title="Clear date">✕</button>
           </div>
+          <!-- Recurring days (shown when no one-off date is set, OR always) -->
+          <div class="task-recur-row" id="task-recur-row">
+            <span class="task-date-label">🔁 Repeat</span>
+            <div class="task-recur-days" id="task-recur-days">
+              <button type="button" class="recur-day-btn" data-day="1">M</button>
+              <button type="button" class="recur-day-btn" data-day="2">T</button>
+              <button type="button" class="recur-day-btn" data-day="3">W</button>
+              <button type="button" class="recur-day-btn" data-day="4">T</button>
+              <button type="button" class="recur-day-btn" data-day="5">F</button>
+              <button type="button" class="recur-day-btn" data-day="6">S</button>
+              <button type="button" class="recur-day-btn" data-day="0">S</button>
+            </div>
+          </div>
           <input type="text" id="task-tags-input" class="task-field" placeholder="Tags: #work #urgent (optional)">
           <div class="task-form-actions">
             <button class="btn-accent-sm" id="task-submit-btn">Add Task</button>

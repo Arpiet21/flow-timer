@@ -55,14 +55,23 @@ const TaskCalendar = {
     const counts = {};
     const planned = {}; // days that have planned (not-done) week items
 
-    // Tasks: use scheduled_date if set, else created_at for the day marker;
-    // use completed_at for the done count
+    // Tasks: mark days with scheduled/created tasks; count completed
     filtered.forEach(t => {
       const dayKey = t.scheduled_date || t.created_at?.slice(0, 10);
-      if (dayKey && !counts[dayKey]) counts[dayKey] = 0; // mark as active
+      if (dayKey && counts[dayKey] === undefined) counts[dayKey] = 0;
       if (t.completed && t.completed_at) {
         const d = t.completed_at.slice(0, 10);
         counts[d] = (counts[d] || 0) + 1;
+      }
+      // For recurring tasks, mark each occurrence in this month
+      if (t.recurring_days?.length) {
+        for (let d = 1; d <= new Date(y, m + 1, 0).getDate(); d++) {
+          const date = new Date(y, m, d);
+          if (t.recurring_days.includes(date.getDay())) {
+            const ds = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+            if (counts[ds] === undefined) counts[ds] = 0;
+          }
+        }
       }
     });
 
@@ -195,6 +204,10 @@ const TaskManager = {
   // ── Bind all interactive buttons once ─────────────────────────────────────
   _bindButtons() {
     document.getElementById('task-add-trigger')?.addEventListener('click', () => this.showAddForm());
+    // Recurring day toggles
+    document.querySelectorAll('#task-recur-days .recur-day-btn').forEach(btn => {
+      btn.addEventListener('click', () => btn.classList.toggle('active'));
+    });
     document.getElementById('task-date-input')?.addEventListener('input', e => {
       const btn = document.getElementById('task-date-clear-btn');
       if (btn) btn.style.display = e.target.value ? '' : 'none';
@@ -374,6 +387,7 @@ const TaskManager = {
     if (dateInp) dateInp.value = '';
     const dateClear = document.getElementById('task-date-clear-btn');
     if (dateClear) dateClear.style.display = 'none';
+    document.querySelectorAll('#task-recur-days .recur-day-btn').forEach(b => b.classList.remove('active'));
     this.setPriority(2);
   },
 
@@ -406,6 +420,8 @@ const TaskManager = {
       : [];
 
     const scheduledDate = document.getElementById('task-date-input')?.value || null;
+    const recurringDays = [...document.querySelectorAll('#task-recur-days .recur-day-btn.active')]
+      .map(b => parseInt(b.dataset.day)); // 0=Sun,1=Mon…6=Sat
     const task = {
       id:                (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : Date.now().toString(36),
       title,
@@ -414,6 +430,7 @@ const TaskManager = {
       priority:          this._priority,
       tags,
       scheduled_date:    scheduledDate,
+      recurring_days:    recurringDays.length > 0 ? recurringDays : null,
       completed:         false,
       completed_at:      null,
       created_at:        new Date().toISOString()
@@ -576,6 +593,10 @@ const TaskManager = {
     const dateLabel = task.scheduled_date
       ? `<span class="task-scheduled-badge">📅 ${task.scheduled_date.slice(5).replace('-','/')}</span>`
       : '';
+    const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    const recurLabel = (task.recurring_days?.length > 0)
+      ? `<span class="task-recur-badge">🔁 ${task.recurring_days.map(d => dayNames[d]).join(' ')}</span>`
+      : '';
 
     const checkIcon = task.completed
       ? `<svg viewBox="0 0 12 12" fill="none"><polyline points="1.5,6 5,9.5 10.5,2.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`
@@ -589,6 +610,7 @@ const TaskManager = {
           <div class="task-dots">${dots}</div>
           ${tags}
           ${dateLabel}
+          ${recurLabel}
           ${task.estimated_minutes ? `<span class="task-est-badge">${task.estimated_minutes}m</span>` : ''}
         </div>
       </div>
@@ -770,11 +792,16 @@ const WeekPlanner = {
       const items   = this._data[ds] || [];
       const isToday = ds === todayDs;
 
-      // Synced tasks from TaskManager — scheduled_date takes priority, fallback to created_at
+      // Synced tasks from TaskManager:
+      // 1. Scheduled to this exact date
+      // 2. Recurring on this day-of-week
+      // 3. Fallback: created on this date (no schedule set)
+      const dow = date.getDay(); // 0=Sun
       const dayTasks = typeof TaskManager !== 'undefined'
         ? TaskManager._tasks.filter(t =>
             (t.scheduled_date && t.scheduled_date === ds) ||
-            (!t.scheduled_date && t.created_at?.slice(0, 10) === ds)
+            (t.recurring_days?.includes(dow)) ||
+            (!t.scheduled_date && !t.recurring_days?.length && t.created_at?.slice(0, 10) === ds)
           )
         : [];
 
