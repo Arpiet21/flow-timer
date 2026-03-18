@@ -165,10 +165,22 @@ const TaskManager = {
     if (typeof Auth === 'undefined' || !Auth.isLoggedIn()) return;
     const uid = Auth.getUser()?.id;
     if (!uid || this._tasks.length === 0) return;
-    // Upsert is idempotent — safe to call even for already-synced tasks
-    this._tasks.forEach(task => {
+    const tombstoned = this._getTombstoned();
+    this._tasks.filter(t => !tombstoned.has(t.id)).forEach(task => {
       _sb.from('tasks').upsert({ ...task, user_id: uid }, { onConflict: 'id' }).catch(() => {});
     });
+  },
+
+  // ── Tombstone (track intentionally deleted task IDs) ──────────────────────
+  _getTombstoned() {
+    try { return new Set(JSON.parse(localStorage.getItem('flow-tasks-deleted') || '[]')); }
+    catch (_) { return new Set(); }
+  },
+  _addTombstone(id) {
+    try {
+      const ids = JSON.parse(localStorage.getItem('flow-tasks-deleted') || '[]');
+      if (!ids.includes(id)) { ids.push(id); localStorage.setItem('flow-tasks-deleted', JSON.stringify(ids)); }
+    } catch (_) {}
   },
 
   // ── Persistence ───────────────────────────────────────────────────────────
@@ -182,18 +194,18 @@ const TaskManager = {
           .order('created_at', { ascending: true });
 
         if (!error) {
-          const remote    = data || [];
-          const remoteIds = new Set(remote.map(t => t.id));
+          const remote      = data || [];
+          const remoteIds   = new Set(remote.map(t => t.id));
+          const tombstoned  = this._getTombstoned();
 
-          // Recover locally-created tasks whose Supabase insert failed
+          // Only recover local tasks that are not in Supabase AND not tombstoned (deleted)
           const local   = JSON.parse(localStorage.getItem('flow-tasks') || '[]');
-          const pending = local.filter(t => !remoteIds.has(t.id));
+          const pending = local.filter(t => !remoteIds.has(t.id) && !tombstoned.has(t.id));
 
           this._tasks = [...remote, ...pending]
             .sort((a, b) => (a.created_at || '').localeCompare(b.created_at || ''));
           this._saveLocal();
 
-          // Re-try syncing failed inserts in the background
           if (pending.length > 0) this._retrySync(pending, uid);
           return;
         }
@@ -203,9 +215,10 @@ const TaskManager = {
     catch (_) { this._tasks = []; }
   },
 
-  // Re-insert tasks that failed to sync previously
+  // Re-insert locally-created tasks that failed to sync (skip tombstoned)
   _retrySync(tasks, uid) {
-    tasks.forEach(task => {
+    const tombstoned = this._getTombstoned();
+    tasks.filter(t => !tombstoned.has(t.id)).forEach(task => {
       _sb.from('tasks')
         .upsert({ ...task, user_id: uid }, { onConflict: 'id' })
         .catch(() => {});
@@ -581,6 +594,7 @@ const TaskManager = {
 
   // ── Delete ────────────────────────────────────────────────────────────────
   deleteTask(id) {
+    this._addTombstone(id);  // prevent resurrection via _retrySync / _flushPending
     this._tasks = this._tasks.filter(t => t.id !== id);
     this._saveLocal();
     this._render();
