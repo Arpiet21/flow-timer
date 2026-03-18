@@ -1207,6 +1207,16 @@ kbd {
 }
 .tcal-nav-btn:hover { border-color: var(--text-muted); color: var(--text); }
 
+.tcal-filter-row {
+  display: flex;
+  justify-content: flex-end;
+  margin: 6px 0 4px;
+}
+.tcal-filter-select {
+  font-size: 0.72rem !important;
+  padding: 3px 8px !important;
+  max-width: 160px;
+}
 .tcal-weekdays {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
@@ -1384,6 +1394,45 @@ kbd {
   cursor: pointer;
 }
 .task-select:focus { border-color: var(--accent); }
+.task-date-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.task-date-label {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.task-date-input {
+  flex: 1;
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 7px;
+  color: var(--text);
+  font-size: 0.8rem;
+  padding: 5px 10px;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.15s;
+  color-scheme: dark;
+}
+.task-date-input:focus { border-color: var(--accent); }
+.task-date-clear-btn {
+  background: none; border: none;
+  color: var(--text-muted); font-size: 0.75rem;
+  cursor: pointer; padding: 2px 4px;
+  transition: color 0.15s;
+}
+.task-date-clear-btn:hover { color: #ff453a; }
+.task-scheduled-badge {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-size: 0.68rem;
+  background: rgba(120, 140, 200, 0.18);
+  color: rgba(160, 180, 230, 0.9);
+  border-radius: 4px;
+  padding: 1px 6px;
+}
 .task-priority-pick {
   display: flex;
   gap: 5px;

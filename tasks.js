@@ -8,6 +8,7 @@ const TaskCalendar = {
   _bound: false,
 
   init(tasks) {
+    this._populateCategoryFilter(tasks);
     this._renderCalendar(tasks);
     if (!this._bound) {
       document.getElementById('tcal-prev')?.addEventListener('click', () => {
@@ -20,14 +21,31 @@ const TaskCalendar = {
         else this._month++;
         this._renderCalendar(TaskManager._tasks);
       });
+      document.getElementById('tcal-category-filter')?.addEventListener('change', () => {
+        this._renderCalendar(TaskManager._tasks);
+      });
       this._bound = true;
     }
+  },
+
+  _populateCategoryFilter(tasks) {
+    const sel = document.getElementById('tcal-category-filter');
+    if (!sel) return;
+    const cats = [...new Set((tasks || []).map(t => t.category).filter(Boolean))];
+    const current = sel.value;
+    sel.innerHTML = '<option value="">All categories</option>' +
+      cats.map(c => `<option value="${c}">${c}</option>`).join('');
+    if (cats.includes(current)) sel.value = current;
   },
 
   _renderCalendar(tasks) {
     const grid    = document.getElementById('tcal-grid');
     const label   = document.getElementById('tcal-month-label');
     if (!grid || !label) return;
+
+    // Apply category filter
+    const filterCat = document.getElementById('tcal-category-filter')?.value || '';
+    const filtered = filterCat ? (tasks || []).filter(t => t.category === filterCat) : (tasks || []);
 
     const y = this._year, m = this._month;
     const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -37,15 +55,14 @@ const TaskCalendar = {
     const counts = {};
     const planned = {}; // days that have planned (not-done) week items
 
-    // Task Manager: completed tasks count; created tasks mark the day active
-    (tasks || []).forEach(t => {
+    // Tasks: use scheduled_date if set, else created_at for the day marker;
+    // use completed_at for the done count
+    filtered.forEach(t => {
+      const dayKey = t.scheduled_date || t.created_at?.slice(0, 10);
+      if (dayKey && !counts[dayKey]) counts[dayKey] = 0; // mark as active
       if (t.completed && t.completed_at) {
         const d = t.completed_at.slice(0, 10);
         counts[d] = (counts[d] || 0) + 1;
-      }
-      if (t.created_at) {
-        const d = t.created_at.slice(0, 10);
-        if (!counts[d]) counts[d] = 0;
       }
     });
 
@@ -178,6 +195,16 @@ const TaskManager = {
   // ── Bind all interactive buttons once ─────────────────────────────────────
   _bindButtons() {
     document.getElementById('task-add-trigger')?.addEventListener('click', () => this.showAddForm());
+    document.getElementById('task-date-input')?.addEventListener('input', e => {
+      const btn = document.getElementById('task-date-clear-btn');
+      if (btn) btn.style.display = e.target.value ? '' : 'none';
+    });
+    document.getElementById('task-date-clear-btn')?.addEventListener('click', () => {
+      const inp = document.getElementById('task-date-input');
+      if (inp) inp.value = '';
+      const btn = document.getElementById('task-date-clear-btn');
+      if (btn) btn.style.display = 'none';
+    });
     document.getElementById('task-submit-btn')?.addEventListener('click', () => this.submitAdd());
     document.getElementById('task-cancel-btn')?.addEventListener('click', () => this.hideAddForm());
     document.getElementById('task-title-input')?.addEventListener('keydown', e => {
@@ -343,6 +370,10 @@ const TaskManager = {
       document.getElementById('task-title-input').value = '';
     if (document.getElementById('task-tags-input'))
       document.getElementById('task-tags-input').value = '';
+    const dateInp = document.getElementById('task-date-input');
+    if (dateInp) dateInp.value = '';
+    const dateClear = document.getElementById('task-date-clear-btn');
+    if (dateClear) dateClear.style.display = 'none';
     this.setPriority(2);
   },
 
@@ -374,6 +405,7 @@ const TaskManager = {
       ? tagsRaw.split(/[\s,]+/).filter(Boolean).map(t => t.startsWith('#') ? t : '#' + t)
       : [];
 
+    const scheduledDate = document.getElementById('task-date-input')?.value || null;
     const task = {
       id:                (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : Date.now().toString(36),
       title,
@@ -381,6 +413,7 @@ const TaskManager = {
       estimated_minutes: estMins,
       priority:          this._priority,
       tags,
+      scheduled_date:    scheduledDate,
       completed:         false,
       completed_at:      null,
       created_at:        new Date().toISOString()
@@ -540,6 +573,9 @@ const TaskManager = {
       `<span class="task-dot${i <= task.priority ? ' task-dot-active' : ''}"></span>`
     ).join('');
     const tags = (task.tags || []).map(t => `<span class="task-tag">${this._esc(t)}</span>`).join('');
+    const dateLabel = task.scheduled_date
+      ? `<span class="task-scheduled-badge">📅 ${task.scheduled_date.slice(5).replace('-','/')}</span>`
+      : '';
 
     const checkIcon = task.completed
       ? `<svg viewBox="0 0 12 12" fill="none"><polyline points="1.5,6 5,9.5 10.5,2.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`
@@ -552,6 +588,7 @@ const TaskManager = {
         <div class="task-meta">
           <div class="task-dots">${dots}</div>
           ${tags}
+          ${dateLabel}
           ${task.estimated_minutes ? `<span class="task-est-badge">${task.estimated_minutes}m</span>` : ''}
         </div>
       </div>
@@ -733,9 +770,12 @@ const WeekPlanner = {
       const items   = this._data[ds] || [];
       const isToday = ds === todayDs;
 
-      // Synced tasks from TaskManager for this day
+      // Synced tasks from TaskManager — scheduled_date takes priority, fallback to created_at
       const dayTasks = typeof TaskManager !== 'undefined'
-        ? TaskManager._tasks.filter(t => t.created_at?.slice(0, 10) === ds)
+        ? TaskManager._tasks.filter(t =>
+            (t.scheduled_date && t.scheduled_date === ds) ||
+            (!t.scheduled_date && t.created_at?.slice(0, 10) === ds)
+          )
         : [];
 
       const row = document.createElement('div');
