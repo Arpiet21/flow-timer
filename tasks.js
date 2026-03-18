@@ -148,6 +148,7 @@ const TaskManager = {
     }
     this._populateCategorySelect();
     this._render();
+    if (typeof WeekPlanner !== 'undefined') WeekPlanner._render();
     if (!this._bound) {
       this._bindButtons();
       // Flush any pending local tasks to Supabase when page is about to unload or hidden
@@ -734,6 +735,19 @@ const TaskManager = {
       sec.className = 'task-date-section';
       sec.innerHTML = `<div class="task-date-section-label">${fmtDs(dayAfterDs)}</div>`;
       dayAfterTasks.forEach(t => sec.appendChild(this._taskEl(t)));
+      list.appendChild(sec);
+    }
+
+    // ── Upcoming (beyond day-after-tomorrow) ───────────────────────────────
+    const upcomingTasks = this._tasks
+      .filter(t => !t.recurring_days?.length && t.scheduled_date > dayAfterDs && !t.completed)
+      .sort((a, b) => a.scheduled_date.localeCompare(b.scheduled_date));
+
+    if (upcomingTasks.length > 0) {
+      const sec = document.createElement('div');
+      sec.className = 'task-date-section';
+      sec.innerHTML = `<div class="task-date-section-label">Upcoming</div>`;
+      upcomingTasks.forEach(t => sec.appendChild(this._taskEl(t)));
       list.appendChild(sec);
     }
   },
