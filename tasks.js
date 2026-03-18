@@ -154,15 +154,27 @@ const TaskManager = {
     if (!this._bound) { this._bindButtons(); this._bound = true; }
   },
 
-  // ── Persistence — Supabase only ───────────────────────────────────────────
+  // ── Persistence — Supabase (source of truth) + localStorage cache ─────────
+  _CACHE_KEY: 'flow-tasks-cache',
+
+  _saveCache() {
+    try { localStorage.setItem(this._CACHE_KEY, JSON.stringify(this._tasks)); } catch(_) {}
+  },
+
   async _load() {
+    // Show cached data immediately while Supabase loads
+    try { this._tasks = JSON.parse(localStorage.getItem(this._CACHE_KEY) || '[]'); } catch(_) { this._tasks = []; }
+    // Fetch from Supabase (source of truth) — overwrites cache
     try {
-      const { data } = await _sb.from('tasks')
+      const { data, error } = await _sb.from('tasks')
         .select('*')
         .eq('user_id', Auth.getUser().id)
         .order('created_at', { ascending: true });
-      this._tasks = data || [];
-    } catch (_) { this._tasks = []; }
+      if (!error) {
+        this._tasks = data || [];
+        this._saveCache();
+      }
+    } catch (_) { /* stay with cached data if offline */ }
   },
 
   // ── Category persistence ──────────────────────────────────────────────────
@@ -453,39 +465,46 @@ const TaskManager = {
     const uid = typeof Auth !== 'undefined' && Auth.isLoggedIn() ? Auth.getUser()?.id : null;
     if (!uid) { this._toast('⚠️ Not logged in — task not saved', 4000); return; }
 
+    // Optimistic: show task immediately with a temp ID
+    const tempId = crypto.randomUUID();
+    const task = {
+      id: tempId, title, category,
+      estimated_minutes: estMins, priority: this._priority, tags,
+      scheduled_date: scheduledDate,
+      recurring_days: recurringDays.length > 0 ? recurringDays : null,
+      completed: false, completed_at: null,
+      created_at: new Date().toISOString()
+    };
+    this._tasks.push(task);
+    this._saveCache();
     this.hideAddForm();
-
-    // Insert into Supabase first — use the UUID Supabase generates so delete/update always work
-    try {
-      const payload = {
-        title,
-        category,
-        estimated_minutes: estMins,
-        priority:          this._priority,
-        tags,
-        scheduled_date:    scheduledDate,
-        recurring_days:    recurringDays.length > 0 ? recurringDays : null,
-        completed:         false,
-        completed_at:      null,
-        created_at:        new Date().toISOString(),
-        user_id:           uid
-      };
-      const { data, error } = await _sb.from('tasks').insert(payload).select('*').limit(1);
-      if (error || !data?.[0]) {
-        this._toast('⚠️ Could not save task. Please try again.', 5000);
-        return;
-      }
-      const saved = data[0];
-      this._tasks.push(saved);
-      this._render();
-      if (typeof WeekPlanner !== 'undefined') WeekPlanner._render();
-      if (saved.scheduled_date && saved.scheduled_date > this._todayDs()) {
-        const [y, m, d] = saved.scheduled_date.split('-');
-        this._toast(`✅ Scheduled for ${d}/${m}/${y} — see Weekly Plan ↓`);
-      }
-    } catch (_) {
-      this._toast('⚠️ Could not save task. Please try again.', 5000);
+    this._render();
+    if (typeof WeekPlanner !== 'undefined') WeekPlanner._render();
+    if (task.scheduled_date && task.scheduled_date > this._todayDs()) {
+      const [y, m, d] = task.scheduled_date.split('-');
+      this._toast(`✅ Scheduled for ${d}/${m}/${y} — see Weekly Plan ↓`);
     }
+
+    // Sync to Supabase in background — update temp ID with real UUID on success
+    _sb.from('tasks').insert({ ...task, user_id: uid }).select('*').limit(1)
+      .then(({ data, error }) => {
+        if (error || !data?.[0]) {
+          // Revert optimistic update
+          this._tasks = this._tasks.filter(t => t.id !== tempId);
+          this._saveCache(); this._render();
+          this._toast('⚠️ Cloud sync failed — task removed. Check connection.', 5000);
+          return;
+        }
+        // Replace temp ID with real Supabase UUID
+        const t = this._tasks.find(t => t.id === tempId);
+        if (t) { Object.assign(t, data[0]); this._saveCache(); }
+        else { _sb.from('tasks').delete().eq('id', data[0].id).catch(() => {}); } // deleted while pending
+      })
+      .catch(() => {
+        this._tasks = this._tasks.filter(t => t.id !== tempId);
+        this._saveCache(); this._render();
+        this._toast('⚠️ Cloud sync failed — task removed. Check connection.', 5000);
+      });
   },
 
   _toast(msg, durationMs = 3000) {
@@ -509,9 +528,9 @@ const TaskManager = {
     if (!task) return;
     task.completed    = !task.completed;
     task.completed_at = task.completed ? new Date().toISOString() : null;
+    this._saveCache();
     this._render();
     if (typeof WeekPlanner !== 'undefined') WeekPlanner._render();
-    // Sync to Supabase in background
     if (typeof Auth !== 'undefined' && Auth.isLoggedIn()) {
       _sb.from('tasks').update({ completed: task.completed, completed_at: task.completed_at }).eq('id', id).catch(() => {});
     }
@@ -520,13 +539,12 @@ const TaskManager = {
   // ── Delete ────────────────────────────────────────────────────────────────
   deleteTask(id) {
     this._tasks = this._tasks.filter(t => t.id !== id);
+    this._saveCache();
     this._render();
     if (typeof WeekPlanner !== 'undefined') WeekPlanner._render();
     if (typeof Auth !== 'undefined' && Auth.isLoggedIn()) {
       _sb.from('tasks').delete().eq('id', id)
-        .then(({ error }) => {
-          if (error) this._toast('⚠️ Could not delete from cloud', 3000);
-        })
+        .then(({ error }) => { if (error) this._toast('⚠️ Could not delete from cloud', 3000); })
         .catch(() => this._toast('⚠️ Could not delete from cloud', 3000));
     }
   },
