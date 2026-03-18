@@ -826,6 +826,12 @@
       document.getElementById('workout-section').classList.toggle('hidden', !isWorkout);
       document.getElementById('task-section').classList.toggle('hidden', !isTasks);
 
+      // Hide heatmap + team/referral cards in Tasks tab (calendar replaces them)
+      ['heatmap-card','team-card','referral-card'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = isTasks ? 'none' : '';
+      });
+
       document.getElementById('btn-work-timer').classList.toggle('active', isWork);
       document.getElementById('btn-workout-timer').classList.toggle('active', isWorkout);
       document.getElementById('btn-tasks').classList.toggle('active', isTasks);
