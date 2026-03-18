@@ -215,6 +215,120 @@ const Auth = {
     return data || [];
   },
 
+  // ── Focus streak ─────────────────────────────────────────────────────────
+  async getStreak(mode = 'work') {
+    if (!this._user) return 0;
+    const { data } = await _sb.from('sessions')
+      .select('completed_at')
+      .eq('user_id', this._user.id)
+      .eq('mode', mode)
+      .order('completed_at', { ascending: false });
+    if (!data || data.length === 0) return 0;
+
+    const days = new Set(data.map(r => r.completed_at.slice(0, 10)));
+    const cur = new Date();
+    cur.setHours(0, 0, 0, 0);
+
+    // If no session today, start counting from yesterday
+    const todayStr = cur.toISOString().slice(0, 10);
+    if (!days.has(todayStr)) cur.setDate(cur.getDate() - 1);
+
+    let streak = 0;
+    while (days.has(cur.toISOString().slice(0, 10))) {
+      streak++;
+      cur.setDate(cur.getDate() - 1);
+    }
+    return streak;
+  },
+
+  // ── Referral ──────────────────────────────────────────────────────────────
+  getReferralCode() {
+    if (!this._user) return null;
+    return this._user.id.replace(/-/g, '').slice(0, 6).toUpperCase();
+  },
+
+  getReferralLink() {
+    if (!this._user) return null;
+    const base = location.protocol === 'file:' ? 'http://localhost:3000' : location.origin;
+    return `${base}/signup.html?ref=${this.getReferralCode()}`;
+  },
+
+  async applyReferral(code) {
+    if (!this._user || !code) return;
+    await _sb.from('referrals').upsert({
+      referee_id: this._user.id,
+      referral_code: code.toUpperCase(),
+      created_at: new Date().toISOString()
+    }, { onConflict: 'referee_id' });
+  },
+
+  async getReferralCount() {
+    if (!this._user) return 0;
+    const myCode = this.getReferralCode();
+    const { count } = await _sb.from('referrals')
+      .select('*', { count: 'exact', head: true })
+      .eq('referral_code', myCode);
+    return count || 0;
+  },
+
+  // ── Teams ─────────────────────────────────────────────────────────────────
+  async createTeam(name) {
+    if (!this._user) return { ok: false, error: 'Not logged in' };
+    const inviteCode = Math.random().toString(36).slice(2, 8).toUpperCase();
+    const { data, error } = await _sb.from('teams').insert({
+      name,
+      created_by: this._user.id,
+      invite_code: inviteCode
+    }).select().single();
+    if (error) return { ok: false, error: error.message };
+    await _sb.from('team_members').insert({ team_id: data.id, user_id: this._user.id, role: 'admin' });
+    return { ok: true, team: data };
+  },
+
+  async joinTeam(code) {
+    if (!this._user) return { ok: false, error: 'Not logged in' };
+    const { data: team, error } = await _sb.from('teams')
+      .select('id, name, invite_code')
+      .eq('invite_code', code.toUpperCase())
+      .single();
+    if (error || !team) return { ok: false, error: 'Team not found — check the code.' };
+    const { error: e2 } = await _sb.from('team_members').upsert(
+      { team_id: team.id, user_id: this._user.id, role: 'member' },
+      { onConflict: 'team_id,user_id' }
+    );
+    if (e2) return { ok: false, error: e2.message };
+    return { ok: true, team };
+  },
+
+  async getTeam() {
+    if (!this._user) return null;
+    const { data } = await _sb.from('team_members')
+      .select('teams(id, name, invite_code)')
+      .eq('user_id', this._user.id)
+      .limit(1)
+      .single();
+    return data?.teams || null;
+  },
+
+  async getTeamActivity(teamId, mode = 'work', weeks = 15) {
+    const since = new Date();
+    since.setDate(since.getDate() - weeks * 7);
+    const { data: members } = await _sb.from('team_members').select('user_id').eq('team_id', teamId);
+    if (!members || members.length === 0) return {};
+    const userIds = members.map(m => m.user_id);
+    const { data } = await _sb.from('sessions')
+      .select('completed_at')
+      .in('user_id', userIds)
+      .eq('mode', mode)
+      .gte('completed_at', since.toISOString());
+    const counts = {};
+    (data || []).forEach(r => {
+      const d = r.completed_at.slice(0, 10);
+      counts[d] = (counts[d] || 0) + 1;
+    });
+    return counts;
+  },
+
   // Returns { 'YYYY-MM-DD': count } for the heatmap (last `weeks` weeks)
   async getHeatmapData(mode, weeks = 15) {
     if (!this._user) return null; // null = fall back to localStorage

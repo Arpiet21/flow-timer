@@ -40,6 +40,7 @@ function init() {
   updatePresetUI();
   loadHistory();
   renderActivityHeatmap();
+  initTeamAndReferral();
 }
 
 function todayStr() {
@@ -311,16 +312,16 @@ function updatePresetUI() {
 }
 
 const SESSION_HINTS = {
-  10:  '⚡ Quick burst — great for small tasks or warm-ups',
-  15:  '🎯 Short sprint — <strong>4 sessions = 1 hr</strong> focused work',
-  20:  '🍅 Short Pomodoro — <strong>3 sessions = 1 hr</strong> focused work',
-  25:  '🍅 Classic Pomodoro — <strong>2 sessions = 50 min</strong> · most popular',
-  30:  '💡 Extended focus — <strong>2 sessions = 1 hr</strong> deep work',
-  45:  '🎯 Deep focus block — <strong>2 × 45 min = 90 min</strong> deep work',
-  50:  '💪 Long session — <strong>2 × 50 min = ~2 hrs</strong> deep work',
-  60:  '🔥 Power hour — <strong>2 × 60 min = 2 hrs</strong> or <strong>1 × 90 min</strong> alternative',
-  75:  '🚀 Extended flow — <strong>2 × 75 min = 2.5 hrs</strong> deep work',
-  90:  '🧠 Flow state session — <strong>1 × 90 min = full deep work</strong> block',
+  10:  '⚡ <strong>Warm-up or tiny task</strong> — replying emails, a quick review, or just breaking inertia',
+  15:  '📝 <strong>Small focused task</strong> — read a chapter, review code, or plan your day',
+  20:  '🍅 <strong>Good starting point</strong> — if 25 min feels daunting, use this to build the habit first',
+  25:  '🍅 <strong>Classic Pomodoro</strong> — best for tasks you can break into chunks (writing, studying, admin)',
+  30:  '💡 <strong>Half-hour block</strong> — planning, research, or one clearly defined subtask',
+  45:  '🎯 <strong>Deep work block</strong> — enough time to actually get into flow; great for coding or writing',
+  50:  '💪 <strong>Extended session</strong> — finish a meaningful piece of work before a proper break',
+  60:  '🔥 <strong>Power hour</strong> — tackle your hardest problem of the day; take a 15 min walk after',
+  75:  '🚀 <strong>Long flow block</strong> — complex problems that need full context loaded in your head',
+  90:  '🧠 <strong>Peak flow session</strong> — science-backed max for deep focus; use for your #1 priority only',
 };
 
 function updateSessionHint() {
@@ -1126,11 +1127,65 @@ function bindSlider(sliderId, valId, onChange, format) {
   });
 }
 
-// ─── Service Worker ───────────────────────────────────────────────────────────
+// ─── Service Worker + PWA Install ─────────────────────────────────────────────
+let _pwaPrompt = null;
+
 function registerServiceWorker() {
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js').catch(() => {});
   }
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    _pwaPrompt = e;
+    _checkPwaInstallPrompt();
+  });
+}
+
+function _checkPwaInstallPrompt() {
+  if (!_pwaPrompt) return;
+  if (localStorage.getItem('flow-pwa-dismissed')) return;
+  // Count total completed work sessions
+  try {
+    const h = JSON.parse(localStorage.getItem('flow-timer-history') || '[]');
+    const workCount = h.filter(e => e.mode === 'work').length;
+    if (workCount >= 3) _showPwaBanner();
+  } catch (_) {}
+}
+
+function _showPwaBanner() {
+  if (document.getElementById('pwa-banner')) return;
+  const banner = document.createElement('div');
+  banner.id = 'pwa-banner';
+  banner.className = 'pwa-banner';
+  banner.innerHTML = `
+    <div class="pwa-banner-inner">
+      <span class="pwa-banner-icon">⚡</span>
+      <div class="pwa-banner-text">
+        <strong>Install Flow Timer</strong>
+        <span>Add to home screen for offline access & faster loading</span>
+      </div>
+      <button class="pwa-install-btn" onclick="installPwa()">Install</button>
+      <button class="pwa-dismiss-btn" onclick="dismissPwaBanner()" aria-label="Dismiss">✕</button>
+    </div>`;
+  document.body.appendChild(banner);
+  requestAnimationFrame(() => banner.classList.add('visible'));
+}
+
+async function installPwa() {
+  if (!_pwaPrompt) return;
+  _pwaPrompt.prompt();
+  const { outcome } = await _pwaPrompt.userChoice;
+  _pwaPrompt = null;
+  if (outcome === 'accepted') {
+    const banner = document.getElementById('pwa-banner');
+    if (banner) banner.remove();
+  }
+}
+
+function dismissPwaBanner() {
+  localStorage.setItem('flow-pwa-dismissed', '1');
+  const banner = document.getElementById('pwa-banner');
+  if (banner) { banner.classList.remove('visible'); setTimeout(() => banner.remove(), 300); }
 }
 
 // ─── Activity Heatmap ─────────────────────────────────────────────────────────
@@ -1166,12 +1221,52 @@ function renderActivityHeatmap() {
 
   // Try Supabase first; fall back to localStorage
   if (typeof Auth !== 'undefined' && Auth.isLoggedIn()) {
-    Auth.getHeatmapData(sbMode).then(counts => {
-      _drawHeatmap(counts || _localHeatmapCounts(isWorkout), isWorkout);
-    });
+    // Check if team view is active
+    const teamMode = document.getElementById('heatmap-team-toggle')?.dataset.team === '1';
+    if (teamMode && window._currentTeam) {
+      Auth.getTeamActivity(window._currentTeam.id, sbMode).then(counts => {
+        _drawHeatmap(counts, isWorkout, true);
+      });
+    } else {
+      Promise.all([
+        Auth.getHeatmapData(sbMode),
+        Auth.getStreak(sbMode)
+      ]).then(([counts, streak]) => {
+        _drawHeatmap(counts || _localHeatmapCounts(isWorkout), isWorkout);
+        _renderStreak(streak);
+      });
+    }
   } else {
     _drawHeatmap(_localHeatmapCounts(isWorkout), isWorkout);
+    _renderStreak(_localStreak(isWorkout));
   }
+}
+
+function _renderStreak(streak) {
+  const el = document.getElementById('streak-badge');
+  if (!el) return;
+  if (!streak || streak === 0) { el.style.display = 'none'; return; }
+  el.style.display = 'inline-flex';
+  el.textContent = `🔥 ${streak} day streak`;
+}
+
+function _localStreak(isWorkout) {
+  try {
+    const key = isWorkout ? 'flow-workout-history' : 'flow-timer-history';
+    const h = JSON.parse(localStorage.getItem(key) || '[]');
+    const filter = isWorkout ? () => true : e => e.mode === 'work';
+    const days = new Set(h.filter(filter).map(e => e.completedAt?.slice(0, 10)).filter(Boolean));
+    const cur = new Date();
+    cur.setHours(0, 0, 0, 0);
+    const todayStr = cur.toISOString().slice(0, 10);
+    if (!days.has(todayStr)) cur.setDate(cur.getDate() - 1);
+    let streak = 0;
+    while (days.has(cur.toISOString().slice(0, 10))) {
+      streak++;
+      cur.setDate(cur.getDate() - 1);
+    }
+    return streak;
+  } catch (_) { return 0; }
 }
 
 function _localHeatmapCounts(isWorkout) {
@@ -1308,6 +1403,105 @@ function _drawHeatmap(counts, isWorkout) {
       ).join('') +
       '<span>More</span>';
   }
+}
+
+// ─── Team ─────────────────────────────────────────────────────────────────────
+window._currentTeam = null;
+
+async function initTeamAndReferral() {
+  if (typeof Auth === 'undefined' || !Auth.isLoggedIn()) return;
+
+  // Referral card
+  const refCard = document.getElementById('referral-card');
+  const refInput = document.getElementById('referral-link-input');
+  if (refCard && refInput) {
+    refInput.value = Auth.getReferralLink() || '';
+    refCard.style.display = '';
+    Auth.getReferralCount().then(n => {
+      const el = document.getElementById('referral-count');
+      if (el) el.textContent = n > 0 ? `${n} friend${n > 1 ? 's' : ''} invited` : '';
+    });
+  }
+
+  // Team card
+  const teamCard = document.getElementById('team-card');
+  if (!teamCard) return;
+  teamCard.style.display = '';
+
+  const team = await Auth.getTeam();
+  if (team) {
+    window._currentTeam = team;
+    _showActiveTeam(team);
+    document.getElementById('heatmap-team-toggle').style.display = '';
+  }
+}
+
+function _showActiveTeam(team) {
+  document.getElementById('team-setup').style.display = 'none';
+  document.getElementById('team-active').style.display = '';
+  document.getElementById('team-name-label').textContent = team.name;
+  const codeEl = document.getElementById('team-invite-code');
+  if (codeEl) codeEl.textContent = team.invite_code;
+}
+
+async function createTeam() {
+  const nameInput = document.getElementById('team-name-input');
+  const errEl = document.getElementById('team-error');
+  const name = nameInput?.value.trim();
+  if (!name) { _showTeamError('Enter a team name.'); return; }
+  const btn = document.querySelector('#team-setup .btn-accent-sm');
+  btn.disabled = true; btn.textContent = 'Creating…';
+  const result = await Auth.createTeam(name);
+  btn.disabled = false; btn.textContent = 'Create';
+  if (!result.ok) { _showTeamError(result.error); return; }
+  window._currentTeam = result.team;
+  _showActiveTeam(result.team);
+  document.getElementById('heatmap-team-toggle').style.display = '';
+  if (errEl) errEl.style.display = 'none';
+}
+
+async function joinTeam() {
+  const codeInput = document.getElementById('team-code-input');
+  const code = codeInput?.value.trim().toUpperCase();
+  if (!code) { _showTeamError('Enter an invite code.'); return; }
+  const btn = document.querySelectorAll('#team-setup .btn-accent-sm')[1];
+  btn.disabled = true; btn.textContent = 'Joining…';
+  const result = await Auth.joinTeam(code);
+  btn.disabled = false; btn.textContent = 'Join';
+  if (!result.ok) { _showTeamError(result.error); return; }
+  window._currentTeam = result.team;
+  _showActiveTeam(result.team);
+  document.getElementById('heatmap-team-toggle').style.display = '';
+}
+
+function _showTeamError(msg) {
+  const el = document.getElementById('team-error');
+  if (!el) return;
+  el.textContent = msg;
+  el.style.display = '';
+}
+
+function copyTeamCode() {
+  const code = document.getElementById('team-invite-code')?.textContent;
+  if (code) navigator.clipboard?.writeText(code).catch(() => {});
+  const btn = document.querySelector('.btn-copy');
+  if (btn) { btn.textContent = '✓'; setTimeout(() => btn.textContent = '⎘', 1500); }
+}
+
+function toggleTeamHeatmap() {
+  const btn = document.getElementById('heatmap-team-toggle');
+  if (!btn) return;
+  const isTeam = btn.dataset.team === '1';
+  btn.dataset.team = isTeam ? '0' : '1';
+  btn.classList.toggle('active', !isTeam);
+  renderActivityHeatmap();
+}
+
+function copyReferralLink() {
+  const val = document.getElementById('referral-link-input')?.value;
+  if (val) navigator.clipboard?.writeText(val).catch(() => {});
+  const btn = document.querySelector('.referral-link-row .btn-copy');
+  if (btn) { btn.textContent = '✓ Copied'; setTimeout(() => btn.textContent = '⎘ Copy', 1500); }
 }
 
 // ─── Start ────────────────────────────────────────────────────────────────────

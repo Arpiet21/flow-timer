@@ -8,5 +8,11 @@
     { "src": "/", "dest": "/landing.html" },
     { "src": "/api/(.*)", "dest": "/api/$1" },
     { "src": "/(.*)", "dest": "/$1" }
+  ],
+  "crons": [
+    {
+      "path": "/api/weekly-report",
+      "schedule": "0 8 * * 1"
+    }
   ]
 }

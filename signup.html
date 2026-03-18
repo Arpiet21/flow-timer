@@ -83,6 +83,16 @@
   <script>
     Auth.init().then(user => { if (user) window.location.href = 'index.html'; });
 
+    // Capture referral code from URL
+    const _refCode = new URLSearchParams(location.search).get('ref');
+    if (_refCode) {
+      // Pre-fill a hidden note so users know they were referred
+      const refNote = document.createElement('p');
+      refNote.style.cssText = 'text-align:center;font-size:0.78rem;color:#0f9b8e;margin-bottom:12px;';
+      refNote.textContent = `🎁 You were invited — both you and your friend get +7 days of Pro!`;
+      document.getElementById('signup-form').prepend(refNote);
+    }
+
     const errorEl = document.getElementById('error-msg');
     const successEl = document.getElementById('success-msg');
 
@@ -121,6 +131,8 @@
 
       const result = await Auth.signUp(name, email, password);
       if (result.ok) {
+        // Apply referral if present
+        if (_refCode) Auth.applyReferral(_refCode).catch(() => {});
         // Supabase sends a confirmation email by default
         showSuccess('Account created! Check your email to confirm, then log in.');
         btn.textContent = 'Account created!';

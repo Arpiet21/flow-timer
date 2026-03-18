@@ -552,9 +552,13 @@
       <div class="heatmap-header">
         <div class="heatmap-title-row">
           <span class="heatmap-title" id="heatmap-title">🎯 Focus Activity</span>
+          <span id="streak-badge" class="streak-badge" style="display:none"></span>
           <span class="heatmap-total" id="heatmap-total"></span>
         </div>
-        <div class="heatmap-legend" id="heatmap-legend"></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <div class="heatmap-legend" id="heatmap-legend"></div>
+          <button id="heatmap-team-toggle" class="heatmap-team-btn" data-team="0" onclick="toggleTeamHeatmap()" style="display:none">👥 Team</button>
+        </div>
       </div>
       <div class="heatmap-months" id="heatmap-months"></div>
       <div class="heatmap-grid-wrap">
@@ -562,6 +566,48 @@
           <span></span><span>Mon</span><span></span><span>Wed</span><span></span><span>Fri</span><span></span>
         </div>
         <div class="heatmap-grid" id="heatmap-grid"></div>
+      </div>
+    </div>
+
+    <!-- ── Team + Referral Card ───────────────────────────────────────────── -->
+    <div class="card team-card" id="team-card" style="margin-top:10px;display:none">
+      <div class="team-card-header">
+        <span style="font-weight:700;font-size:0.88rem;">👥 My Team</span>
+        <span id="team-name-label" class="team-name-label"></span>
+      </div>
+      <!-- Create / Join state -->
+      <div id="team-setup" class="team-setup">
+        <div class="team-setup-row">
+          <input type="text" id="team-name-input" class="team-input" placeholder="Team name…" maxlength="40">
+          <button class="btn-accent-sm" onclick="createTeam()">Create</button>
+        </div>
+        <div class="team-divider">or join with a code</div>
+        <div class="team-setup-row">
+          <input type="text" id="team-code-input" class="team-input" placeholder="ABCDEF" maxlength="8" style="text-transform:uppercase;letter-spacing:0.1em;">
+          <button class="btn-accent-sm" onclick="joinTeam()">Join</button>
+        </div>
+        <div id="team-error" class="team-error" style="display:none"></div>
+      </div>
+      <!-- Active team state -->
+      <div id="team-active" style="display:none">
+        <div class="team-invite-row">
+          <span style="font-size:0.78rem;color:var(--text-muted)">Invite code:</span>
+          <code id="team-invite-code" class="team-code-display"></code>
+          <button class="btn-copy" onclick="copyTeamCode()" title="Copy code">⎘</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Referral Card ──────────────────────────────────────────────────── -->
+    <div class="card referral-card" id="referral-card" style="margin-top:10px;display:none">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <span style="font-weight:700;font-size:0.88rem;">🎁 Invite Friends</span>
+        <span id="referral-count" class="referral-count"></span>
+      </div>
+      <p style="font-size:0.78rem;color:var(--text-muted);margin-bottom:10px;">Share your link — both you and your friend get +7 days of Pro when they sign up.</p>
+      <div class="referral-link-row">
+        <input type="text" id="referral-link-input" class="referral-link-input" readonly>
+        <button class="btn-copy" onclick="copyReferralLink()" title="Copy link">⎘ Copy</button>
       </div>
     </div>
 
