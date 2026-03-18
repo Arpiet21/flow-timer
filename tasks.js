@@ -554,13 +554,12 @@ const TaskManager = {
   // Returns true if a task belongs to today
   _isToday(task) {
     const todayDs = this._todayDs();
-    const dow     = new Date().getDay();
-    // Recurring tasks: always show today if the day matches (completion is per-day)
-    if (task.recurring_days?.length) return task.recurring_days.includes(dow);
+    // Recurring tasks: always visible (completion is tracked per-day separately)
+    if (task.recurring_days?.length) return true;
     // One-off completed task: only show on the day it was completed
     if (task.completed) return task.completed_at?.slice(0, 10) === todayDs;
     if (task.scheduled_date) return task.scheduled_date === todayDs;
-    return true; // unscheduled tasks always show today
+    return true; // unscheduled tasks always show
   },
 
   _todayDs() {
