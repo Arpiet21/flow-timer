@@ -40,7 +40,6 @@ function init() {
   updatePresetUI();
   loadHistory();
   renderActivityHeatmap();
-  initTeamAndReferral();
 }
 
 function todayStr() {

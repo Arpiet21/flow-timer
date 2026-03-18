@@ -103,6 +103,8 @@
         document.querySelector('header').style.marginTop = '38px';
       }
     }
+    // Init team + referral cards after auth is confirmed
+    if (typeof initTeamAndReferral === 'function') initTeamAndReferral();
   });
 
   // Show block-notifications toggle only in Electron (Windows)
