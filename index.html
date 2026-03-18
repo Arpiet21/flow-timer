@@ -172,6 +172,7 @@
     <div class="mode-tabs" id="timer-type-toggle">
       <button class="mode-btn active" id="btn-work-timer" onclick="switchTimerType('work')">⏱ Work Timer</button>
       <button class="mode-btn" id="btn-workout-timer" onclick="switchTimerType('workout')">💪 Workout Timer</button>
+      <button class="mode-btn" id="btn-tasks" onclick="switchTimerType('tasks')">✅ Tasks</button>
     </div>
 
     <!-- ── Work Timer Section ─────────────────────────────────────────────── -->
@@ -549,6 +550,75 @@
 
     </div><!-- /#workout-section -->
 
+    <!-- ── Task Manager Section ──────────────────────────────────────────── -->
+    <div id="task-section" class="hidden">
+
+      <!-- Stats bar -->
+      <div class="card task-stats-card">
+        <div class="task-stat">
+          <div class="task-stat-value" id="task-est-time">00:00</div>
+          <div class="task-stat-label">Estimated</div>
+        </div>
+        <div class="task-stat-divider"></div>
+        <div class="task-stat">
+          <div class="task-stat-value" id="task-todo-count">0</div>
+          <div class="task-stat-label">To Do</div>
+        </div>
+        <div class="task-stat-divider"></div>
+        <div class="task-stat">
+          <div class="task-stat-value" id="task-done-count">0</div>
+          <div class="task-stat-label">Done Today</div>
+        </div>
+      </div>
+
+      <!-- Task card -->
+      <div class="card task-main-card">
+
+        <!-- Add trigger -->
+        <button class="task-add-trigger" id="task-add-trigger" onclick="TaskManager.showAddForm()">
+          <span class="task-add-plus">+</span> Add a task…
+        </button>
+
+        <!-- Add form (hidden) -->
+        <div class="task-add-form" id="task-add-form" style="display:none">
+          <input type="text" id="task-title-input" class="task-field" placeholder="Task name…" maxlength="120" autofocus>
+          <div class="task-form-row">
+            <select id="task-category-select" class="task-select">
+              <option value="Work">Work</option>
+              <option value="Study">Study</option>
+              <option value="Personal" selected>Personal</option>
+              <option value="Health">Health</option>
+              <option value="Other">Other</option>
+            </select>
+            <select id="task-est-select" class="task-select">
+              <option value="10">10m</option>
+              <option value="15">15m</option>
+              <option value="20">20m</option>
+              <option value="25" selected>25m</option>
+              <option value="30">30m</option>
+              <option value="45">45m</option>
+              <option value="60">60m</option>
+              <option value="90">90m</option>
+            </select>
+            <div class="task-priority-pick" id="task-priority-pick">
+              <span class="task-dot task-dot-active" onclick="TaskManager.setPriority(1)"></span>
+              <span class="task-dot task-dot-active" onclick="TaskManager.setPriority(2)"></span>
+              <span class="task-dot" onclick="TaskManager.setPriority(3)"></span>
+            </div>
+          </div>
+          <input type="text" id="task-tags-input" class="task-field" placeholder="Tags: #work #urgent (optional)">
+          <div class="task-form-actions">
+            <button class="btn-accent-sm" onclick="TaskManager.submitAdd()">Add Task</button>
+            <button class="task-cancel-btn" onclick="TaskManager.hideAddForm()">Cancel</button>
+          </div>
+        </div>
+
+        <!-- Task list -->
+        <div id="task-list"></div>
+      </div>
+
+    </div><!-- /#task-section -->
+
     <!-- ── Activity Heatmap ──────────────────────────────────────────────── -->
     <div class="card heatmap-card" id="heatmap-card">
       <div class="heatmap-header">
@@ -717,6 +787,7 @@
   <script src="music.js"></script>
   <script src="app.js"></script>
   <script src="workout.js"></script>
+  <script src="tasks.js"></script>
   <script>
     document.getElementById('signout-btn').addEventListener('click', () => Auth.signOut());
 
@@ -724,22 +795,32 @@
 
     function switchTimerType(mode) {
       window.activeTimerMode = mode;
-      const isWork = mode === 'work';
-      document.getElementById('flow-section').classList.toggle('hidden', !isWork);
-      document.getElementById('workout-section').classList.toggle('hidden', isWork);
-      document.getElementById('btn-work-timer').classList.toggle('active', isWork);
-      document.getElementById('btn-workout-timer').classList.toggle('active', !isWork);
+      const isWork    = mode === 'work';
+      const isWorkout = mode === 'workout';
+      const isTasks   = mode === 'tasks';
 
-      // Auto-pause running timer when switching
-      if (isWork && typeof wo !== 'undefined' && wo.status === 'running') woPause();
+      document.getElementById('flow-section').classList.toggle('hidden', !isWork);
+      document.getElementById('workout-section').classList.toggle('hidden', !isWorkout);
+      document.getElementById('task-section').classList.toggle('hidden', !isTasks);
+
+      document.getElementById('btn-work-timer').classList.toggle('active', isWork);
+      document.getElementById('btn-workout-timer').classList.toggle('active', isWorkout);
+      document.getElementById('btn-tasks').classList.toggle('active', isTasks);
+
+      // Auto-pause running timers when switching away
+      if (!isWorkout && typeof wo !== 'undefined' && wo.status === 'running') woPause();
       if (!isWork && typeof state !== 'undefined' && state.status === 'running') pauseTimer();
-      // Restore page title
-      if (!isWork && typeof renderWo !== 'undefined') renderWo();
+
+      // Restore titles
+      if (isWorkout && typeof renderWo !== 'undefined') renderWo();
       if (isWork && typeof renderTimer !== 'undefined') renderTimer();
-      // Sync floating widget to new mode
+
+      // Sync floating widget
       if (typeof syncPip === 'function') syncPip();
-      // Re-render heatmap for the active timer type
-      if (typeof renderActivityHeatmap === 'function') renderActivityHeatmap();
+
+      // Re-render heatmap / tasks
+      if (!isTasks && typeof renderActivityHeatmap === 'function') renderActivityHeatmap();
+      if (isTasks && typeof TaskManager !== 'undefined') TaskManager.init();
     }
   </script>
 </body>
