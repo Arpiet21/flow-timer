@@ -273,7 +273,7 @@ const TaskManager = {
     if (!hint) return;
     const reasons = (cat?.reasons || []).filter(Boolean);
     if (reasons.length) {
-      hint.innerHTML = reasons.map((r, i) => `<span class="cat-reason-line">💡 ${this._esc(r)}</span>`).join('');
+      hint.innerHTML = reasons.map(r => `<span class="cat-reason-line">💡 ${this._esc(r)}</span>`).join('');
       hint.style.display = '';
     } else {
       hint.style.display = 'none';
@@ -579,13 +579,14 @@ const TaskManager = {
   },
 
   // ── Delete ────────────────────────────────────────────────────────────────
-  async deleteTask(id) {
+  deleteTask(id) {
     this._tasks = this._tasks.filter(t => t.id !== id);
-    if (typeof Auth !== 'undefined' && Auth.isLoggedIn()) {
-      try { await _sb.from('tasks').delete().eq('id', id); } catch (_) {}
-    }
     this._saveLocal();
     this._render();
+    if (typeof WeekPlanner !== 'undefined') WeekPlanner._render();
+    if (typeof Auth !== 'undefined' && Auth.isLoggedIn()) {
+      _sb.from('tasks').delete().eq('id', id).catch(() => {});
+    }
   },
 
   // ── Start focus on task ───────────────────────────────────────────────────

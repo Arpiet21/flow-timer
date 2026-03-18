@@ -1609,11 +1609,11 @@ kbd {
   cursor: pointer;
   font-size: 0.75rem;
   padding: 4px;
-  opacity: 0;
+  opacity: 0.35;
   transition: opacity 0.15s, color 0.15s;
   flex-shrink: 0;
 }
-.task-del-btn:hover { color: #ff453a; }
+.task-del-btn:hover, .task-item:hover .task-del-btn { opacity: 1; color: #ff453a; }
 
 .new-cat-form {
   display: flex;
