@@ -506,7 +506,8 @@ const TaskManager = {
       animation: toast-in 0.2s ease;
     `;
     document.body.appendChild(t);
-    setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity 0.3s'; setTimeout(() => t.remove(), 300); }, durationMs);
+    setTimeout(() => { t.style.transition = 'opacity 0.3s'; t.style.opacity = '0'; }, durationMs);
+    setTimeout(() => t.remove(), durationMs + 300);
   },
 
   // ── Toggle complete ────────────────────────────────────────────────────────
@@ -792,19 +793,26 @@ const TaskManager = {
       handle.style.left = '8px';
     };
 
-    wrap.addEventListener('mousedown',  e => { dragging = true; update(e.clientX); });
-    wrap.addEventListener('touchstart', e => { dragging = true; update(e.touches[0].clientX); }, { passive: true });
+    const onMove = e => update(e.touches ? e.touches[0].clientX : e.clientX);
+    const onEnd  = () => {
+      reset();
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('touchmove', onMove);
+      document.removeEventListener('mouseup',   onEnd);
+      document.removeEventListener('touchend',  onEnd);
+    };
 
-    // Use document-level listeners to track drag outside the element
-    const _mm = e => update(e.clientX);
-    const _tm = e => update(e.touches[0].clientX);
-    const _mu = () => reset();
-    const _tu = () => reset();
-    document.addEventListener('mousemove', _mm);
-    document.addEventListener('touchmove', _tm, { passive: true });
-    document.addEventListener('mouseup',   _mu);
-    document.addEventListener('touchend',  _tu);
-    // Clean up when element removed (MutationObserver not needed — small leak acceptable)
+    const startDrag = (clientX) => {
+      dragging = true;
+      update(clientX);
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('touchmove', onMove, { passive: true });
+      document.addEventListener('mouseup',   onEnd);
+      document.addEventListener('touchend',  onEnd);
+    };
+
+    wrap.addEventListener('mousedown',  e => startDrag(e.clientX));
+    wrap.addEventListener('touchstart', e => startDrag(e.touches[0].clientX), { passive: true });
 
     return wrap;
   },

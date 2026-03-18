@@ -973,20 +973,18 @@ function bindEvents() {
   });
 
   // Task completion style toggle
-  function _initCompleteStyleToggle() {
-    const saved = localStorage.getItem('flow-task-complete-style') || 'checkbox';
-    document.querySelectorAll('#complete-style-toggle .complete-style-btn').forEach(btn => {
-      btn.classList.toggle('active', btn.dataset.style === saved);
-    });
+  const _stylebtns = [...document.querySelectorAll('#complete-style-toggle .complete-style-btn')];
+  function _setCompleteStyle(style) {
+    localStorage.setItem('flow-task-complete-style', style);
+    _stylebtns.forEach(b => b.classList.toggle('active', b.dataset.style === style));
   }
-  document.querySelectorAll('#complete-style-toggle .complete-style-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      localStorage.setItem('flow-task-complete-style', btn.dataset.style);
-      document.querySelectorAll('#complete-style-toggle .complete-style-btn')
-        .forEach(b => b.classList.toggle('active', b === btn));
-      if (typeof TaskManager !== 'undefined') TaskManager._render();
-    });
-  });
+  _stylebtns.forEach(btn => btn.addEventListener('click', () => {
+    _setCompleteStyle(btn.dataset.style);
+    if (typeof TaskManager !== 'undefined') TaskManager._render();
+  }));
+  function _initCompleteStyleToggle() {
+    _setCompleteStyle(localStorage.getItem('flow-task-complete-style') || 'checkbox');
+  }
   _initCompleteStyleToggle();
 
   // Timezone selector
