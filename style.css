@@ -1245,6 +1245,17 @@ kbd {
   color: var(--text);
 }
 .tcal-today .tcal-day-num { font-weight: 800; }
+.tcal-cell.tcal-planned {
+  border: 1px dashed rgba(120, 140, 200, 0.35);
+}
+.tcal-planned-dot {
+  display: block;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: rgba(120, 140, 200, 0.55);
+  margin: 2px auto 0;
+}
 .tcal-count {
   font-size: 0.55rem;
   font-weight: 700;

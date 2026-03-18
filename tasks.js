@@ -33,19 +33,35 @@ const TaskCalendar = {
     const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
     label.textContent = `${monthNames[m]} ${y}`;
 
-    // Build counts map: 'YYYY-MM-DD' → completed task count
+    // Build counts map: 'YYYY-MM-DD' → activity count
     const counts = {};
+    const planned = {}; // days that have planned (not-done) week items
+
+    // Task Manager: completed tasks count; created tasks mark the day active
     (tasks || []).forEach(t => {
       if (t.completed && t.completed_at) {
         const d = t.completed_at.slice(0, 10);
         counts[d] = (counts[d] || 0) + 1;
       }
-      // Also count created tasks for the day (even if not completed)
       if (t.created_at) {
         const d = t.created_at.slice(0, 10);
-        if (!counts[d]) counts[d] = 0; // mark as active day even if 0 completions
+        if (!counts[d]) counts[d] = 0;
       }
     });
+
+    // Week Planner: done items count toward the day; planned (not-done) items mark the day
+    try {
+      const wpData = JSON.parse(localStorage.getItem('flow-week-plan') || '{}');
+      Object.entries(wpData).forEach(([ds, items]) => {
+        (items || []).forEach(item => {
+          if (item.done) {
+            counts[ds] = (counts[ds] || 0) + 1;
+          } else {
+            planned[ds] = true; // has planned activity
+          }
+        });
+      });
+    } catch(_) {}
 
     const firstDay  = new Date(y, m, 1).getDay(); // 0=Sun
     const daysInMonth = new Date(y, m + 1, 0).getDate();
@@ -67,14 +83,17 @@ const TaskCalendar = {
       const isToday = ds === today;
       const isFuture = ds > today;
 
+      const hasPlanned = planned[ds];
       const cell = document.createElement('div');
       cell.className = 'tcal-cell' +
-        (isToday   ? ' tcal-today'  : '') +
-        (isFuture  ? ' tcal-future' : '') +
-        (count > 0 ? ' tcal-active' : '');
+        (isToday    ? ' tcal-today'   : '') +
+        (isFuture   ? ' tcal-future'  : '') +
+        (count > 0  ? ' tcal-active'  : '') +
+        (hasPlanned && count === 0 ? ' tcal-planned' : '');
 
-      cell.innerHTML = `<span class="tcal-day-num">${d}</span>${count > 0 ? `<span class="tcal-count">${count}</span>` : ''}`;
-      if (count > 0) cell.title = `${count} task${count !== 1 ? 's' : ''} completed`;
+      cell.innerHTML = `<span class="tcal-day-num">${d}</span>${count > 0 ? `<span class="tcal-count">${count}</span>` : (hasPlanned ? `<span class="tcal-planned-dot"></span>` : '')}`;
+      if (count > 0) cell.title = `${count} activity${count !== 1 ? 's' : ''} done`;
+      else if (hasPlanned) cell.title = 'Activities planned';
       grid.appendChild(cell);
     }
   }
