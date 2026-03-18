@@ -255,11 +255,37 @@ const Auth = {
 
   async applyReferral(code) {
     if (!this._user || !code) return;
+
+    // Record the referral
     await _sb.from('referrals').upsert({
       referee_id: this._user.id,
       referral_code: code.toUpperCase(),
       created_at: new Date().toISOString()
     }, { onConflict: 'referee_id' });
+
+    // Extend this user's plan by 15 days
+    const { data: plan } = await _sb.from('user_plans')
+      .select('valid_until, plan')
+      .eq('user_id', this._user.id)
+      .single();
+
+    if (plan) {
+      const base = plan.valid_until ? new Date(plan.valid_until) : new Date();
+      if (base < new Date()) base.setTime(Date.now()); // if expired, start from now
+      base.setDate(base.getDate() + 15);
+      await _sb.from('user_plans').update({
+        valid_until: base.toISOString(),
+        plan: plan.plan === 'free' ? 'trial' : plan.plan,
+        updated_at: new Date().toISOString()
+      }).eq('user_id', this._user.id);
+    }
+
+    // Reward the referrer +15 days via server-side API (needs service role to find them)
+    await fetch('/api/apply-referral', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: code.toUpperCase(), refereeId: this._user.id })
+    }).catch(() => {});
   },
 
   async getReferralCount() {
