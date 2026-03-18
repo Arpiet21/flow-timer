@@ -190,6 +190,9 @@ function renderTimer() {
   const pct = state.totalTime > 0 ? (state.timeLeft / state.totalTime) * 100 : 100;
   const fill = document.getElementById('digital-progress-fill');
   if (fill) fill.style.width = `${pct}%`;
+
+  // Keep task stats bar in sync with the running timer
+  if (typeof TaskManager !== 'undefined') TaskManager.syncTimer();
 }
 
 function drawAnalogClock(canvas, timeLeft, totalTime) {

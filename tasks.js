@@ -337,6 +337,24 @@ const TaskManager = {
   },
 
   // ── Render ────────────────────────────────────────────────────────────────
+  // ── Live sync with main timer ──────────────────────────────────────────────
+  syncTimer() {
+    const estEl = document.getElementById('task-est-time');
+    if (!estEl) return;
+    const fmt = s => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+    // When timer is running on a work session, show live countdown
+    if (typeof state !== 'undefined' && state.status === 'running' && state.mode === 'work') {
+      estEl.textContent = fmt(state.timeLeft);
+      estEl.classList.add('task-stat-live');
+    } else {
+      // Timer idle — show total estimated minutes of incomplete tasks
+      const totalSecs = this._tasks.filter(t => !t.completed)
+        .reduce((a, t) => a + (t.estimated_minutes || 0) * 60, 0);
+      estEl.textContent = fmt(totalSecs);
+      estEl.classList.remove('task-stat-live');
+    }
+  },
+
   _render() {
     this._renderStats();
     this._renderList();
@@ -347,12 +365,12 @@ const TaskManager = {
     const today      = new Date().toISOString().slice(0, 10);
     const incomplete = this._tasks.filter(t => !t.completed);
     const doneToday  = this._tasks.filter(t => t.completed && t.completed_at?.slice(0, 10) === today);
-    const estMins    = incomplete.reduce((a, t) => a + (t.estimated_minutes || 0), 0);
-    const fmt = m => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+    const estSecs    = incomplete.reduce((a, t) => a + (t.estimated_minutes || 0) * 60, 0);
+    const fmt = s => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
     const estEl  = document.getElementById('task-est-time');
     const todoEl = document.getElementById('task-todo-count');
     const doneEl = document.getElementById('task-done-count');
-    if (estEl)  estEl.textContent  = fmt(estMins);
+    if (estEl)  estEl.textContent  = fmt(estSecs);
     if (todoEl) todoEl.textContent = incomplete.length;
     if (doneEl) doneEl.textContent = doneToday.length;
   },
