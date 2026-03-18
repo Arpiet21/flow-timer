@@ -1563,6 +1563,157 @@ kbd {
   padding: 24px 0 12px;
 }
 
+/* ─── Category Manager ───────────────────────────────────────────────────────── */
+.task-cat-manage-btn {
+  background: none;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 6px;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px 8px;
+  font-size: 0.82rem;
+  flex-shrink: 0;
+  transition: border-color 0.15s, color 0.15s;
+}
+.task-cat-manage-btn:hover { border-color: var(--accent); color: var(--accent); }
+.cat-manager {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-top: 8px;
+}
+.cat-manager-title {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 8px;
+}
+.cat-manager-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.cat-manager-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(255,255,255,0.07);
+  border-radius: 6px;
+  padding: 3px 6px 3px 10px;
+  font-size: 0.8rem;
+  color: var(--text);
+}
+.cat-delete-btn {
+  background: none; border: none;
+  color: var(--text-muted); cursor: pointer;
+  font-size: 0.72rem; padding: 0 2px; line-height: 1;
+  transition: color 0.15s;
+}
+.cat-delete-btn:hover { color: #ff453a; }
+
+/* ─── Brain Dump ─────────────────────────────────────────────────────────────── */
+.task-dump-card { padding: 14px 16px 16px; }
+.task-dump-header {
+  display: flex; align-items: baseline; gap: 8px;
+  margin-bottom: 12px;
+}
+.task-section-title { font-size: 0.9rem; font-weight: 700; color: var(--text); }
+.task-section-hint { font-size: 0.72rem; color: var(--text-muted); }
+.dump-input-row { display: flex; gap: 8px; margin-bottom: 10px; }
+.task-dump-add-btn {
+  background: var(--accent); border: none; color: #111;
+  border-radius: 7px; width: 32px; height: 32px;
+  font-size: 1.2rem; font-weight: 700; cursor: pointer;
+  flex-shrink: 0; line-height: 1;
+  transition: opacity 0.15s;
+}
+.task-dump-add-btn:hover { opacity: 0.8; }
+.dump-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.dump-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 8px; border-radius: 7px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.05);
+  font-size: 0.83rem; color: var(--text);
+}
+.dump-item-text { flex: 1; min-width: 0; }
+.dump-move-btn {
+  background: none;
+  border: 1px solid rgba(255,255,255,0.12);
+  color: var(--text-muted); border-radius: 5px;
+  font-size: 0.68rem; padding: 2px 7px; cursor: pointer;
+  white-space: nowrap; transition: border-color 0.15s, color 0.15s;
+}
+.dump-move-btn:hover { border-color: var(--accent); color: var(--accent); }
+.dump-del-btn {
+  background: none; border: none; color: var(--text-muted);
+  font-size: 0.72rem; cursor: pointer; padding: 0 2px;
+  transition: color 0.15s;
+}
+.dump-del-btn:hover { color: #ff453a; }
+.dump-empty { text-align: center; color: var(--text-muted); font-size: 0.8rem; padding: 12px 0; }
+
+/* ─── Week Planner ───────────────────────────────────────────────────────────── */
+.task-week-card { padding: 14px 16px 16px; }
+.week-plan-nav {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 14px;
+}
+.week-grid { display: flex; flex-direction: column; gap: 5px; }
+.week-day-row {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 8px 10px; border-radius: 8px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.05);
+}
+.week-day-row.week-today {
+  border-color: rgba(120, 140, 200, 0.35);
+  background: rgba(120, 140, 200, 0.06);
+}
+.week-day-header { min-width: 38px; padding-top: 4px; }
+.week-day-label {
+  font-size: 0.72rem; font-weight: 700;
+  color: var(--text-muted); text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.week-day-date { font-size: 0.63rem; color: var(--text-muted); margin-top: 1px; }
+.week-today .week-day-label { color: rgba(120, 140, 200, 0.9); }
+.week-today .week-day-date { color: rgba(120, 140, 200, 0.7); }
+.week-day-content { flex: 1; }
+.week-day-items { display: flex; flex-direction: column; gap: 2px; margin-bottom: 5px; }
+.week-day-item { display: flex; align-items: center; gap: 7px; font-size: 0.8rem; color: var(--text); }
+.week-item-check {
+  width: 14px; height: 14px; flex-shrink: 0;
+  border: 1.5px solid rgba(255,255,255,0.25); border-radius: 3px;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: background 0.15s, border-color 0.15s;
+}
+.week-item-check.done { background: var(--accent); border-color: var(--accent); }
+.week-item-check.done::after { content: '✓'; font-size: 0.6rem; color: #111; }
+.week-item-text { flex: 1; }
+.week-item-text.done { text-decoration: line-through; opacity: 0.45; }
+.week-item-del {
+  background: none; border: none; color: var(--text-muted);
+  font-size: 0.65rem; cursor: pointer; padding: 0;
+  opacity: 0; transition: opacity 0.15s, color 0.15s;
+}
+.week-day-item:hover .week-item-del { opacity: 1; }
+.week-item-del:hover { color: #ff453a; }
+.week-day-add-row { display: flex; gap: 5px; }
+.week-day-add-input {
+  flex: 1; background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.09); border-radius: 5px;
+  color: var(--text); font-size: 0.77rem; padding: 3px 8px;
+  outline: none; transition: border-color 0.15s;
+}
+.week-day-add-input:focus { border-color: var(--accent); }
+.week-day-add-btn {
+  background: rgba(255,255,255,0.06); border: none;
+  color: var(--text-muted); border-radius: 5px;
+  padding: 3px 9px; font-size: 0.82rem; cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.week-day-add-btn:hover { background: var(--accent); color: #111; }
+
 /* ─── Responsive ─────────────────────────────────────────────────────────────── */
 @media (max-width: 480px) {
   /* ── Header ── */

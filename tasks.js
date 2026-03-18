@@ -190,6 +190,44 @@ const TaskManager = {
     document.getElementById('new-cat-name')?.addEventListener('keydown', e => {
       if (e.key === 'Enter') { e.preventDefault(); this._saveNewCategory(); }
     });
+
+    // Category manager toggle
+    document.getElementById('task-cat-manage-btn')?.addEventListener('click', () => this._toggleCatManager());
+  },
+
+  _toggleCatManager() {
+    const panel = document.getElementById('cat-manager');
+    if (!panel) return;
+    if (panel.style.display === 'none') {
+      this._renderCatManager();
+      panel.style.display = '';
+    } else {
+      panel.style.display = 'none';
+    }
+  },
+
+  _renderCatManager() {
+    const list = document.getElementById('cat-manager-list');
+    if (!list) return;
+    if (this._categories.length === 0) {
+      list.innerHTML = '<span style="color:var(--text-muted);font-size:0.8rem;">No categories yet.</span>';
+      return;
+    }
+    list.innerHTML = '';
+    this._categories.forEach(cat => {
+      const item = document.createElement('div');
+      item.className = 'cat-manager-item';
+      item.innerHTML = `<span>${this._esc(cat.name)}</span><button class="cat-delete-btn" title="Delete">✕</button>`;
+      item.querySelector('.cat-delete-btn').addEventListener('click', () => this.deleteCategory(cat.name));
+      list.appendChild(item);
+    });
+  },
+
+  deleteCategory(name) {
+    this._categories = this._categories.filter(c => c.name !== name);
+    this._saveCategories();
+    this._populateCategorySelect();
+    this._renderCatManager();
   },
 
   _saveNewCategory() {
@@ -461,3 +499,214 @@ const TaskManager = {
 
 // Expose globally so inline handlers still work as fallback
 window.TaskManager = TaskManager;
+
+// ─── Brain Dump ────────────────────────────────────────────────────────────────
+const BrainDump = {
+  _items: [],
+  _bound: false,
+
+  init() {
+    this._load();
+    this._render();
+    if (!this._bound) { this._bind(); this._bound = true; }
+  },
+
+  _load() {
+    try { this._items = JSON.parse(localStorage.getItem('flow-brain-dump') || '[]'); }
+    catch(_) { this._items = []; }
+  },
+
+  _save() {
+    try { localStorage.setItem('flow-brain-dump', JSON.stringify(this._items)); } catch(_) {}
+  },
+
+  _bind() {
+    document.getElementById('dump-add-btn')?.addEventListener('click', () => this.add());
+    document.getElementById('dump-input')?.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); this.add(); }
+    });
+  },
+
+  add() {
+    const input = document.getElementById('dump-input');
+    const text = input?.value.trim();
+    if (!text) return;
+    this._items.unshift({ id: Date.now().toString(36), text, created: new Date().toISOString() });
+    this._save();
+    this._render();
+    if (input) input.value = '';
+  },
+
+  delete(id) {
+    this._items = this._items.filter(i => i.id !== id);
+    this._save();
+    this._render();
+  },
+
+  moveToTasks(id) {
+    const item = this._items.find(i => i.id === id);
+    if (!item) return;
+    if (typeof TaskManager !== 'undefined') {
+      TaskManager.showAddForm();
+      const el = document.getElementById('task-title-input');
+      if (el) { el.value = item.text; el.focus(); }
+    }
+    this.delete(id);
+  },
+
+  _render() {
+    const list = document.getElementById('dump-list');
+    if (!list) return;
+    if (this._items.length === 0) {
+      list.innerHTML = '<li class="dump-empty">Nothing here yet — type above and press Enter</li>';
+      return;
+    }
+    list.innerHTML = '';
+    this._items.forEach(item => {
+      const li = document.createElement('li');
+      li.className = 'dump-item';
+      li.innerHTML = `
+        <span class="dump-item-text">${this._esc(item.text)}</span>
+        <button class="dump-move-btn" title="Move to task list">→ Tasks</button>
+        <button class="dump-del-btn" title="Delete">✕</button>`;
+      li.querySelector('.dump-move-btn').addEventListener('click', () => this.moveToTasks(item.id));
+      li.querySelector('.dump-del-btn').addEventListener('click', () => this.delete(item.id));
+      list.appendChild(li);
+    });
+  },
+
+  _esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+};
+window.BrainDump = BrainDump;
+
+// ─── Week Planner ──────────────────────────────────────────────────────────────
+const WeekPlanner = {
+  _data:       {},  // { 'YYYY-MM-DD': [{ id, text, done }] }
+  _weekOffset: 0,   // 0 = current week, ±N = weeks back/forward
+  _bound:      false,
+
+  init() {
+    this._load();
+    this._render();
+    if (!this._bound) { this._bind(); this._bound = true; }
+  },
+
+  _load() {
+    try { this._data = JSON.parse(localStorage.getItem('flow-week-plan') || '{}'); }
+    catch(_) { this._data = {}; }
+  },
+
+  _save() {
+    try { localStorage.setItem('flow-week-plan', JSON.stringify(this._data)); } catch(_) {}
+  },
+
+  _bind() {
+    document.getElementById('week-prev-btn')?.addEventListener('click', () => { this._weekOffset--; this._render(); });
+    document.getElementById('week-next-btn')?.addEventListener('click', () => { this._weekOffset++; this._render(); });
+  },
+
+  // Returns array of 7 Dates (Mon–Sun) for the current offset week
+  _weekDates() {
+    const today = new Date();
+    const dow = today.getDay(); // 0=Sun
+    const mon = new Date(today);
+    mon.setDate(today.getDate() - (dow === 0 ? 6 : dow - 1) + this._weekOffset * 7);
+    mon.setHours(0, 0, 0, 0);
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(mon); d.setDate(mon.getDate() + i); return d;
+    });
+  },
+
+  _ds(date) { return date.toISOString().slice(0, 10); },
+
+  addItem(ds, text) {
+    if (!text) return;
+    if (!this._data[ds]) this._data[ds] = [];
+    this._data[ds].push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2,5), text, done: false });
+    this._save();
+    this._render();
+  },
+
+  toggleItem(ds, id) {
+    const item = (this._data[ds] || []).find(i => i.id === id);
+    if (item) { item.done = !item.done; this._save(); this._render(); }
+  },
+
+  deleteItem(ds, id) {
+    if (this._data[ds]) {
+      this._data[ds] = this._data[ds].filter(i => i.id !== id);
+      this._save(); this._render();
+    }
+  },
+
+  _render() {
+    const grid  = document.getElementById('week-grid');
+    const label = document.getElementById('week-label');
+    if (!grid) return;
+
+    const dates    = this._weekDates();
+    const todayDs  = new Date().toISOString().slice(0, 10);
+    const dayNames = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+
+    if (label) {
+      const fmt = d => `${d.getDate()} ${d.toLocaleString('default', { month: 'short' })}`;
+      label.textContent = `📅 ${fmt(dates[0])} – ${fmt(dates[6])}`;
+    }
+
+    grid.innerHTML = '';
+    dates.forEach((date, idx) => {
+      const ds    = this._ds(date);
+      const items = this._data[ds] || [];
+      const isToday = ds === todayDs;
+
+      const row = document.createElement('div');
+      row.className = 'week-day-row' + (isToday ? ' week-today' : '');
+
+      // Day label column
+      const header = document.createElement('div');
+      header.className = 'week-day-header';
+      header.innerHTML = `<div class="week-day-label">${dayNames[idx]}</div><div class="week-day-date">${date.getDate()}/${date.getMonth()+1}</div>`;
+
+      // Content column
+      const content = document.createElement('div');
+      content.className = 'week-day-content';
+
+      // Existing items
+      if (items.length > 0) {
+        const itemsDiv = document.createElement('div');
+        itemsDiv.className = 'week-day-items';
+        items.forEach(item => {
+          const el = document.createElement('div');
+          el.className = 'week-day-item';
+          el.innerHTML = `
+            <div class="week-item-check${item.done ? ' done' : ''}"></div>
+            <span class="week-item-text${item.done ? ' done' : ''}">${this._esc(item.text)}</span>
+            <button class="week-item-del">✕</button>`;
+          el.querySelector('.week-item-check').addEventListener('click', () => this.toggleItem(ds, item.id));
+          el.querySelector('.week-item-del').addEventListener('click', () => this.deleteItem(ds, item.id));
+          itemsDiv.appendChild(el);
+        });
+        content.appendChild(itemsDiv);
+      }
+
+      // Add row
+      const addRow = document.createElement('div');
+      addRow.className = 'week-day-add-row';
+      addRow.innerHTML = `
+        <input type="text" class="week-day-add-input" placeholder="Add activity…" maxlength="120">
+        <button class="week-day-add-btn">+</button>`;
+      const inp = addRow.querySelector('.week-day-add-input');
+      const btn = addRow.querySelector('.week-day-add-btn');
+      btn.addEventListener('click', () => { this.addItem(ds, inp.value.trim()); });
+      inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); this.addItem(ds, inp.value.trim()); } });
+
+      content.appendChild(addRow);
+      row.appendChild(header);
+      row.appendChild(content);
+      grid.appendChild(row);
+    });
+  },
+
+  _esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+};
+window.WeekPlanner = WeekPlanner;

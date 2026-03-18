@@ -599,6 +599,7 @@
             <select id="task-category-select" class="task-select">
               <!-- populated by TaskManager._populateCategorySelect() -->
             </select>
+            <button class="task-cat-manage-btn" id="task-cat-manage-btn" title="Manage categories">⚙</button>
             <select id="task-est-select" class="task-select">
               <option value="10">10m</option>
               <option value="15">15m</option>
@@ -615,6 +616,12 @@
               <span class="task-dot"></span>
             </div>
           </div>
+          <!-- Category manager (delete categories) -->
+          <div id="cat-manager" class="cat-manager" style="display:none">
+            <div class="cat-manager-title">Categories <span style="font-weight:400;color:var(--text-muted);font-size:0.7rem;">— click ✕ to delete</span></div>
+            <div id="cat-manager-list"></div>
+          </div>
+
           <!-- New category inline form -->
           <div id="new-cat-form" style="display:none" class="new-cat-form">
             <input type="text" id="new-cat-name" class="task-field" placeholder="Category name…" maxlength="40">
@@ -638,6 +645,29 @@
 
         <!-- Task list -->
         <div id="task-list"></div>
+      </div>
+
+      <!-- Brain Dump Card -->
+      <div class="card task-dump-card">
+        <div class="task-dump-header">
+          <span class="task-section-title">🧠 Brain Dump</span>
+          <span class="task-section-hint">Quick capture — no categories needed</span>
+        </div>
+        <div class="dump-input-row">
+          <input type="text" id="dump-input" class="task-field" placeholder="Dump an idea or task… press Enter" maxlength="200">
+          <button id="dump-add-btn" class="task-dump-add-btn">+</button>
+        </div>
+        <ul id="dump-list" class="dump-list"></ul>
+      </div>
+
+      <!-- Week Planner Card -->
+      <div class="card task-week-card">
+        <div class="week-plan-nav">
+          <button id="week-prev-btn" class="tcal-nav-btn">‹</button>
+          <span class="task-section-title" id="week-label">📅 Weekly Plan</span>
+          <button id="week-next-btn" class="tcal-nav-btn">›</button>
+        </div>
+        <div id="week-grid" class="week-grid"></div>
       </div>
 
     </div><!-- /#task-section -->
@@ -850,6 +880,8 @@
       // Re-render heatmap / tasks
       if (!isTasks && typeof renderActivityHeatmap === 'function') renderActivityHeatmap();
       if (isTasks && typeof TaskManager !== 'undefined') TaskManager.init();
+      if (isTasks && typeof BrainDump !== 'undefined') BrainDump.init();
+      if (isTasks && typeof WeekPlanner !== 'undefined') WeekPlanner.init();
     }
   </script>
 </body>
