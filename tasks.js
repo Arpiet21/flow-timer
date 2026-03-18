@@ -738,21 +738,21 @@ const TaskManager = {
 
     let dragging = false;
 
-    const handleW = 28;
+    const handleW = 14;
     const update = (clientX) => {
       if (!dragging) return;
       const rect = wrap.getBoundingClientRect();
-      const travel = rect.width - handleW - 16; // 8px padding each side
+      const travel = rect.width - handleW - 16;
       const raw    = clientX - rect.left - 8 - handleW / 2;
       const pct    = Math.min(100, Math.max(0, (raw / travel) * 100));
       fill.style.width  = pct + '%';
-      handle.style.left = `calc(${pct}% * ${travel / rect.width} + 8px)`;
+      handle.style.left = (8 + pct / 100 * travel) + 'px';
       if (pct >= 90) {
         dragging = false;
         fill.style.width  = '100%';
-        handle.style.left = `calc(100% - ${handleW + 8}px)`;
+        handle.style.left = (rect.width - handleW - 8) + 'px';
         const r = wrap.getBoundingClientRect();
-        this._triggerSparkle(r.right - 20, r.top + r.height / 2);
+        this._triggerSparkle(r.right - 10, r.top + r.height / 2);
         setTimeout(() => onComplete(), 300);
       }
     };
