@@ -148,24 +148,67 @@ const TaskManager = {
     }
     this._populateCategorySelect();
     this._render();
-    if (!this._bound) { this._bindButtons(); this._bound = true; }
+    if (!this._bound) {
+      this._bindButtons();
+      // Flush any pending local tasks to Supabase when page is about to unload or hidden
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'hidden') this._flushPending();
+      });
+      window.addEventListener('beforeunload', () => this._flushPending());
+      this._bound = true;
+    }
+  },
+
+  // Flush all local tasks to Supabase on tab switch / sign-out / page unload
+  _flushPending() {
+    if (typeof Auth === 'undefined' || !Auth.isLoggedIn()) return;
+    const uid = Auth.getUser()?.id;
+    if (!uid || this._tasks.length === 0) return;
+    // Upsert is idempotent — safe to call even for already-synced tasks
+    this._tasks.forEach(task => {
+      _sb.from('tasks').upsert({ ...task, user_id: uid }, { onConflict: 'id' }).catch(() => {});
+    });
   },
 
   // ── Persistence ───────────────────────────────────────────────────────────
   async _load() {
     if (typeof Auth !== 'undefined' && Auth.isLoggedIn()) {
       try {
-        const { data } = await _sb.from('tasks')
+        const uid = Auth.getUser()?.id;
+        const { data, error } = await _sb.from('tasks')
           .select('*')
-          .eq('user_id', Auth.getUser().id)
+          .eq('user_id', uid)
           .order('created_at', { ascending: true });
-        this._tasks = data || [];
-        this._saveLocal(); // keep local cache in sync
-        return;
+
+        if (!error) {
+          const remote    = data || [];
+          const remoteIds = new Set(remote.map(t => t.id));
+
+          // Recover locally-created tasks whose Supabase insert failed
+          const local   = JSON.parse(localStorage.getItem('flow-tasks') || '[]');
+          const pending = local.filter(t => !remoteIds.has(t.id));
+
+          this._tasks = [...remote, ...pending]
+            .sort((a, b) => (a.created_at || '').localeCompare(b.created_at || ''));
+          this._saveLocal();
+
+          // Re-try syncing failed inserts in the background
+          if (pending.length > 0) this._retrySync(pending, uid);
+          return;
+        }
       } catch (_) { /* Supabase failed — fall back to local cache */ }
     }
     try { this._tasks = JSON.parse(localStorage.getItem('flow-tasks') || '[]'); }
     catch (_) { this._tasks = []; }
+  },
+
+  // Re-insert tasks that failed to sync previously
+  _retrySync(tasks, uid) {
+    tasks.forEach(task => {
+      _sb.from('tasks')
+        .upsert({ ...task, user_id: uid }, { onConflict: 'id' })
+        .catch(() => {});
+    });
   },
 
   _saveLocal() {
@@ -492,7 +535,9 @@ const TaskManager = {
               if (t) { t.id = data[0].id; this._saveLocal(); }
             }
           })
-          .catch(() => {});
+          .catch(() => {
+            this._toast('⚠️ Cloud sync failed — task saved locally, will retry on reload', 5000);
+          });
       }
     } catch (_) {}
 
