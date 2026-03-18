@@ -450,44 +450,36 @@ const TaskManager = {
     const scheduledDate = document.getElementById('task-date-input')?.value || null;
     const recurringDays = [...document.querySelectorAll('#task-recur-days .recur-day-btn.active')]
       .map(b => parseInt(b.dataset.day)); // 0=Sun,1=Mon…6=Sat
-    const task = {
-      id:                (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : Date.now().toString(36),
-      title,
-      category,
-      estimated_minutes: estMins,
-      priority:          this._priority,
-      tags,
-      scheduled_date:    scheduledDate,
-      recurring_days:    recurringDays.length > 0 ? recurringDays : null,
-      completed:         false,
-      completed_at:      null,
-      created_at:        new Date().toISOString()
-    };
+    const uid = typeof Auth !== 'undefined' && Auth.isLoggedIn() ? Auth.getUser()?.id : null;
+    if (!uid) { this._toast('⚠️ Not logged in — task not saved', 4000); return; }
 
-    // Update UI immediately — never block on network
-    this._tasks.push(task);
     this.hideAddForm();
-    this._render();
 
-    // Sync to Supabase in the background (true fire-and-forget)
+    // Insert into Supabase first — use the UUID Supabase generates so delete/update always work
     try {
-      const uid = typeof Auth !== 'undefined' && Auth.isLoggedIn() ? Auth.getUser()?.id : null;
-      if (uid) {
-        _sb.from('tasks')
-          .insert({ ...task, user_id: uid })
-          .select('id')
-          .limit(1)
-          .then(({ data }) => {
-            if (data?.[0]?.id) {
-              const t = this._tasks.find(t => t.id === task.id);
-              if (t) t.id = data[0].id;
-            }
-          })
-          .catch(() => {
-            this._toast('⚠️ Cloud sync failed — task not saved. Please check connection.', 5000);
-          });
+      const payload = {
+        title,
+        category,
+        estimated_minutes: estMins,
+        priority:          this._priority,
+        tags,
+        scheduled_date:    scheduledDate,
+        recurring_days:    recurringDays.length > 0 ? recurringDays : null,
+        completed:         false,
+        completed_at:      null,
+        created_at:        new Date().toISOString(),
+        user_id:           uid
+      };
+      const { data, error } = await _sb.from('tasks').insert(payload).select('*').limit(1);
+      if (error || !data?.[0]) {
+        this._toast('⚠️ Could not save task. Please try again.', 5000);
+        return;
       }
-    } catch (_) {}
+      this._tasks.push(data[0]);
+    } catch (_) {
+      this._toast('⚠️ Could not save task. Please try again.', 5000);
+      return;
+    }
 
     // If scheduled for a future date, show a toast so user knows it was saved
     if (task.scheduled_date && task.scheduled_date > this._todayDs()) {
