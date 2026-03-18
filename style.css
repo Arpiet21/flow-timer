@@ -1664,6 +1664,16 @@ kbd {
   font-size: 0.82rem;
   padding: 24px 0 12px;
 }
+.task-upcoming-notice {
+  font-size: 0.76rem;
+  color: rgba(120, 140, 200, 0.75);
+  background: rgba(120, 140, 200, 0.08);
+  border: 1px dashed rgba(120, 140, 200, 0.25);
+  border-radius: 7px;
+  padding: 7px 12px;
+  margin-top: 10px;
+  text-align: center;
+}
 
 /* ─── Category Manager ───────────────────────────────────────────────────────── */
 .task-cat-manage-btn {

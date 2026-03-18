@@ -509,8 +509,8 @@ const TaskManager = {
       estEl.textContent = fmt(state.timeLeft);
       estEl.classList.add('task-stat-live');
     } else {
-      // Timer idle — show total estimated minutes of incomplete tasks
-      const totalSecs = this._tasks.filter(t => !t.completed)
+      // Timer idle — show total estimated minutes of today's incomplete tasks
+      const totalSecs = this._tasks.filter(t => !t.completed && this._isToday(t))
         .reduce((a, t) => a + (t.estimated_minutes || 0) * 60, 0);
       estEl.textContent = fmt(totalSecs);
       estEl.classList.remove('task-stat-live');
@@ -523,10 +523,26 @@ const TaskManager = {
     TaskCalendar.init(this._tasks);
   },
 
+  // Returns true if a task belongs to today
+  _isToday(task) {
+    const todayDs = this._todayDs();
+    const dow     = new Date().getDay();
+    if (task.completed) return task.completed_at?.slice(0, 10) === todayDs;
+    if (task.scheduled_date) return task.scheduled_date === todayDs;
+    if (task.recurring_days?.length) return task.recurring_days.includes(dow);
+    return true; // unscheduled tasks always show today
+  },
+
+  _todayDs() {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  },
+
   _renderStats() {
-    const today      = new Date().toISOString().slice(0, 10);
-    const incomplete = this._tasks.filter(t => !t.completed);
-    const doneToday  = this._tasks.filter(t => t.completed && t.completed_at?.slice(0, 10) === today);
+    const todayDs    = this._todayDs();
+    const todayTasks = this._tasks.filter(t => this._isToday(t));
+    const incomplete = todayTasks.filter(t => !t.completed);
+    const doneToday  = todayTasks.filter(t => t.completed);
     const estSecs    = incomplete.reduce((a, t) => a + (t.estimated_minutes || 0) * 60, 0);
     const fmt = s => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
     const estEl  = document.getElementById('task-est-time');
@@ -540,45 +556,59 @@ const TaskManager = {
   _renderList() {
     const list = document.getElementById('task-list');
     if (!list) return;
+    list.innerHTML = '';
 
-    const incomplete = this._tasks.filter(t => !t.completed);
-    const done       = this._tasks.filter(t => t.completed);
-    list.innerHTML   = '';
+    // Only show today's tasks
+    const todayIncomplete = this._tasks.filter(t => !t.completed && this._isToday(t));
+    const doneToday       = this._tasks.filter(t =>  t.completed && this._isToday(t));
 
-    if (incomplete.length === 0 && done.length === 0) {
-      list.innerHTML = '<p class="task-empty">No tasks yet — add one above ↑</p>';
-      return;
+    // Count upcoming (scheduled future, not today, not recurring)
+    const todayDs   = this._todayDs();
+    const upcoming  = this._tasks.filter(t =>
+      !t.completed && t.scheduled_date && t.scheduled_date > todayDs
+    );
+
+    if (todayIncomplete.length === 0 && doneToday.length === 0) {
+      list.innerHTML = '<p class="task-empty">Nothing for today — add a task or check the Weekly Plan ↓</p>';
+    } else {
+      // Group today's incomplete by category
+      const groups = {};
+      todayIncomplete.forEach(t => { (groups[t.category] = groups[t.category] || []).push(t); });
+      Object.entries(groups).forEach(([cat, tasks]) => {
+        const catData = this._categories.find(c => c.name === cat);
+        const reasons = (catData?.reasons || []).filter(Boolean);
+        const g = document.createElement('div');
+        g.className = 'task-group';
+        g.innerHTML = `<div class="task-group-label">${this._esc(cat)}</div>`
+          + (reasons.length ? `<div class="task-group-reasons">${reasons.map(r => `<span class="task-group-reason-item">💡 ${this._esc(r)}</span>`).join('')}</div>` : '');
+        tasks.forEach(t => g.appendChild(this._taskEl(t)));
+        list.appendChild(g);
+      });
+
+      // Today's completed (collapsible)
+      if (doneToday.length > 0) {
+        const toggle = document.createElement('button');
+        toggle.className = 'task-show-completed-btn';
+        toggle.textContent = `▾ Show ${doneToday.length} completed today`;
+        const doneWrap = document.createElement('div');
+        doneWrap.style.display = 'none';
+        toggle.addEventListener('click', () => {
+          this._showDone = !this._showDone;
+          doneWrap.style.display = this._showDone ? '' : 'none';
+          toggle.textContent = this._showDone ? '▴ Hide completed' : `▾ Show ${doneToday.length} completed today`;
+        });
+        doneToday.forEach(t => doneWrap.appendChild(this._taskEl(t)));
+        list.appendChild(toggle);
+        list.appendChild(doneWrap);
+      }
     }
 
-    // Group incomplete tasks by category
-    const groups = {};
-    incomplete.forEach(t => { (groups[t.category] = groups[t.category] || []).push(t); });
-    Object.entries(groups).forEach(([cat, tasks]) => {
-      const catData = this._categories.find(c => c.name === cat);
-      const reasons = (catData?.reasons || []).filter(Boolean);
-      const g = document.createElement('div');
-      g.className = 'task-group';
-      g.innerHTML = `<div class="task-group-label">${this._esc(cat)}</div>`
-        + (reasons.length ? `<div class="task-group-reasons">${reasons.map(r => `<span class="task-group-reason-item">💡 ${this._esc(r)}</span>`).join('')}</div>` : '');
-      tasks.forEach(t => g.appendChild(this._taskEl(t)));
-      list.appendChild(g);
-    });
-
-    // Completed section (collapsible)
-    if (done.length > 0) {
-      const toggle = document.createElement('button');
-      toggle.className = 'task-show-completed-btn';
-      toggle.textContent = `▾ Show ${done.length} completed task${done.length !== 1 ? 's' : ''}`;
-      const doneWrap = document.createElement('div');
-      doneWrap.style.display = 'none';
-      toggle.addEventListener('click', () => {
-        this._showDone = !this._showDone;
-        doneWrap.style.display = this._showDone ? '' : 'none';
-        toggle.textContent = this._showDone ? '▴ Hide completed' : `▾ Show ${done.length} completed task${done.length !== 1 ? 's' : ''}`;
-      });
-      done.forEach(t => doneWrap.appendChild(this._taskEl(t)));
-      list.appendChild(toggle);
-      list.appendChild(doneWrap);
+    // Upcoming tasks notice (scheduled for future dates)
+    if (upcoming.length > 0) {
+      const notice = document.createElement('p');
+      notice.className = 'task-upcoming-notice';
+      notice.textContent = `📅 ${upcoming.length} upcoming task${upcoming.length > 1 ? 's' : ''} scheduled — see Weekly Plan ↓`;
+      list.appendChild(notice);
     }
   },
 
