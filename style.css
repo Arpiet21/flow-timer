@@ -1244,6 +1244,12 @@ kbd {
   transition: border-color 0.2s;
 }
 .task-field:focus { border-color: var(--accent); }
+.task-field-error { border-color: #ff453a !important; animation: shake 0.3s; }
+@keyframes shake {
+  0%,100% { transform: translateX(0); }
+  25%      { transform: translateX(-4px); }
+  75%      { transform: translateX(4px); }
+}
 .task-form-row {
   display: flex;
   align-items: center;

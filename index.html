@@ -575,13 +575,13 @@
       <div class="card task-main-card">
 
         <!-- Add trigger -->
-        <button class="task-add-trigger" id="task-add-trigger" onclick="TaskManager.showAddForm()">
+        <button class="task-add-trigger" id="task-add-trigger">
           <span class="task-add-plus">+</span> Add a task…
         </button>
 
         <!-- Add form (hidden) -->
         <div class="task-add-form" id="task-add-form" style="display:none">
-          <input type="text" id="task-title-input" class="task-field" placeholder="Task name…" maxlength="120" autofocus>
+          <input type="text" id="task-title-input" class="task-field" placeholder="Task name…" maxlength="120">
           <div class="task-form-row">
             <select id="task-category-select" class="task-select">
               <option value="Work">Work</option>
@@ -601,15 +601,15 @@
               <option value="90">90m</option>
             </select>
             <div class="task-priority-pick" id="task-priority-pick">
-              <span class="task-dot task-dot-active" onclick="TaskManager.setPriority(1)"></span>
-              <span class="task-dot task-dot-active" onclick="TaskManager.setPriority(2)"></span>
-              <span class="task-dot" onclick="TaskManager.setPriority(3)"></span>
+              <span class="task-dot task-dot-active"></span>
+              <span class="task-dot task-dot-active"></span>
+              <span class="task-dot"></span>
             </div>
           </div>
           <input type="text" id="task-tags-input" class="task-field" placeholder="Tags: #work #urgent (optional)">
           <div class="task-form-actions">
-            <button class="btn-accent-sm" onclick="TaskManager.submitAdd()">Add Task</button>
-            <button class="task-cancel-btn" onclick="TaskManager.hideAddForm()">Cancel</button>
+            <button class="btn-accent-sm" id="task-submit-btn">Add Task</button>
+            <button class="task-cancel-btn" id="task-cancel-btn">Cancel</button>
           </div>
         </div>
 
