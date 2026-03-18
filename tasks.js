@@ -236,16 +236,63 @@ const TaskManager = {
     this._categories.forEach(cat => {
       const item = document.createElement('div');
       item.className = 'cat-manager-item';
-      item.innerHTML = `<span>${this._esc(cat.name)}</span><button class="cat-delete-btn" title="Delete">✕</button>`;
+      item.innerHTML = `<span>${this._esc(cat.name)}</span><button class="cat-edit-btn" title="Edit">✏</button><button class="cat-delete-btn" title="Delete">✕</button>`;
+      item.querySelector('.cat-edit-btn').addEventListener('click', () => this._showCatEditForm(cat.name));
       item.querySelector('.cat-delete-btn').addEventListener('click', () => this.deleteCategory(cat.name));
       list.appendChild(item);
     });
+  },
+
+  _showCatEditForm(name) {
+    document.getElementById('cat-edit-form')?.remove();
+    const cat = this._categories.find(c => c.name === name);
+    if (!cat) return;
+    const panel = document.getElementById('cat-manager');
+    const form = document.createElement('div');
+    form.className = 'cat-edit-form';
+    form.id = 'cat-edit-form';
+    form.innerHTML = `
+      <div class="cat-edit-form-title">Editing: <strong>${this._esc(name)}</strong></div>
+      <input type="text" id="cat-edit-name" class="task-field" value="${this._esc(cat.name)}" placeholder="Category name…" maxlength="40">
+      <input type="text" id="cat-edit-reason-1" class="task-field" value="${this._esc(cat.reasons?.[0] || '')}" placeholder="Reason 1 — why are you working on this?">
+      <input type="text" id="cat-edit-reason-2" class="task-field" value="${this._esc(cat.reasons?.[1] || '')}" placeholder="Reason 2 (optional)">
+      <input type="text" id="cat-edit-reason-3" class="task-field" value="${this._esc(cat.reasons?.[2] || '')}" placeholder="Reason 3 (optional)">
+      <div class="cat-edit-actions">
+        <button class="btn-accent-sm" id="cat-edit-save-btn">Save</button>
+        <button class="task-cancel-btn" id="cat-edit-cancel-btn">Cancel</button>
+      </div>`;
+    panel.appendChild(form);
+    document.getElementById('cat-edit-name')?.focus();
+    document.getElementById('cat-edit-save-btn').addEventListener('click', () => this._saveCatEdit(name));
+    document.getElementById('cat-edit-cancel-btn').addEventListener('click', () => document.getElementById('cat-edit-form')?.remove());
+  },
+
+  _saveCatEdit(originalName) {
+    const newName = document.getElementById('cat-edit-name')?.value.trim();
+    if (!newName) { document.getElementById('cat-edit-name')?.classList.add('task-field-error'); return; }
+    const reasons = [
+      document.getElementById('cat-edit-reason-1')?.value.trim() || '',
+      document.getElementById('cat-edit-reason-2')?.value.trim() || '',
+      document.getElementById('cat-edit-reason-3')?.value.trim() || ''
+    ].filter(Boolean);
+    const idx = this._categories.findIndex(c => c.name === originalName);
+    if (idx === -1) return;
+    if (newName !== originalName) {
+      this._tasks.forEach(t => { if (t.category === originalName) t.category = newName; });
+      this._saveLocal();
+    }
+    this._categories[idx] = { name: newName, reasons };
+    this._saveCategories();
+    this._populateCategorySelect();
+    document.getElementById('cat-edit-form')?.remove();
+    this._renderCatManager();
   },
 
   deleteCategory(name) {
     this._categories = this._categories.filter(c => c.name !== name);
     this._saveCategories();
     this._populateCategorySelect();
+    document.getElementById('cat-edit-form')?.remove();
     this._renderCatManager();
   },
 
@@ -674,9 +721,14 @@ const WeekPlanner = {
 
     grid.innerHTML = '';
     dates.forEach((date, idx) => {
-      const ds    = this._ds(date);
-      const items = this._data[ds] || [];
+      const ds      = this._ds(date);
+      const items   = this._data[ds] || [];
       const isToday = ds === todayDs;
+
+      // Synced tasks from TaskManager for this day
+      const dayTasks = typeof TaskManager !== 'undefined'
+        ? TaskManager._tasks.filter(t => t.created_at?.slice(0, 10) === ds)
+        : [];
 
       const row = document.createElement('div');
       row.className = 'week-day-row' + (isToday ? ' week-today' : '');
@@ -690,7 +742,7 @@ const WeekPlanner = {
       const content = document.createElement('div');
       content.className = 'week-day-content';
 
-      // Existing items
+      // Planned week items
       if (items.length > 0) {
         const itemsDiv = document.createElement('div');
         itemsDiv.className = 'week-day-items';
@@ -708,17 +760,56 @@ const WeekPlanner = {
         content.appendChild(itemsDiv);
       }
 
-      // Add row
+      // Synced tasks (read-only, shows tasks created that day)
+      if (dayTasks.length > 0) {
+        const tasksDiv = document.createElement('div');
+        tasksDiv.className = 'week-day-items';
+        dayTasks.forEach(t => {
+          const el = document.createElement('div');
+          el.className = 'week-task-item' + (t.completed ? ' done-task' : '');
+          el.innerHTML = `<span class="week-task-badge">task</span><span class="week-task-text">${this._esc(t.title)}</span>`;
+          tasksDiv.appendChild(el);
+        });
+        content.appendChild(tasksDiv);
+      }
+
+      // Collapsed add trigger → expands to input row
+      const addTrigger = document.createElement('button');
+      addTrigger.className = 'week-day-add-trigger';
+      addTrigger.textContent = '+ Add activity';
+
       const addRow = document.createElement('div');
       addRow.className = 'week-day-add-row';
+      addRow.style.display = 'none';
       addRow.innerHTML = `
-        <input type="text" class="week-day-add-input" placeholder="Add activity…" maxlength="120">
-        <button class="week-day-add-btn">+</button>`;
+        <input type="text" class="week-day-add-input" placeholder="Activity name…" maxlength="120">
+        <button class="week-day-add-btn">Add</button>`;
+
       const inp = addRow.querySelector('.week-day-add-input');
       const btn = addRow.querySelector('.week-day-add-btn');
-      btn.addEventListener('click', () => { this.addItem(ds, inp.value.trim()); });
-      inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); this.addItem(ds, inp.value.trim()); } });
 
+      addTrigger.addEventListener('click', () => {
+        addTrigger.style.display = 'none';
+        addRow.style.display = 'flex';
+        inp.focus();
+      });
+
+      const doAdd = () => {
+        const text = inp.value.trim();
+        if (text) { this.addItem(ds, text); }
+        else { addRow.style.display = 'none'; addTrigger.style.display = ''; }
+      };
+
+      btn.addEventListener('click', doAdd);
+      inp.addEventListener('keydown', e => {
+        if (e.key === 'Enter') { e.preventDefault(); doAdd(); }
+        if (e.key === 'Escape') { addRow.style.display = 'none'; addTrigger.style.display = ''; }
+      });
+      inp.addEventListener('blur', () => {
+        if (!inp.value.trim()) setTimeout(() => { addRow.style.display = 'none'; addTrigger.style.display = ''; }, 150);
+      });
+
+      content.appendChild(addTrigger);
       content.appendChild(addRow);
       row.appendChild(header);
       row.appendChild(content);

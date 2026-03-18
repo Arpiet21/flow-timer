@@ -1709,21 +1709,58 @@ kbd {
 }
 .week-day-item:hover .week-item-del { opacity: 1; }
 .week-item-del:hover { color: #ff453a; }
-.week-day-add-row { display: flex; gap: 5px; }
+.week-day-add-trigger {
+  background: none; border: none;
+  color: var(--text-muted); font-size: 0.75rem;
+  cursor: pointer; padding: 2px 0;
+  display: flex; align-items: center; gap: 3px;
+  transition: color 0.15s;
+}
+.week-day-add-trigger:hover { color: var(--accent); }
+.week-day-add-row { display: flex; gap: 6px; margin-top: 2px; }
 .week-day-add-input {
-  flex: 1; background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.09); border-radius: 5px;
-  color: var(--text); font-size: 0.77rem; padding: 3px 8px;
+  flex: 1; background: rgba(255,255,255,0.09);
+  border: 1px solid rgba(255,255,255,0.22); border-radius: 6px;
+  color: var(--text); font-size: 0.8rem; padding: 5px 10px;
   outline: none; transition: border-color 0.15s;
 }
+.week-day-add-input::placeholder { color: var(--text-muted); }
 .week-day-add-input:focus { border-color: var(--accent); }
 .week-day-add-btn {
-  background: rgba(255,255,255,0.06); border: none;
-  color: var(--text-muted); border-radius: 5px;
-  padding: 3px 9px; font-size: 0.82rem; cursor: pointer;
-  transition: background 0.15s, color 0.15s;
+  background: var(--accent); border: none;
+  color: #111; border-radius: 6px;
+  padding: 5px 12px; font-size: 0.8rem; font-weight: 700; cursor: pointer;
+  white-space: nowrap; transition: opacity 0.15s;
 }
-.week-day-add-btn:hover { background: var(--accent); color: #111; }
+.week-day-add-btn:hover { opacity: 0.8; }
+.week-task-item {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 0.78rem; color: var(--text-muted); padding: 1px 0;
+}
+.week-task-badge {
+  font-size: 0.6rem; background: rgba(255,255,255,0.08);
+  border-radius: 3px; padding: 1px 5px; flex-shrink: 0;
+  letter-spacing: 0.02em;
+}
+.week-task-text { flex: 1; }
+.week-task-item.done-task .week-task-text { text-decoration: line-through; opacity: 0.4; }
+.cat-edit-btn {
+  background: none; border: none;
+  color: var(--text-muted); cursor: pointer;
+  font-size: 0.72rem; padding: 0 3px; margin-right: 1px;
+  transition: color 0.15s;
+}
+.cat-edit-btn:hover { color: var(--accent); }
+.cat-edit-form {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px; padding: 10px 12px;
+  margin-top: 10px; display: flex; flex-direction: column; gap: 6px;
+}
+.cat-edit-form-title {
+  font-size: 0.72rem; color: var(--text-muted); margin-bottom: 2px;
+}
+.cat-edit-actions { display: flex; gap: 8px; margin-top: 2px; }
 
 /* ─── Responsive ─────────────────────────────────────────────────────────────── */
 @media (max-width: 480px) {
