@@ -184,8 +184,8 @@ const Auth = {
 
   // ── Sign out ─────────────────────────────────────────────────────────────
   async signOut() {
-    if (this._user) await this._unregisterDevice(this._user.id);
-    await _sb.auth.signOut();
+    try { if (this._user) await this._unregisterDevice(this._user.id); } catch (_) {}
+    try { await _sb.auth.signOut(); } catch (_) {}
     this._user = null;
     window.location.href = 'landing.html';
   },
