@@ -664,7 +664,7 @@ const TaskManager = {
 
     el.className = 'task-item' + (isDone ? ' task-item-done' : '');
     el.innerHTML = `
-      ${isDone || !useSlider ? `<button class="task-check${isDone ? ' checked' : ''}">${checkIcon}</button>` : '<span class="task-slider-placeholder"></span>'}
+      ${!useSlider ? `<button class="task-check${isDone ? ' checked' : ''}">${checkIcon}</button>` : ''}
       <div class="task-body">
         <div class="task-title">${this._esc(task.title)}</div>
         <div class="task-meta">
@@ -679,11 +679,9 @@ const TaskManager = {
       <button class="task-del-btn" title="Delete">✕</button>`;
 
     if (useSlider) {
-      // Replace placeholder with drag slider
-      const placeholder = el.querySelector('.task-slider-placeholder');
+      // Append slider as overlay covering the whole task-item (position: absolute; inset: 0)
       const onComplete = () => isRecurring ? this.toggleDoneOn(task.id, todayDs) : this.toggleComplete(task.id);
-      const slider = this._makeSlider(onComplete);
-      el.replaceChild(slider, placeholder);
+      el.appendChild(this._makeSlider(onComplete));
     } else {
       // Recurring → per-day toggle; one-off → global toggle
       el.querySelector('.task-check').addEventListener('click', (e) => {
@@ -741,19 +739,22 @@ const TaskManager = {
 
     let dragging = false;
 
+    const handleW = 28;
     const update = (clientX) => {
       if (!dragging) return;
       const rect = wrap.getBoundingClientRect();
-      const pct  = Math.min(100, Math.max(0, ((clientX - rect.left - 13) / (rect.width - 26)) * 100));
-      fill.style.width   = pct + '%';
-      handle.style.left  = `calc(${pct}% - ${pct > 50 ? 10 : 3}px)`;
+      const travel = rect.width - handleW - 16; // 8px padding each side
+      const raw    = clientX - rect.left - 8 - handleW / 2;
+      const pct    = Math.min(100, Math.max(0, (raw / travel) * 100));
+      fill.style.width  = pct + '%';
+      handle.style.left = `calc(${pct}% * ${travel / rect.width} + 8px)`;
       if (pct >= 90) {
         dragging = false;
-        fill.style.width = '100%';
-        handle.style.left = 'calc(100% - 23px)';
+        fill.style.width  = '100%';
+        handle.style.left = `calc(100% - ${handleW + 8}px)`;
         const r = wrap.getBoundingClientRect();
-        this._triggerSparkle(r.right - 10, r.top + r.height / 2);
-        setTimeout(() => onComplete(), 250);
+        this._triggerSparkle(r.right - 20, r.top + r.height / 2);
+        setTimeout(() => onComplete(), 300);
       }
     };
 
@@ -761,7 +762,7 @@ const TaskManager = {
       if (!dragging) return;
       dragging = false;
       fill.style.width  = '0%';
-      handle.style.left = '3px';
+      handle.style.left = '8px';
     };
 
     wrap.addEventListener('mousedown',  e => { dragging = true; update(e.clientX); });
