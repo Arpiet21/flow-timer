@@ -135,6 +135,8 @@ const TaskManager = {
 
   // ── Init ──────────────────────────────────────────────────────────────────
   async init() {
+    // One-time purge of old localStorage task data (now Supabase-only)
+    try { localStorage.removeItem('flow-tasks'); localStorage.removeItem('flow-task-tombstones'); } catch(_) {}
     this._loadCategories();
     this._loadRecurDone();
     await this._load();
@@ -149,84 +151,18 @@ const TaskManager = {
     this._populateCategorySelect();
     this._render();
     if (typeof WeekPlanner !== 'undefined') WeekPlanner._render();
-    if (!this._bound) {
-      this._bindButtons();
-      // Flush any pending local tasks to Supabase when page is about to unload or hidden
-      document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'hidden') this._flushPending();
-      });
-      window.addEventListener('beforeunload', () => this._flushPending());
-      this._bound = true;
-    }
+    if (!this._bound) { this._bindButtons(); this._bound = true; }
   },
 
-  // Flush all local tasks to Supabase on tab switch / sign-out / page unload
-  _flushPending() {
-    if (typeof Auth === 'undefined' || !Auth.isLoggedIn()) return;
-    const uid = Auth.getUser()?.id;
-    if (!uid || this._tasks.length === 0) return;
-    const tombstoned = this._getTombstoned();
-    this._tasks.filter(t => !tombstoned.has(t.id)).forEach(task => {
-      _sb.from('tasks').upsert({ ...task, user_id: uid }, { onConflict: 'id' }).catch(() => {});
-    });
-  },
-
-  // ── Tombstone (track intentionally deleted task IDs) ──────────────────────
-  _getTombstoned() {
-    try { return new Set(JSON.parse(localStorage.getItem('flow-tasks-deleted') || '[]')); }
-    catch (_) { return new Set(); }
-  },
-  _addTombstone(id) {
-    try {
-      const ids = JSON.parse(localStorage.getItem('flow-tasks-deleted') || '[]');
-      if (!ids.includes(id)) { ids.push(id); localStorage.setItem('flow-tasks-deleted', JSON.stringify(ids)); }
-    } catch (_) {}
-  },
-
-  // ── Persistence ───────────────────────────────────────────────────────────
+  // ── Persistence — Supabase only ───────────────────────────────────────────
   async _load() {
-    if (typeof Auth !== 'undefined' && Auth.isLoggedIn()) {
-      try {
-        const uid = Auth.getUser()?.id;
-        const { data, error } = await _sb.from('tasks')
-          .select('*')
-          .eq('user_id', uid)
-          .order('created_at', { ascending: true });
-
-        if (!error) {
-          const remote      = data || [];
-          const remoteIds   = new Set(remote.map(t => t.id));
-          const tombstoned  = this._getTombstoned();
-
-          // Only recover local tasks that are not in Supabase AND not tombstoned (deleted)
-          const local   = JSON.parse(localStorage.getItem('flow-tasks') || '[]');
-          const pending = local.filter(t => !remoteIds.has(t.id) && !tombstoned.has(t.id));
-
-          this._tasks = [...remote, ...pending]
-            .sort((a, b) => (a.created_at || '').localeCompare(b.created_at || ''));
-          this._saveLocal();
-
-          if (pending.length > 0) this._retrySync(pending, uid);
-          return;
-        }
-      } catch (_) { /* Supabase failed — fall back to local cache */ }
-    }
-    try { this._tasks = JSON.parse(localStorage.getItem('flow-tasks') || '[]'); }
-    catch (_) { this._tasks = []; }
-  },
-
-  // Re-insert locally-created tasks that failed to sync (skip tombstoned)
-  _retrySync(tasks, uid) {
-    const tombstoned = this._getTombstoned();
-    tasks.filter(t => !tombstoned.has(t.id)).forEach(task => {
-      _sb.from('tasks')
-        .upsert({ ...task, user_id: uid }, { onConflict: 'id' })
-        .catch(() => {});
-    });
-  },
-
-  _saveLocal() {
-    try { localStorage.setItem('flow-tasks', JSON.stringify(this._tasks)); } catch (_) {}
+    try {
+      const { data } = await _sb.from('tasks')
+        .select('*')
+        .eq('user_id', Auth.getUser().id)
+        .order('created_at', { ascending: true });
+      this._tasks = data || [];
+    } catch (_) { this._tasks = []; }
   },
 
   // ── Category persistence ──────────────────────────────────────────────────
@@ -416,7 +352,6 @@ const TaskManager = {
     if (idx === -1) return;
     if (newName !== originalName) {
       this._tasks.forEach(t => { if (t.category === originalName) t.category = newName; });
-      this._saveLocal();
     }
     this._categories[idx] = { name: newName, reasons };
     this._saveCategories();
@@ -531,7 +466,6 @@ const TaskManager = {
 
     // Update UI immediately — never block on network
     this._tasks.push(task);
-    this._saveLocal();
     this.hideAddForm();
     this._render();
 
@@ -546,11 +480,11 @@ const TaskManager = {
           .then(({ data }) => {
             if (data?.[0]?.id) {
               const t = this._tasks.find(t => t.id === task.id);
-              if (t) { t.id = data[0].id; this._saveLocal(); }
+              if (t) t.id = data[0].id;
             }
           })
           .catch(() => {
-            this._toast('⚠️ Cloud sync failed — task saved locally, will retry on reload', 5000);
+            this._toast('⚠️ Cloud sync failed — task not saved. Please check connection.', 5000);
           });
       }
     } catch (_) {}
@@ -583,7 +517,6 @@ const TaskManager = {
     if (!task) return;
     task.completed    = !task.completed;
     task.completed_at = task.completed ? new Date().toISOString() : null;
-    this._saveLocal();
     this._render();
     if (typeof WeekPlanner !== 'undefined') WeekPlanner._render();
     // Sync to Supabase in background
@@ -594,9 +527,7 @@ const TaskManager = {
 
   // ── Delete ────────────────────────────────────────────────────────────────
   deleteTask(id) {
-    this._addTombstone(id);  // prevent resurrection via _retrySync / _flushPending
     this._tasks = this._tasks.filter(t => t.id !== id);
-    this._saveLocal();
     this._render();
     if (typeof WeekPlanner !== 'undefined') WeekPlanner._render();
     if (typeof Auth !== 'undefined' && Auth.isLoggedIn()) {
