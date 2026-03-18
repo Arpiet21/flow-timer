@@ -586,7 +586,11 @@ const TaskManager = {
     this._render();
     if (typeof WeekPlanner !== 'undefined') WeekPlanner._render();
     if (typeof Auth !== 'undefined' && Auth.isLoggedIn()) {
-      _sb.from('tasks').delete().eq('id', id).catch(() => {});
+      _sb.from('tasks').delete().eq('id', id)
+        .then(({ error }) => {
+          if (error) this._toast('⚠️ Could not delete from cloud', 3000);
+        })
+        .catch(() => this._toast('⚠️ Could not delete from cloud', 3000));
     }
   },
 
