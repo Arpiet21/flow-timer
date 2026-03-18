@@ -475,16 +475,16 @@ const TaskManager = {
         this._toast('⚠️ Could not save task. Please try again.', 5000);
         return;
       }
-      this._tasks.push(data[0]);
+      const saved = data[0];
+      this._tasks.push(saved);
+      this._render();
+      if (typeof WeekPlanner !== 'undefined') WeekPlanner._render();
+      if (saved.scheduled_date && saved.scheduled_date > this._todayDs()) {
+        const [y, m, d] = saved.scheduled_date.split('-');
+        this._toast(`✅ Scheduled for ${d}/${m}/${y} — see Weekly Plan ↓`);
+      }
     } catch (_) {
       this._toast('⚠️ Could not save task. Please try again.', 5000);
-      return;
-    }
-
-    // If scheduled for a future date, show a toast so user knows it was saved
-    if (task.scheduled_date && task.scheduled_date > this._todayDs()) {
-      const [y, m, d] = task.scheduled_date.split('-');
-      this._toast(`✅ Scheduled for ${d}/${m}/${y} — see Weekly Plan ↓`);
     }
   },
 
