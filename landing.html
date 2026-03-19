@@ -74,9 +74,9 @@ document.addEventListener('click', e => {
 <!-- ── Hero ── -->
 <section class="hero">
   <div class="hero-content">
-    <div class="hero-badge">🚀 Music · HIIT · Binaural Beats · Floating Widget</div>
-    <h1>Focus deeper.<br><span>Train harder.</span><br>Burn less out.</h1>
-    <p>The Flow Timer that does it all — Pomodoro sessions, HIIT workout timer, binaural beats, YouTube playlists, and a floating analog widget. One app, zero distractions.</p>
+    <div class="hero-badge">🚀 Tasks · HIIT · Binaural Beats · Weekly Planner · Floating Widget</div>
+    <h1>Focus deeper.<br><span>Plan smarter.</span><br>Burn less out.</h1>
+    <p>The all-in-one productivity app — Pomodoro timer, smart task manager, HIIT workouts, binaural beats, weekly planner, and a floating analog widget. One app, zero distractions.</p>
     <div class="hero-ctas">
       <a href="signup.html" class="btn btn-primary btn-lg">Start 7-Day Free Trial</a>
       <a href="index.html" class="btn btn-outline btn-lg">Try without account</a>
@@ -237,9 +237,39 @@ document.addEventListener('click', e => {
 <section class="section" id="features">
   <p class="section-label">Why Flow Timer</p>
   <h2 class="section-title">Everything you need to stay on track</h2>
-  <p class="section-sub">Built for deep work. No clutter, no distractions — just you and your timer.</p>
+  <p class="section-sub">Built for deep work and intentional planning. No clutter, no distractions.</p>
 
   <div class="features-grid">
+    <div class="feature-card">
+      <span class="feature-icon">✅</span>
+      <h3>Smart Task Manager</h3>
+      <p>Add tasks with categories, priorities, estimated time, and scheduled dates. Tasks are split by Today / Tomorrow / Upcoming — always know what's next.</p>
+    </div>
+    <div class="feature-card">
+      <span class="feature-icon">📅</span>
+      <h3>Weekly Planner</h3>
+      <p>See all your tasks laid out across the week. Recurring tasks show on their scheduled days automatically. Plan your week at a glance.</p>
+    </div>
+    <div class="feature-card">
+      <span class="feature-icon">🗓</span>
+      <h3>Activity Calendar</h3>
+      <p>Visual month calendar showing your task completion history. Filter by category to spot patterns and track consistency over time.</p>
+    </div>
+    <div class="feature-card">
+      <span class="feature-icon">🧠</span>
+      <h3>Brain Dump</h3>
+      <p>Capture ideas and tasks instantly without needing a category. Quick capture, then convert to a proper task anytime — get it out of your head fast.</p>
+    </div>
+    <div class="feature-card">
+      <span class="feature-icon">☁️</span>
+      <h3>Cloud Sync — Your Data Everywhere</h3>
+      <p>Tasks saved to Supabase in real-time. Log in from any device, your tasks are always there. Instant optimistic updates — never waits on the network.</p>
+    </div>
+    <div class="feature-card">
+      <span class="feature-icon">🔁</span>
+      <h3>Recurring Tasks</h3>
+      <p>Set tasks to repeat on specific days of the week. Mark done per-day without affecting other days. Perfect for habits and routines.</p>
+    </div>
     <div class="feature-card">
       <span class="feature-icon">💪</span>
       <h3>HIIT Workout Timer</h3>
@@ -247,28 +277,18 @@ document.addEventListener('click', e => {
     </div>
     <div class="feature-card">
       <span class="feature-icon">🕐</span>
-      <h3>Floating Widget — Work & Workout</h3>
-      <p>Analog floating clock works for both the Pomodoro and Workout timer. Shows phase, round counter, and full controls — float it over any app.</p>
+      <h3>Floating Widget</h3>
+      <p>Analog floating clock works for both the Pomodoro and Workout timer. Float it over any app — never lose track of your session.</p>
     </div>
     <div class="feature-card">
       <span class="feature-icon">🎵</span>
       <h3>Built-in Music Player</h3>
-      <p>Rhythmic beat mode, your own audio files with playlist queue, or YouTube — paste URLs to build a saved playlist with auto-advance. Volume slider included.</p>
+      <p>Rhythmic beat mode, audio files with playlist queue, or YouTube — paste URLs to build a saved playlist with auto-advance.</p>
     </div>
     <div class="feature-card">
-      <span class="feature-icon">🧠</span>
+      <span class="feature-icon">🧬</span>
       <h3>6 Binaural Beat Presets</h3>
-      <p>Focus (Alpha 10Hz), Energy (Beta 20Hz), Flow (Alpha 8Hz), Deep Focus (Gamma 40Hz), Calm (Theta 6Hz), Sleep (Delta 2Hz). Science-backed. Headphones required.</p>
-    </div>
-    <div class="feature-card">
-      <span class="feature-icon">💾</span>
-      <h3>Save Workouts & Playlists</h3>
-      <p>Name and save your custom HIIT workouts. Name and save your YouTube playlists. Load them back in one tap — everything persists between sessions.</p>
-    </div>
-    <div class="feature-card">
-      <span class="feature-icon">⏱</span>
-      <h3>Flexible Intervals</h3>
-      <p>Focus sessions from 5 to 90 minutes. Adjustable rounds on every workout preset. Short breaks, long breaks — all customizable.</p>
+      <p>Focus (Alpha 10Hz), Energy (Beta 20Hz), Flow (Alpha 8Hz), Deep Focus (Gamma 40Hz), Calm (Theta 6Hz), Sleep (Delta 2Hz). Science-backed.</p>
     </div>
     <div class="feature-card">
       <span class="feature-icon">🔔</span>
@@ -276,15 +296,97 @@ document.addEventListener('click', e => {
       <p>Desktop notifications and a gentle alarm when your session ends. Never lose track of time again.</p>
     </div>
     <div class="feature-card">
-      <span class="feature-icon">🍅</span>
-      <h3>Session Tracking</h3>
-      <p>Visual session dots show your progress. Auto-triggers long breaks after your configured number of sessions.</p>
-    </div>
-    <div class="feature-card">
       <span class="feature-icon">🌙</span>
       <h3>Dark & Light Mode</h3>
       <p>Sleek dark theme by default. Switch to light mode any time — your preference is saved automatically.</p>
     </div>
+  </div>
+</section>
+
+<!-- ── Task Manager Showcase ── -->
+<section class="section" style="padding-top:0;">
+  <p class="section-label">Task Manager</p>
+  <h2 class="section-title">Plan your day, not just your timer</h2>
+  <p class="section-sub">A full task system built right into your flow — categories, priorities, schedules, and cloud sync.</p>
+
+  <div style="display:flex;gap:40px;align-items:flex-start;flex-wrap:wrap;justify-content:center;margin-top:40px;">
+
+    <!-- Feature list -->
+    <div style="max-width:340px;">
+      <div style="display:flex;flex-direction:column;gap:22px;">
+        <div style="display:flex;gap:14px;align-items:flex-start;">
+          <span style="font-size:1.6rem;">🗂</span>
+          <div><strong style="color:var(--text,#fff);">Categories with reasons</strong><br><span style="color:#888;font-size:0.85rem;">Organise tasks by category. Add up to 3 "why" reasons to stay motivated when you open the app.</span></div>
+        </div>
+        <div style="display:flex;gap:14px;align-items:flex-start;">
+          <span style="font-size:1.6rem;">📆</span>
+          <div><strong style="color:var(--text,#fff);">Today / Tomorrow / Upcoming</strong><br><span style="color:#888;font-size:0.85rem;">Tasks are automatically grouped by date so you always see what matters right now.</span></div>
+        </div>
+        <div style="display:flex;gap:14px;align-items:flex-start;">
+          <span style="font-size:1.6rem;">🔁</span>
+          <div><strong style="color:var(--text,#fff);">Recurring tasks</strong><br><span style="color:#888;font-size:0.85rem;">Pick days of the week and set a start date. The task appears automatically on the right days, forever.</span></div>
+        </div>
+        <div style="display:flex;gap:14px;align-items:flex-start;">
+          <span style="font-size:1.6rem;">▶️</span>
+          <div><strong style="color:var(--text,#fff);">Focus mode link</strong><br><span style="color:#888;font-size:0.85rem;">Hit play on any task to start a timer session with that task pre-loaded. Your estimated time sets the timer automatically.</span></div>
+        </div>
+        <div style="display:flex;gap:14px;align-items:flex-start;">
+          <span style="font-size:1.6rem;">☁️</span>
+          <div><strong style="color:var(--text,#fff);">Real-time cloud storage</strong><br><span style="color:#888;font-size:0.85rem;">Every task saved to Supabase instantly. Delete, complete, or reschedule — always in sync across devices.</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Task UI Mock -->
+    <div style="background:rgba(16,24,40,0.9);border:1px solid rgba(57,255,20,0.2);border-radius:20px;padding:20px;min-width:270px;max-width:310px;font-family:system-ui,sans-serif;">
+      <!-- Stats bar -->
+      <div style="display:flex;justify-content:space-around;background:rgba(255,255,255,0.04);border-radius:12px;padding:10px;margin-bottom:16px;">
+        <div style="text-align:center;"><div style="font-size:1.2rem;font-weight:800;color:#39ff14;">50:00</div><div style="font-size:0.55rem;color:#666;text-transform:uppercase;letter-spacing:1px;">Estimated</div></div>
+        <div style="text-align:center;"><div style="font-size:1.2rem;font-weight:800;color:#39ff14;">3</div><div style="font-size:0.55rem;color:#666;text-transform:uppercase;letter-spacing:1px;">To Do</div></div>
+        <div style="text-align:center;"><div style="font-size:1.2rem;font-weight:800;color:#39ff14;">1</div><div style="font-size:0.55rem;color:#666;text-transform:uppercase;letter-spacing:1px;">Done Today</div></div>
+      </div>
+      <!-- Add task bar -->
+      <div style="border:1px dashed rgba(57,255,20,0.25);border-radius:10px;padding:8px 12px;color:#555;font-size:0.75rem;margin-bottom:14px;">+ Add a task…</div>
+      <!-- Category group -->
+      <div style="font-size:0.6rem;font-weight:700;letter-spacing:2px;color:#39ff14;margin-bottom:4px;">SOCIAL MASTERY</div>
+      <div style="font-size:0.62rem;color:#666;margin-bottom:8px;">💡 To grow my online presence</div>
+      <!-- Task items -->
+      <div style="background:rgba(255,255,255,0.05);border-radius:10px;padding:10px 12px;margin-bottom:6px;display:flex;align-items:center;gap:10px;">
+        <div style="width:16px;height:16px;border-radius:50%;border:2px solid rgba(57,255,20,0.4);flex-shrink:0;"></div>
+        <div style="flex:1;">
+          <div style="font-size:0.78rem;font-weight:600;color:#fff;">50 X replies</div>
+          <div style="display:flex;gap:6px;margin-top:3px;align-items:center;">
+            <span style="font-size:0.58rem;background:rgba(57,255,20,0.12);color:#39ff14;padding:1px 6px;border-radius:6px;">🔁 Mon–Sun</span>
+            <span style="font-size:0.58rem;color:#555;">25m</span>
+          </div>
+        </div>
+        <span style="color:#39ff14;font-size:0.7rem;opacity:0.6;">▶</span>
+      </div>
+      <div style="background:rgba(255,255,255,0.05);border-radius:10px;padding:10px 12px;margin-bottom:14px;display:flex;align-items:center;gap:10px;">
+        <div style="width:16px;height:16px;border-radius:50%;border:2px solid rgba(57,255,20,0.4);flex-shrink:0;"></div>
+        <div style="flex:1;">
+          <div style="font-size:0.78rem;font-weight:600;color:#fff;">Reddit Marketing</div>
+          <div style="display:flex;gap:6px;margin-top:3px;align-items:center;">
+            <span style="font-size:0.58rem;background:rgba(57,255,20,0.12);color:#39ff14;padding:1px 6px;border-radius:6px;">📅 Sat Sun</span>
+            <span style="font-size:0.58rem;color:#555;">25m</span>
+          </div>
+        </div>
+        <span style="color:#39ff14;font-size:0.7rem;opacity:0.6;">▶</span>
+      </div>
+      <!-- Tomorrow section -->
+      <div style="font-size:0.6rem;font-weight:700;letter-spacing:1px;color:#39ff14;border-top:1px solid rgba(255,255,255,0.07);padding-top:8px;margin-bottom:8px;">TOMORROW — FRI 20 MAR</div>
+      <div style="background:rgba(255,255,255,0.04);border-radius:10px;padding:10px 12px;display:flex;align-items:center;gap:10px;">
+        <div style="width:16px;height:16px;border-radius:50%;border:2px solid rgba(57,255,20,0.4);flex-shrink:0;"></div>
+        <div style="flex:1;">
+          <div style="font-size:0.78rem;font-weight:600;color:#fff;">Buy Clothes</div>
+          <div style="display:flex;gap:6px;margin-top:3px;"><span style="font-size:0.58rem;color:#555;">📅 03/20 · 25m</span></div>
+        </div>
+        <span style="color:#39ff14;font-size:0.7rem;opacity:0.6;">▶</span>
+      </div>
+      <!-- Refresh button -->
+      <button style="width:100%;margin-top:14px;padding:9px;border:1px solid rgba(57,255,20,0.25);border-radius:10px;background:rgba(57,255,20,0.06);color:#39ff14;font-size:0.72rem;font-weight:700;cursor:pointer;">🔄 Refresh from Cloud</button>
+    </div>
+
   </div>
 </section>
 
@@ -405,14 +507,16 @@ document.addEventListener('click', e => {
         <li>25 min max focus session</li>
         <li>Short & long breaks</li>
         <li>Up to 4 sessions/cycle</li>
+        <li>Task manager (up to 10 tasks)</li>
         <li>Dark & light mode</li>
         <li>Sound & notifications</li>
         <li class="no">HIIT Workout Timer</li>
         <li class="no">Music, Binaural Beats & YouTube</li>
         <li class="no">Floating analog widget</li>
-        <li class="no">Save workouts & playlists</li>
+        <li class="no">Unlimited tasks + cloud sync</li>
+        <li class="no">Weekly Planner & Calendar</li>
+        <li class="no">Recurring tasks</li>
         <li class="no">Up to 90 min sessions</li>
-        <li class="no">Session history</li>
       </ul>
       <a href="signup.html" class="btn btn-outline btn-full">Start Free Trial</a>
     </div>
@@ -427,13 +531,15 @@ document.addEventListener('click', e => {
         <li>Up to 90 min focus sessions</li>
         <li>Short & long breaks</li>
         <li>Up to 8 sessions/cycle</li>
+        <li>Unlimited tasks + cloud sync</li>
+        <li>Weekly Planner & Activity Calendar</li>
+        <li>Recurring tasks (any days)</li>
+        <li>Brain Dump quick capture</li>
         <li>HIIT Workout Timer (all presets)</li>
         <li>Music — Beat, Binaural & YouTube</li>
         <li>6 Binaural Beat presets</li>
         <li>Save custom workouts & playlists</li>
         <li>Floating widget — Work & Workout</li>
-        <li>Dark & light mode</li>
-        <li>Sound & notifications</li>
         <li>Session history & stats</li>
         <li>Priority support</li>
       </ul>
