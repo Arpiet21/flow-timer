@@ -161,6 +161,14 @@ const TaskManager = {
     try { localStorage.setItem(this._CACHE_KEY, JSON.stringify(this._tasks)); } catch(_) {}
   },
 
+  _getToken() {
+    // Read access token directly from localStorage — never hangs unlike _sb.auth.getSession()
+    try {
+      const key = Object.keys(localStorage).find(k => k.startsWith('sb-') && k.endsWith('-auth-token'));
+      return key ? JSON.parse(localStorage.getItem(key))?.access_token : null;
+    } catch(_) { return null; }
+  },
+
   async _load() {
     // Show cached data immediately
     try { this._tasks = JSON.parse(localStorage.getItem(this._CACHE_KEY) || '[]'); } catch(_) { this._tasks = []; }
@@ -168,8 +176,7 @@ const TaskManager = {
     try {
       const uid = Auth.getUser()?.id;
       if (!uid) return;
-      const { data: { session } } = await _sb.auth.getSession();
-      const token = session?.access_token;
+      const token = this._getToken();
       if (!token) return;
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), 15000);
@@ -728,8 +735,7 @@ const TaskManager = {
     if (btn) { btn.innerHTML = '⏳ Loading…'; btn.disabled = true; }
     try {
       // Use direct fetch — bypasses Supabase JS client internal state issues
-      const { data: { session } } = await _sb.auth.getSession();
-      const token = session?.access_token;
+      const token = this._getToken();
       if (!token) throw new Error('no session');
 
       const controller = new AbortController();
