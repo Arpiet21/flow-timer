@@ -162,19 +162,27 @@ const TaskManager = {
   },
 
   async _load() {
-    // Show cached data immediately while Supabase loads
+    // Show cached data immediately
     try { this._tasks = JSON.parse(localStorage.getItem(this._CACHE_KEY) || '[]'); } catch(_) { this._tasks = []; }
-    // Fetch from Supabase (source of truth) — overwrites cache
+    // Fetch from Supabase via direct fetch — bypasses JS client state issues
     try {
-      const { data, error } = await _sb.from('tasks')
-        .select('*')
-        .eq('user_id', Auth.getUser().id)
-        .order('created_at', { ascending: true });
-      if (!error) {
-        this._tasks = data || [];
+      const uid = Auth.getUser()?.id;
+      if (!uid) return;
+      const { data: { session } } = await _sb.auth.getSession();
+      const token = session?.access_token;
+      if (!token) return;
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 15000);
+      const resp = await fetch(
+        `${SUPABASE_URL}/rest/v1/tasks?select=*&user_id=eq.${uid}&order=created_at.asc`,
+        { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${token}` }, signal: controller.signal }
+      );
+      clearTimeout(timer);
+      if (resp.ok) {
+        this._tasks = await resp.json();
         this._saveCache();
       }
-    } catch (_) { /* stay with cached data if offline */ }
+    } catch (_) { /* stay with cached data if offline or timeout */ }
   },
 
   // ── Category persistence ──────────────────────────────────────────────────
@@ -717,25 +725,31 @@ const TaskManager = {
     const uid = typeof Auth !== 'undefined' && Auth.isLoggedIn() ? Auth.getUser()?.id : null;
     if (!uid) { this._toast('⚠️ Not logged in', 3000); return; }
     const btn = document.getElementById('task-save-cloud-btn');
-    if (btn) { btn.innerHTML = '⏳ Connecting… (may take ~15s on first load)'; btn.disabled = true; }
+    if (btn) { btn.innerHTML = '⏳ Loading…'; btn.disabled = true; }
     try {
-      // Free Supabase cold-starts can take 15–20s — give it enough time
-      const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 25000));
-      const fetch   = _sb.from('tasks').select('*').eq('user_id', uid).order('created_at', { ascending: true });
-      const { data, error } = await Promise.race([fetch, timeout]);
-      if (error) throw error;
-      this._tasks = data || [];
+      // Use direct fetch — bypasses Supabase JS client internal state issues
+      const { data: { session } } = await _sb.auth.getSession();
+      const token = session?.access_token;
+      if (!token) throw new Error('no session');
+
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 10000);
+      const resp = await fetch(
+        `${SUPABASE_URL}/rest/v1/tasks?select=*&user_id=eq.${uid}&order=created_at.asc`,
+        { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${token}` }, signal: controller.signal }
+      );
+      clearTimeout(timer);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      this._tasks = await resp.json();
       this._saveCache();
       this._render();
       if (typeof WeekPlanner !== 'undefined') WeekPlanner._render();
       if (btn) { btn.innerHTML = '✅ Up to date!'; btn.disabled = false; }
       setTimeout(() => { if (btn) btn.innerHTML = '🔄 Refresh from Cloud'; }, 2500);
     } catch(e) {
-      const msg = e?.message === 'timeout'
-        ? '⚠️ Still waking up — wait 30s and try again'
-        : '❌ Failed — check internet connection';
+      const msg = e?.name === 'AbortError' ? '⚠️ Timed out — try again' : '❌ Failed — try again';
       if (btn) { btn.innerHTML = msg; btn.disabled = false; }
-      setTimeout(() => { if (btn) btn.innerHTML = '🔄 Refresh from Cloud'; }, 4000);
+      setTimeout(() => { if (btn) btn.innerHTML = '🔄 Refresh from Cloud'; }, 3000);
     }
   },
 
