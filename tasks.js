@@ -717,17 +717,20 @@ const TaskManager = {
     const uid = typeof Auth !== 'undefined' && Auth.isLoggedIn() ? Auth.getUser()?.id : null;
     if (!uid) { this._toast('⚠️ Not logged in', 3000); return; }
     const btn = document.getElementById('task-save-cloud-btn');
-    if (btn) { btn.textContent = '⏳ Saving…'; btn.disabled = true; }
+    if (btn) { btn.innerHTML = '⏳ Saving…'; btn.disabled = true; }
     try {
       const payload = this._tasks.map(t => ({ ...t, user_id: uid }));
-      const { error } = await _sb.from('tasks')
-        .upsert(payload, { onConflict: 'id' });
+      // Race against a 8-second timeout so the button never stays stuck
+      const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 8000));
+      const upsert  = _sb.from('tasks').upsert(payload, { onConflict: 'id' });
+      const { error } = await Promise.race([upsert, timeout]);
       if (error) throw error;
       this._saveCache();
       if (btn) { btn.innerHTML = '✅ Saved!'; btn.disabled = false; }
       setTimeout(() => { if (btn) btn.innerHTML = '☁️ Save to Cloud'; }, 2500);
-    } catch(_) {
-      if (btn) { btn.innerHTML = '❌ Failed — try again'; btn.disabled = false; }
+    } catch(e) {
+      const msg = e?.message === 'timeout' ? '⚠️ Timed out — check connection' : '❌ Failed — try again';
+      if (btn) { btn.innerHTML = msg; btn.disabled = false; }
       setTimeout(() => { if (btn) btn.innerHTML = '☁️ Save to Cloud'; }, 3000);
     }
   },
