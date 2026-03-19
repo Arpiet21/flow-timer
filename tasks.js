@@ -162,11 +162,49 @@ const TaskManager = {
   },
 
   _getToken() {
-    // Read access token directly from localStorage — never hangs unlike _sb.auth.getSession()
     try {
       const key = Object.keys(localStorage).find(k => k.startsWith('sb-') && k.endsWith('-auth-token'));
       return key ? JSON.parse(localStorage.getItem(key))?.access_token : null;
     } catch(_) { return null; }
+  },
+
+  // Direct REST API helpers — bypasses Supabase JS client which can hang
+  async _sbInsert(row) {
+    const token = this._getToken();
+    if (!token) return false;
+    try {
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/tasks`, {
+        method: 'POST',
+        headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+        body: JSON.stringify(row)
+      });
+      return r.ok;
+    } catch(_) { return false; }
+  },
+
+  async _sbUpdate(id, patch) {
+    const token = this._getToken();
+    if (!token) return false;
+    try {
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/tasks?id=eq.${id}`, {
+        method: 'PATCH',
+        headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+        body: JSON.stringify(patch)
+      });
+      return r.ok;
+    } catch(_) { return false; }
+  },
+
+  async _sbDelete(id) {
+    const token = this._getToken();
+    if (!token) return false;
+    try {
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/tasks?id=eq.${id}`, {
+        method: 'DELETE',
+        headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${token}`, Prefer: 'return=minimal' }
+      });
+      return r.ok;
+    } catch(_) { return false; }
   },
 
   async _load() {
@@ -501,20 +539,14 @@ const TaskManager = {
       this._toast(`✅ Scheduled for ${d}/${m}/${y} — see Weekly Plan ↓`);
     }
 
-    // Sync to Supabase — client UUID is sent as the primary key, no mismatch possible
-    _sb.from('tasks').insert({ ...task, user_id: uid })
-      .then(({ error }) => {
-        if (error) {
-          this._tasks = this._tasks.filter(t => t.id !== task.id);
-          this._saveCache(); this._render();
-          this._toast('⚠️ Cloud sync failed — task removed. Check connection.', 5000);
-        }
-      })
-      .catch(() => {
+    // Sync to Supabase via direct fetch — client UUID sent as primary key
+    this._sbInsert({ ...task, user_id: uid }).then(ok => {
+      if (!ok) {
         this._tasks = this._tasks.filter(t => t.id !== task.id);
         this._saveCache(); this._render();
         this._toast('⚠️ Cloud sync failed — task removed. Check connection.', 5000);
-      });
+      }
+    });
   },
 
   _toast(msg, durationMs = 3000) {
@@ -541,9 +573,7 @@ const TaskManager = {
     this._saveCache();
     this._render();
     if (typeof WeekPlanner !== 'undefined') WeekPlanner._render();
-    if (typeof Auth !== 'undefined' && Auth.isLoggedIn()) {
-      _sb.from('tasks').update({ completed: task.completed, completed_at: task.completed_at }).eq('id', id).catch(() => {});
-    }
+    this._sbUpdate(id, { completed: task.completed, completed_at: task.completed_at });
   },
 
   // ── Delete ────────────────────────────────────────────────────────────────
@@ -552,11 +582,9 @@ const TaskManager = {
     this._saveCache();
     this._render();
     if (typeof WeekPlanner !== 'undefined') WeekPlanner._render();
-    if (typeof Auth !== 'undefined' && Auth.isLoggedIn()) {
-      _sb.from('tasks').delete().eq('id', id)
-        .then(({ error }) => { if (error) this._toast('⚠️ Could not delete from cloud', 3000); })
-        .catch(() => this._toast('⚠️ Could not delete from cloud', 3000));
-    }
+    this._sbDelete(id).then(ok => {
+      if (!ok) this._toast('⚠️ Could not delete from cloud', 3000);
+    });
   },
 
   // ── Start focus on task ───────────────────────────────────────────────────
