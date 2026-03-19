@@ -705,33 +705,34 @@ const TaskManager = {
       list.appendChild(sec);
     }
 
-    // ── Save to Cloud button ───────────────────────────────────────────────
-    const saveBtn = document.createElement('button');
-    saveBtn.id = 'task-save-cloud-btn';
-    saveBtn.innerHTML = '☁️ Save to Cloud';
-    saveBtn.onclick = () => this._syncToCloud();
-    list.appendChild(saveBtn);
+    // ── Refresh from Cloud button ──────────────────────────────────────────
+    const refreshBtn = document.createElement('button');
+    refreshBtn.id = 'task-save-cloud-btn';
+    refreshBtn.innerHTML = '🔄 Refresh from Cloud';
+    refreshBtn.onclick = () => this._refreshFromCloud();
+    list.appendChild(refreshBtn);
   },
 
-  async _syncToCloud() {
+  async _refreshFromCloud() {
     const uid = typeof Auth !== 'undefined' && Auth.isLoggedIn() ? Auth.getUser()?.id : null;
     if (!uid) { this._toast('⚠️ Not logged in', 3000); return; }
     const btn = document.getElementById('task-save-cloud-btn');
-    if (btn) { btn.innerHTML = '⏳ Saving…'; btn.disabled = true; }
+    if (btn) { btn.innerHTML = '⏳ Loading…'; btn.disabled = true; }
     try {
-      const payload = this._tasks.map(t => ({ ...t, user_id: uid }));
-      // Race against a 8-second timeout so the button never stays stuck
       const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 8000));
-      const upsert  = _sb.from('tasks').upsert(payload, { onConflict: 'id' });
-      const { error } = await Promise.race([upsert, timeout]);
+      const fetch   = _sb.from('tasks').select('*').eq('user_id', uid).order('created_at', { ascending: true });
+      const { data, error } = await Promise.race([fetch, timeout]);
       if (error) throw error;
+      this._tasks = data || [];
       this._saveCache();
-      if (btn) { btn.innerHTML = '✅ Saved!'; btn.disabled = false; }
-      setTimeout(() => { if (btn) btn.innerHTML = '☁️ Save to Cloud'; }, 2500);
+      this._render();
+      if (typeof WeekPlanner !== 'undefined') WeekPlanner._render();
+      if (btn) { btn.innerHTML = '✅ Up to date!'; btn.disabled = false; }
+      setTimeout(() => { if (btn) btn.innerHTML = '🔄 Refresh from Cloud'; }, 2500);
     } catch(e) {
       const msg = e?.message === 'timeout' ? '⚠️ Timed out — check connection' : '❌ Failed — try again';
       if (btn) { btn.innerHTML = msg; btn.disabled = false; }
-      setTimeout(() => { if (btn) btn.innerHTML = '☁️ Save to Cloud'; }, 3000);
+      setTimeout(() => { if (btn) btn.innerHTML = '🔄 Refresh from Cloud'; }, 3000);
     }
   },
 
