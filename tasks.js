@@ -704,6 +704,32 @@ const TaskManager = {
       upcomingTasks.forEach(t => sec.appendChild(this._taskEl(t)));
       list.appendChild(sec);
     }
+
+    // ── Save to Cloud button ───────────────────────────────────────────────
+    const saveBtn = document.createElement('button');
+    saveBtn.id = 'task-save-cloud-btn';
+    saveBtn.innerHTML = '☁️ Save to Cloud';
+    saveBtn.onclick = () => this._syncToCloud();
+    list.appendChild(saveBtn);
+  },
+
+  async _syncToCloud() {
+    const uid = typeof Auth !== 'undefined' && Auth.isLoggedIn() ? Auth.getUser()?.id : null;
+    if (!uid) { this._toast('⚠️ Not logged in', 3000); return; }
+    const btn = document.getElementById('task-save-cloud-btn');
+    if (btn) { btn.textContent = '⏳ Saving…'; btn.disabled = true; }
+    try {
+      const payload = this._tasks.map(t => ({ ...t, user_id: uid }));
+      const { error } = await _sb.from('tasks')
+        .upsert(payload, { onConflict: 'id' });
+      if (error) throw error;
+      this._saveCache();
+      if (btn) { btn.innerHTML = '✅ Saved!'; btn.disabled = false; }
+      setTimeout(() => { if (btn) btn.innerHTML = '☁️ Save to Cloud'; }, 2500);
+    } catch(_) {
+      if (btn) { btn.innerHTML = '❌ Failed — try again'; btn.disabled = false; }
+      setTimeout(() => { if (btn) btn.innerHTML = '☁️ Save to Cloud'; }, 3000);
+    }
   },
 
   _taskEl(task) {

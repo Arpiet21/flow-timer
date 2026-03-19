@@ -1744,6 +1744,24 @@ kbd {
   animation: sparkle-fly var(--dur, 0.7s) ease-out forwards;
 }
 
+#task-save-cloud-btn {
+  display: block;
+  width: 100%;
+  margin-top: 18px;
+  padding: 10px;
+  background: rgba(57,255,20,0.08);
+  color: var(--accent);
+  border: 1px solid rgba(57,255,20,0.25);
+  border-radius: 10px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s, opacity 0.2s;
+  letter-spacing: 0.03em;
+}
+#task-save-cloud-btn:hover { background: rgba(57,255,20,0.16); }
+#task-save-cloud-btn:disabled { opacity: 0.5; cursor: default; }
+
 .task-done-divider {
   font-size: 0.72rem;
   color: var(--text-muted);
