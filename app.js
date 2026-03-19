@@ -1178,8 +1178,9 @@ function bindSlider(sliderId, valId, onChange, format) {
 let _pwaPrompt = null;
 
 function registerServiceWorker() {
+  // Unregister all service workers — they were caching old JS and blocking updates
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js').catch(() => {});
+    navigator.serviceWorker.getRegistrations().then(regs => regs.forEach(r => r.unregister()));
   }
   window.addEventListener('beforeinstallprompt', e => {
     e.preventDefault();
