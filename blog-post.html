@@ -63,9 +63,11 @@
   © 2026 Flow Timer · <a href="blog.html">Blog</a> · <a href="landing.html#pricing">Pricing</a>
 </footer>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-<script src="supabase-client.js"></script>
+<script src="firebase-client.js"></script>
 <script>
   const slug = new URLSearchParams(location.search).get('slug');
   const container = document.getElementById('post-container');

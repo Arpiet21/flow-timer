@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:play.google.com)",
+      "Bash(grep -r \"create table\\\\|\\\\.from\\(\" '/d/Angel Whisper/Learn Coding/Claude Code/Flow-Timer' --include=*.js --include=*.sql)",
+      "Bash(grep -r \"onAuthStateChange\\\\|getSession\\\\|watch\\\\\\(\" '/d/Angel Whisper/Learn Coding/Claude Code/Flow-Timer' --include=*.js)",
+      "Bash(grep -E \"\\\\.\\(js|html\\)$\")",
+      "Bash(grep -l \"supabase-js\\\\|supabase-client\" *.html)",
+      "Bash(for f:*)",
+      "Bash(do)",
+      "Bash(sed -i 's|<script src=\"\"https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2\"\"></script>|<script src=\"\"https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js\"\"></script>\\\\n  <script src=\"\"https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js\"\"></script>\\\\n  <script src=\"\"https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js\"\"></script>|g' \"$f\")",
+      "Bash(sed -i 's|<script src=\"\"supabase-client.js\"\"></script>|<script src=\"\"firebase-client.js\"\"></script>|g' \"$f\")",
+      "Bash(echo \"Updated $f\")"
+    ]
+  }
+}

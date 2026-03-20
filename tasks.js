@@ -154,80 +154,57 @@ const TaskManager = {
     if (!this._bound) { this._bindButtons(); this._bound = true; }
   },
 
-  // ── Persistence — Supabase (source of truth) + localStorage cache ─────────
+  // ── Persistence — Firestore (source of truth) + localStorage cache ─────────
   _CACHE_KEY: 'flow-tasks-cache',
 
   _saveCache() {
     try { localStorage.setItem(this._CACHE_KEY, JSON.stringify(this._tasks)); } catch(_) {}
   },
 
-  _getToken() {
-    try {
-      const key = Object.keys(localStorage).find(k => k.startsWith('sb-') && k.endsWith('-auth-token'));
-      return key ? JSON.parse(localStorage.getItem(key))?.access_token : null;
-    } catch(_) { return null; }
+  _tasksRef(uid) {
+    return _db.collection('users').doc(uid).collection('tasks');
   },
 
-  // Direct REST API helpers — bypasses Supabase JS client which can hang
+  // Firestore helpers
   async _sbInsert(row) {
-    const token = this._getToken();
-    if (!token) return false;
     try {
-      const r = await fetch(`${SUPABASE_URL}/rest/v1/tasks`, {
-        method: 'POST',
-        headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
-        body: JSON.stringify(row)
-      });
-      return r.ok;
+      const uid = Auth.getUser()?.id;
+      if (!uid) return false;
+      const { id, user_id, ...data } = row;
+      await this._tasksRef(uid).doc(id).set(data);
+      return true;
     } catch(_) { return false; }
   },
 
   async _sbUpdate(id, patch) {
-    const token = this._getToken();
-    if (!token) return false;
     try {
-      const r = await fetch(`${SUPABASE_URL}/rest/v1/tasks?id=eq.${id}`, {
-        method: 'PATCH',
-        headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
-        body: JSON.stringify(patch)
-      });
-      return r.ok;
+      const uid = Auth.getUser()?.id;
+      if (!uid) return false;
+      await this._tasksRef(uid).doc(id).update(patch);
+      return true;
     } catch(_) { return false; }
   },
 
   async _sbDelete(id) {
-    const token = this._getToken();
-    if (!token) return false;
     try {
-      const r = await fetch(`${SUPABASE_URL}/rest/v1/tasks?id=eq.${id}`, {
-        method: 'DELETE',
-        headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${token}`, Prefer: 'return=minimal' }
-      });
-      return r.ok;
+      const uid = Auth.getUser()?.id;
+      if (!uid) return false;
+      await this._tasksRef(uid).doc(id).delete();
+      return true;
     } catch(_) { return false; }
   },
 
   async _load() {
     // Show cached data immediately
     try { this._tasks = JSON.parse(localStorage.getItem(this._CACHE_KEY) || '[]'); } catch(_) { this._tasks = []; }
-    // Fetch from Supabase via direct fetch — bypasses JS client state issues
+    // Fetch from Firestore — no cold starts, always fast
     try {
       const uid = Auth.getUser()?.id;
       if (!uid) return;
-      const token = this._getToken();
-      if (!token) return;
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 15000);
-      const resp = await fetch(
-        `${SUPABASE_URL}/rest/v1/tasks?select=*&user_id=eq.${uid}&order=created_at.asc`,
-        { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${token}` }, signal: controller.signal }
-      );
-      clearTimeout(timer);
-      if (resp.ok) {
-        this._tasks = await resp.json();
-        this._saveCache();
-      }
-    } catch (_) { /* stay with cached data if offline or timeout */ }
+      const snap = await this._tasksRef(uid).orderBy('created_at').get();
+      this._tasks = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      this._saveCache();
+    } catch (_) { /* stay with cached data if offline */ }
   },
 
   // ── Category persistence ──────────────────────────────────────────────────
@@ -762,27 +739,15 @@ const TaskManager = {
     const btn = document.getElementById('task-save-cloud-btn');
     if (btn) { btn.innerHTML = '⏳ Loading…'; btn.disabled = true; }
     try {
-      // Use direct fetch — bypasses Supabase JS client internal state issues
-      const token = this._getToken();
-      if (!token) throw new Error('no session');
-
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 10000);
-      const resp = await fetch(
-        `${SUPABASE_URL}/rest/v1/tasks?select=*&user_id=eq.${uid}&order=created_at.asc`,
-        { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${token}` }, signal: controller.signal }
-      );
-      clearTimeout(timer);
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-      this._tasks = await resp.json();
+      const snap = await this._tasksRef(uid).orderBy('created_at').get();
+      this._tasks = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       this._saveCache();
       this._render();
       if (typeof WeekPlanner !== 'undefined') WeekPlanner._render();
       if (btn) { btn.innerHTML = '✅ Up to date!'; btn.disabled = false; }
       setTimeout(() => { if (btn) btn.innerHTML = '🔄 Refresh from Cloud'; }, 2500);
     } catch(e) {
-      const msg = e?.name === 'AbortError' ? '⚠️ Timed out — try again' : '❌ Failed — try again';
-      if (btn) { btn.innerHTML = msg; btn.disabled = false; }
+      if (btn) { btn.innerHTML = '❌ Failed — try again'; btn.disabled = false; }
       setTimeout(() => { if (btn) btn.innerHTML = '🔄 Refresh from Cloud'; }, 3000);
     }
   },
