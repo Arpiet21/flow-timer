@@ -1809,7 +1809,9 @@ kbd {
   padding-top: 10px;
   margin-bottom: 6px;
   opacity: 0.85;
+  display: flex; align-items: center; justify-content: space-between;
 }
+.section-est { font-weight: 500; opacity: 0.6; letter-spacing: 0; text-transform: none; font-size: 0.68rem; }
 .task-upcoming-notice {
   font-size: 0.76rem;
   color: rgba(120, 140, 200, 0.75);

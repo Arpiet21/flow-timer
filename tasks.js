@@ -129,7 +129,7 @@ const TaskManager = {
   _tasks:      [],
   _categories: [],
   _recurDone:  {},  // { taskId: ['YYYY-MM-DD', ...] } — per-day completion for recurring
-  _priority:   2,
+  _priority:   3,
   _showDone:   false,
   _bound:      false,
 
@@ -795,11 +795,19 @@ const TaskManager = {
       }
     }
 
+    const fmtEst = tasks => {
+      const mins = tasks.reduce((a, t) => a + (t.estimated_minutes || 0), 0);
+      if (!mins) return '';
+      return mins >= 60
+        ? ` · ${Math.floor(mins/60)}h${mins%60 ? (mins%60)+'m' : ''}`
+        : ` · ${mins}m`;
+    };
+
     // ── Tomorrow ───────────────────────────────────────────────────────────
     if (tomorrowTasks.length > 0) {
       const sec = document.createElement('div');
       sec.className = 'task-date-section';
-      sec.innerHTML = `<div class="task-date-section-label">Tomorrow — ${fmtDs(tomorrowDs)}</div>`;
+      sec.innerHTML = `<div class="task-date-section-label">Tomorrow — ${fmtDs(tomorrowDs)}<span class="section-est">${fmtEst(tomorrowTasks)}</span></div>`;
       tomorrowTasks.forEach(t => sec.appendChild(this._taskEl(t)));
       list.appendChild(sec);
     }
@@ -808,7 +816,7 @@ const TaskManager = {
     if (dayAfterTasks.length > 0) {
       const sec = document.createElement('div');
       sec.className = 'task-date-section';
-      sec.innerHTML = `<div class="task-date-section-label">${fmtDs(dayAfterDs)}</div>`;
+      sec.innerHTML = `<div class="task-date-section-label">${fmtDs(dayAfterDs)}<span class="section-est">${fmtEst(dayAfterTasks)}</span></div>`;
       dayAfterTasks.forEach(t => sec.appendChild(this._taskEl(t)));
       list.appendChild(sec);
     }
@@ -821,7 +829,7 @@ const TaskManager = {
     if (upcomingTasks.length > 0) {
       const sec = document.createElement('div');
       sec.className = 'task-date-section';
-      sec.innerHTML = `<div class="task-date-section-label">Upcoming</div>`;
+      sec.innerHTML = `<div class="task-date-section-label">Upcoming<span class="section-est">${fmtEst(upcomingTasks)}</span></div>`;
       upcomingTasks.forEach(t => sec.appendChild(this._taskEl(t)));
       list.appendChild(sec);
     }
@@ -851,7 +859,7 @@ const TaskManager = {
     const el = document.createElement('div');
     el.className = 'task-item' + (task.completed ? ' task-item-done' : '');
 
-    const dots = [1, 2, 3].map(i =>
+    const dots = [1, 2, 3, 4, 5].map(i =>
       `<span class="task-dot${i <= task.priority ? ' task-dot-active' : ''}"></span>`
     ).join('');
     const tags = (task.tags || []).map(t => `<span class="task-tag">${this._esc(t)}</span>`).join('');
