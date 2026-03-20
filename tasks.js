@@ -351,7 +351,7 @@ const TaskManager = {
     this._categories.forEach(cat => {
       const item = document.createElement('div');
       item.className = 'cat-manager-item';
-      item.innerHTML = `<span>${this._esc(cat.name)}</span><button class="cat-edit-btn" title="Edit">✏</button><button class="cat-delete-btn" title="Delete">✕</button>`;
+      item.innerHTML = `<span>${this._esc(cat.name)}</span><button class="cat-edit-btn" title="Edit"><img src="icons/edit.svg" class="edit-icon" alt="Edit"></button><button class="cat-delete-btn" title="Delete">✕</button>`;
       item.querySelector('.cat-edit-btn').addEventListener('click', () => this._showCatEditForm(cat.name));
       item.querySelector('.cat-delete-btn').addEventListener('click', () => this.deleteCategory(cat.name));
       list.appendChild(item);
@@ -914,7 +914,7 @@ const TaskManager = {
         </div>
       </div>
       ${!isDone ? `<button class="task-play-btn" title="Focus on this">▶</button>` : ''}
-      ${!isDone ? `<button class="task-edit-btn" title="Edit">✏</button>` : ''}
+      ${!isDone ? `<button class="task-edit-btn" title="Edit"><img src="icons/edit.svg" class="edit-icon" alt="Edit"></button>` : ''}
       <button class="task-del-btn" title="Delete">✕</button>`;
 
     if (useSlider) {
