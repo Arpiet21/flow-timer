@@ -99,10 +99,7 @@
       btn.innerHTML = '<span style="opacity:0.6">Redirecting to Google...</span>';
       const result = await Auth.signInWithGoogle();
       if (!result.ok) {
-        showError(result.error.includes('provider') || result.error.includes('not enabled')
-          ? 'Google login is not configured yet. Please use email & password, or set up Google OAuth in Supabase.'
-          : result.error
-        );
+        showError(result.error || 'Google login failed. Please try email & password.');
         btn.disabled = false;
         btn.innerHTML = '<img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google"> Continue with Google';
       }
