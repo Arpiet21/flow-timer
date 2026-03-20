@@ -55,8 +55,9 @@
     </form>
 
     <p class="auth-divider" style="margin-top:16px;">
-      <a href="#">Forgot password?</a>
+      <a href="#" id="forgot-link">Forgot password?</a>
     </p>
+    <p id="reset-msg" style="display:none;color:#39ff14;font-size:0.85rem;text-align:center;margin-top:8px;"></p>
     <p class="auth-divider">
       Don't have an account? <a href="signup.html">Sign up free</a>
     </p>
@@ -102,6 +103,21 @@
         showError(result.error || 'Google login failed. Please try email & password.');
         btn.disabled = false;
         btn.innerHTML = '<img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google"> Continue with Google';
+      }
+    });
+
+    // Forgot password
+    document.getElementById('forgot-link').addEventListener('click', async e => {
+      e.preventDefault();
+      const email = document.getElementById('email').value.trim();
+      if (!email) { showError('Enter your email above first, then click Forgot password.'); return; }
+      try {
+        await _auth.sendPasswordResetEmail(email);
+        const msg = document.getElementById('reset-msg');
+        msg.textContent = `✅ Password reset email sent to ${email} — check your inbox.`;
+        msg.style.display = 'block';
+      } catch(e) {
+        showError(e.message);
       }
     });
 
