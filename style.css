@@ -1991,6 +1991,10 @@ kbd {
   border-radius: 3px; padding: 1px 5px; flex-shrink: 0;
   letter-spacing: 0.02em;
 }
+.week-task-draggable { cursor: grab; }
+.week-task-draggable:active { cursor: grabbing; }
+.week-task-draggable.dragging { opacity: 0.4; }
+.week-drop-over { background: rgba(57,255,20,0.06); border-radius: 8px; outline: 1px dashed rgba(57,255,20,0.3); }
 .week-task-text { flex: 1; }
 .week-task-item.done-task .week-task-text { text-decoration: line-through; opacity: 0.4; }
 .cat-edit-btn {

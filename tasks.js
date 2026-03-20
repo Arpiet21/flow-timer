@@ -1304,6 +1304,18 @@ const WeekPlanner = {
 
           const el = document.createElement('div');
           el.className = 'week-day-item';
+          // Only non-recurring tasks with a scheduled_date are draggable
+          if (!isRecurring) {
+            el.draggable = true;
+            el.classList.add('week-task-draggable');
+            el.dataset.taskId = t.id;
+            el.addEventListener('dragstart', e => {
+              e.dataTransfer.setData('text/plain', t.id);
+              e.dataTransfer.effectAllowed = 'move';
+              el.classList.add('dragging');
+            });
+            el.addEventListener('dragend', () => el.classList.remove('dragging'));
+          }
           el.innerHTML = `
             <div class="week-item-check${isDone ? ' done' : ''}"></div>
             <span class="week-item-text${isDone ? ' done' : ''}">${this._esc(t.title)}</span>
@@ -1317,6 +1329,28 @@ const WeekPlanner = {
         });
         content.appendChild(tasksDiv);
       }
+
+      // Drop zone for dragged tasks
+      content.addEventListener('dragover', e => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        content.classList.add('week-drop-over');
+      });
+      content.addEventListener('dragleave', () => content.classList.remove('week-drop-over'));
+      content.addEventListener('drop', e => {
+        e.preventDefault();
+        content.classList.remove('week-drop-over');
+        const taskId = e.dataTransfer.getData('text/plain');
+        if (!taskId || typeof TaskManager === 'undefined') return;
+        const task = TaskManager._tasks.find(t => t.id === taskId);
+        if (!task || task.recurring_days?.length) return;
+        if (task.scheduled_date === ds) return; // same day — no change
+        task.scheduled_date = ds;
+        TaskManager._saveCache();
+        TaskManager._render();
+        TaskManager._sbUpdate(taskId, { scheduled_date: ds });
+        WeekPlanner._render();
+      });
 
       // Collapsed add trigger → expands to input row
       const addTrigger = document.createElement('button');
