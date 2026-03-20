@@ -1622,6 +1622,22 @@ kbd {
 }
 .task-del-btn:hover, .task-item:hover .task-del-btn { opacity: 1; color: #ff453a; }
 
+/* ── Subtasks ── */
+.task-subtasks { margin: 6px 0 2px; display: flex; flex-direction: column; gap: 3px; }
+.task-subtask { display: flex; align-items: center; gap: 6px; padding: 2px 0; }
+.task-subtask-check { width: 16px; height: 16px; border-radius: 4px; border: 1.5px solid rgba(255,255,255,0.25); background: none; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: var(--accent); transition: border-color 0.15s, background 0.15s; }
+.task-subtask-check.checked { background: var(--accent); border-color: var(--accent); color: #111; }
+.task-subtask-title { font-size: 0.8rem; color: var(--text-muted); flex: 1; }
+.task-subtask-done .task-subtask-title { text-decoration: line-through; opacity: 0.5; }
+.task-subtask-del { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 0.7rem; opacity: 0; transition: opacity 0.15s, color 0.15s; padding: 2px; }
+.task-subtask:hover .task-subtask-del { opacity: 0.6; }
+.task-subtask-del:hover { opacity: 1 !important; color: #ff453a; }
+.task-subtask-add-row { margin-top: 4px; }
+.task-subtask-input { width: 100%; background: none; border: none; border-bottom: 1px dashed rgba(255,255,255,0.12); color: var(--text-muted); font-size: 0.78rem; padding: 2px 0; outline: none; }
+.task-subtask-input::placeholder { color: rgba(255,255,255,0.2); }
+.task-subtask-input:focus { border-bottom-color: var(--accent); color: var(--text); }
+.task-sub-badge { font-size: 0.68rem; background: rgba(255,255,255,0.08); border-radius: 6px; padding: 1px 6px; color: var(--text-muted); }
+
 .new-cat-form {
   display: flex;
   flex-direction: column;

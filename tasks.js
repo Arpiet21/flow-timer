@@ -875,6 +875,18 @@ const TaskManager = {
     const completeStyle = this._getCompleteStyle();
     const useSlider = completeStyle === 'slider' && !isDone;
 
+    const subtasks = task.subtasks || [];
+    const subDone  = subtasks.filter(s => s.completed).length;
+    const subBadge = subtasks.length ? `<span class="task-sub-badge">${subDone}/${subtasks.length}</span>` : '';
+    const subHtml  = subtasks.map(s => `
+      <div class="task-subtask${s.completed ? ' task-subtask-done' : ''}" data-sid="${this._esc(s.id)}">
+        <button class="task-subtask-check${s.completed ? ' checked' : ''}">
+          ${s.completed ? `<svg viewBox="0 0 12 12" fill="none"><polyline points="1.5,6 5,9.5 10.5,2.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>` : ''}
+        </button>
+        <span class="task-subtask-title">${this._esc(s.title)}</span>
+        <button class="task-subtask-del" title="Remove">✕</button>
+      </div>`).join('');
+
     el.className = 'task-item' + (isDone ? ' task-item-done' : '');
     el.innerHTML = `
       ${!useSlider ? `<button class="task-check${isDone ? ' checked' : ''}">${checkIcon}</button>` : ''}
@@ -885,7 +897,12 @@ const TaskManager = {
           ${tags}
           ${dateLabel}
           ${recurLabel}
+          ${subBadge}
           ${task.estimated_minutes ? `<span class="task-est-badge">${task.estimated_minutes}m</span>` : ''}
+        </div>
+        ${subHtml ? `<div class="task-subtasks">${subHtml}</div>` : ''}
+        <div class="task-subtask-add-row">
+          <input class="task-subtask-input" placeholder="+ Add subtask…" type="text">
         </div>
       </div>
       ${!isDone ? `<button class="task-play-btn" title="Focus on this">▶</button>` : ''}
@@ -911,7 +928,52 @@ const TaskManager = {
     el.querySelector('.task-play-btn')?.addEventListener('click', () => this.startFocus(task.id));
     el.querySelector('.task-edit-btn')?.addEventListener('click', () => this.showEditForm(task.id));
 
+    // Subtask: add on Enter
+    el.querySelector('.task-subtask-input')?.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); this.addSubtask(task.id, e.target.value.trim()); e.target.value = ''; }
+    });
+    // Subtask: toggle complete
+    el.querySelectorAll('.task-subtask-check').forEach(btn => {
+      btn.addEventListener('click', () => this.toggleSubtask(task.id, btn.closest('.task-subtask').dataset.sid));
+    });
+    // Subtask: delete
+    el.querySelectorAll('.task-subtask-del').forEach(btn => {
+      btn.addEventListener('click', () => this.deleteSubtask(task.id, btn.closest('.task-subtask').dataset.sid));
+    });
+
     return el;
+  },
+
+  // ── Subtask methods ───────────────────────────────────────────────────────
+  addSubtask(taskId, title) {
+    if (!title) return;
+    const task = this._tasks.find(t => t.id === taskId);
+    if (!task) return;
+    if (!task.subtasks) task.subtasks = [];
+    task.subtasks.push({ id: crypto.randomUUID(), title, completed: false });
+    this._saveCache();
+    this._render();
+    this._sbUpdate(taskId, { subtasks: task.subtasks });
+  },
+
+  toggleSubtask(taskId, subtaskId) {
+    const task = this._tasks.find(t => t.id === taskId);
+    if (!task) return;
+    const sub = (task.subtasks || []).find(s => s.id === subtaskId);
+    if (!sub) return;
+    sub.completed = !sub.completed;
+    this._saveCache();
+    this._render();
+    this._sbUpdate(taskId, { subtasks: task.subtasks });
+  },
+
+  deleteSubtask(taskId, subtaskId) {
+    const task = this._tasks.find(t => t.id === taskId);
+    if (!task) return;
+    task.subtasks = (task.subtasks || []).filter(s => s.id !== subtaskId);
+    this._saveCache();
+    this._render();
+    this._sbUpdate(taskId, { subtasks: task.subtasks });
   },
 
   // ── Completion style ──────────────────────────────────────────────────────
