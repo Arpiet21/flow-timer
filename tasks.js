@@ -459,6 +459,9 @@ const TaskManager = {
     if (dateClear) dateClear.style.display = 'none';
     document.querySelectorAll('#task-recur-days .recur-day-btn').forEach(b => b.classList.remove('active'));
     this.setPriority(2);
+    this._editingId = null;
+    const submitBtn = document.getElementById('task-submit-btn');
+    if (submitBtn) submitBtn.textContent = 'Add Task';
   },
 
   setPriority(p) {
@@ -468,8 +471,94 @@ const TaskManager = {
     });
   },
 
+  // ── Edit existing task ────────────────────────────────────────────────────
+  showEditForm(id) {
+    const task = this._tasks.find(t => t.id === id);
+    if (!task) return;
+    this._editingId = id;
+
+    // Reuse the add form — pre-fill with task data
+    this.showAddForm();
+
+    document.getElementById('task-title-input').value      = task.title || '';
+    document.getElementById('task-est-select').value       = task.estimated_minutes || 25;
+    document.getElementById('task-tags-input').value       = (task.tags || []).join(' ');
+    document.getElementById('task-date-input').value       = task.scheduled_date || '';
+    if (task.scheduled_date) {
+      const btn = document.getElementById('task-date-clear-btn');
+      if (btn) btn.style.display = '';
+    }
+    this.setPriority(task.priority || 2);
+
+    // Set category
+    const sel = document.getElementById('task-category-select');
+    if (sel && task.category) sel.value = task.category;
+
+    // Set recurring days
+    document.querySelectorAll('#task-recur-days .recur-day-btn').forEach(btn => {
+      const day = parseInt(btn.dataset.day);
+      btn.classList.toggle('active', (task.recurring_days || []).includes(day));
+    });
+
+    // Change button to Update
+    const submitBtn = document.getElementById('task-submit-btn');
+    if (submitBtn) submitBtn.textContent = 'Update Task';
+  },
+
+  async submitEdit() {
+    const id   = this._editingId;
+    const task = this._tasks.find(t => t.id === id);
+    if (!task) return;
+
+    const title = document.getElementById('task-title-input')?.value.trim();
+    if (!title) {
+      document.getElementById('task-title-input')?.classList.add('task-field-error');
+      setTimeout(() => document.getElementById('task-title-input')?.classList.remove('task-field-error'), 800);
+      return;
+    }
+
+    const category = document.getElementById('task-category-select')?.value;
+    if (!category || category === '__new__') return;
+
+    const estMins  = parseInt(document.getElementById('task-est-select')?.value || '25');
+    const tagsRaw  = document.getElementById('task-tags-input')?.value.trim() || '';
+    const tags     = tagsRaw ? tagsRaw.split(/[\s,]+/).filter(Boolean).map(t => t.startsWith('#') ? t : '#' + t) : [];
+    const scheduledDate  = document.getElementById('task-date-input')?.value || null;
+    const recurringDays  = [...document.querySelectorAll('#task-recur-days .recur-day-btn.active')]
+      .map(b => parseInt(b.dataset.day));
+
+    // Update in memory
+    Object.assign(task, {
+      title, category,
+      estimated_minutes: estMins,
+      priority: this._priority,
+      tags,
+      scheduled_date: scheduledDate,
+      recurring_days: recurringDays.length > 0 ? recurringDays : null
+    });
+
+    this._saveCache();
+    this.hideAddForm();
+    this._editingId = null;
+    this._render();
+    if (typeof WeekPlanner !== 'undefined') WeekPlanner._render();
+
+    // Sync to Firestore
+    this._sbUpdate(id, {
+      title, category,
+      estimated_minutes: estMins,
+      priority: this._priority,
+      tags,
+      scheduled_date: scheduledDate,
+      recurring_days: recurringDays.length > 0 ? recurringDays : null
+    }).then(ok => {
+      if (!ok) this._toast('⚠️ Could not update in cloud', 3000);
+    });
+  },
+
   // ── Submit new task ────────────────────────────────────────────────────────
   async submitAdd() {
+    if (this._editingId) { await this.submitEdit(); return; }
     const title = document.getElementById('task-title-input')?.value.trim();
     if (!title) {
       document.getElementById('task-title-input')?.classList.add('task-field-error');
@@ -794,6 +883,7 @@ const TaskManager = {
         </div>
       </div>
       ${!isDone ? `<button class="task-play-btn" title="Focus on this">▶</button>` : ''}
+      ${!isDone ? `<button class="task-edit-btn" title="Edit">✏</button>` : ''}
       <button class="task-del-btn" title="Delete">✕</button>`;
 
     if (useSlider) {
@@ -813,6 +903,7 @@ const TaskManager = {
 
     el.querySelector('.task-del-btn').addEventListener('click', () => this.deleteTask(task.id));
     el.querySelector('.task-play-btn')?.addEventListener('click', () => this.startFocus(task.id));
+    el.querySelector('.task-edit-btn')?.addEventListener('click', () => this.showEditForm(task.id));
 
     return el;
   },
