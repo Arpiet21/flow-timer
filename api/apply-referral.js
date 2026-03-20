@@ -1,13 +1,8 @@
 // ── Referral Reward ───────────────────────────────────────────────────────────
 // Called after a new user signs up with a referral code.
-// Extends the referrer's plan by 15 days (requires service role to find referrer).
+// Extends the referrer's plan by 15 days.
 
-import { createClient } from '@supabase/supabase-js';
-
-const sb = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+import { getAdminDb, getAdminAuth } from './_firebase-admin.js';
 
 const BONUS_DAYS = 15;
 
@@ -17,45 +12,49 @@ export default async function handler(req, res) {
   const { code, refereeId } = req.body;
   if (!code || !refereeId) return res.status(400).json({ error: 'Missing params' });
 
-  // Find referrer — their code is first 6 chars of UUID (no dashes, uppercase)
-  const { data: { users } } = await sb.auth.admin.listUsers({ perPage: 1000 });
-  const referrer = users?.find(u =>
-    u.id.replace(/-/g, '').slice(0, 6).toUpperCase() === code.toUpperCase()
-  );
+  const db   = getAdminDb();
+  const auth = getAdminAuth();
 
-  if (!referrer || referrer.id === refereeId) {
+  // Find referrer — their code is first 6 chars of Firebase UID (no dashes, uppercase)
+  let pageToken;
+  let referrer = null;
+  do {
+    const result = await auth.listUsers(1000, pageToken);
+    referrer = result.users.find(u =>
+      u.uid.replace(/-/g, '').slice(0, 6).toUpperCase() === code.toUpperCase()
+    );
+    pageToken = result.pageToken;
+  } while (!referrer && pageToken);
+
+  if (!referrer || referrer.uid === refereeId) {
     return res.json({ ok: false, reason: 'referrer not found or self-referral' });
   }
 
   // Prevent double-rewarding
-  const { data: existing } = await sb.from('referrals')
-    .select('rewarded')
-    .eq('referee_id', refereeId)
-    .single();
+  const referralRef = db.collection('referrals').doc(refereeId);
+  const referralSnap = await referralRef.get();
+  if (referralSnap.exists && referralSnap.data().rewarded) {
+    return res.json({ ok: false, reason: 'already rewarded' });
+  }
 
-  if (existing?.rewarded) return res.json({ ok: false, reason: 'already rewarded' });
+  // Extend referrer's plan by BONUS_DAYS
+  const planRef  = db.collection('users').doc(referrer.uid).collection('plan').doc('current');
+  const planSnap = await planRef.get();
 
-  // Extend referrer's plan by 15 days
-  const { data: plan } = await sb.from('user_plans')
-    .select('valid_until, plan')
-    .eq('user_id', referrer.id)
-    .single();
-
-  if (plan) {
+  if (planSnap.exists) {
+    const plan = planSnap.data();
     const base = plan.valid_until ? new Date(plan.valid_until) : new Date();
     if (base < new Date()) base.setTime(Date.now());
     base.setDate(base.getDate() + BONUS_DAYS);
-    await sb.from('user_plans').update({
+    await planRef.update({
       valid_until: base.toISOString(),
       plan: plan.plan === 'free' ? 'trial' : plan.plan,
-      updated_at: new Date().toISOString()
-    }).eq('user_id', referrer.id);
+      updated_at:  new Date().toISOString(),
+    });
   }
 
   // Mark referral as rewarded
-  await sb.from('referrals')
-    .update({ rewarded: true })
-    .eq('referee_id', refereeId);
+  await referralRef.set({ rewarded: true, referral_code: code.toUpperCase(), rewarded_at: new Date().toISOString() }, { merge: true });
 
-  return res.json({ ok: true, referrerId: referrer.id });
+  return res.json({ ok: true, referrerId: referrer.uid });
 }

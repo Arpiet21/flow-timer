@@ -1,13 +1,9 @@
 // ── Weekly Report Emailer ──────────────────────────────────────────────────
 // Vercel Cron: runs every Monday at 8 AM UTC (see vercel.json)
-// Requires env vars: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, RESEND_API_KEY
+// Requires env vars: FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL,
+//                    FIREBASE_PRIVATE_KEY, RESEND_API_KEY
 
-import { createClient } from '@supabase/supabase-js';
-
-const sb = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY   // service-role needed to read all users
-);
+import { getAdminDb, getAdminAuth } from './_firebase-admin.js';
 
 export default async function handler(req, res) {
   // Allow manual trigger via POST (for testing), Vercel Cron sends GET
@@ -19,52 +15,62 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
+  const db   = getAdminDb();
+  const auth = getAdminAuth();
+
   const now = new Date();
   const weekAgo = new Date(now);
   weekAgo.setDate(weekAgo.getDate() - 7);
   const twoWeeksAgo = new Date(now);
   twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
 
-  // Fetch all Pro/Trial users (include timezone for localized report dates)
-  const { data: plans } = await sb
-    .from('user_plans')
-    .select('user_id, plan, timezone')
-    .in('plan', ['pro', 'trial']);
+  // Fetch all Pro/Trial plan documents via collection group query
+  // (requires Firestore index: collectionGroup 'plan', field 'plan' ASC)
+  const [proSnap, trialSnap] = await Promise.all([
+    db.collectionGroup('plan').where('plan', '==', 'pro').get(),
+    db.collectionGroup('plan').where('plan', '==', 'trial')
+      .where('valid_until', '>', now.toISOString()).get(),
+  ]);
 
-  if (!plans || plans.length === 0) return res.json({ sent: 0 });
+  const planDocs = [...proSnap.docs, ...trialSnap.docs];
+  if (planDocs.length === 0) return res.json({ sent: 0 });
 
-  const userIds = plans.map(p => p.user_id);
-
-  // Fetch this week's sessions
-  const { data: sessions } = await sb
-    .from('sessions')
-    .select('user_id, mode, duration_minutes, completed_at')
-    .in('user_id', userIds)
-    .gte('completed_at', weekAgo.toISOString())
-    .order('completed_at', { ascending: true });
-
-  // Fetch last week's sessions (for comparison)
-  const { data: lastWeekSessions } = await sb
-    .from('sessions')
-    .select('user_id, mode, duration_minutes')
-    .in('user_id', userIds)
-    .gte('completed_at', twoWeeksAgo.toISOString())
-    .lt('completed_at', weekAgo.toISOString());
-
-  // Build timezone map
+  // Extract userIds and timezone map from plan doc paths (users/{uid}/plan/current)
   const tzMap = {};
-  (plans || []).forEach(p => { tzMap[p.user_id] = p.timezone || 'UTC'; });
+  const userIds = [];
+  for (const doc of planDocs) {
+    const uid = doc.ref.parent.parent.id; // users/{uid}/plan/current → uid
+    if (!userIds.includes(uid)) {
+      userIds.push(uid);
+      tzMap[uid] = doc.data().timezone || 'UTC';
+    }
+  }
 
-  // Group by user
-  const byUser = {};
-  for (const uid of userIds) byUser[uid] = { sessions: [], lastWeek: [], tz: tzMap[uid] };
-  (sessions || []).forEach(s => byUser[s.user_id]?.sessions.push(s));
-  (lastWeekSessions || []).forEach(s => byUser[s.user_id]?.lastWeek.push(s));
+  // Fetch sessions for each user in parallel
+  const sessionsByUser = {};
+  const lastWeekByUser = {};
+  await Promise.all(userIds.map(async uid => {
+    const sessRef = db.collection('users').doc(uid).collection('sessions');
+    const [thisWeek, lastWeek] = await Promise.all([
+      sessRef.where('completed_at', '>=', weekAgo.toISOString())
+             .where('completed_at', '<', now.toISOString()).get(),
+      sessRef.where('completed_at', '>=', twoWeeksAgo.toISOString())
+             .where('completed_at', '<', weekAgo.toISOString()).get(),
+    ]);
+    sessionsByUser[uid] = thisWeek.docs.map(d => d.data());
+    lastWeekByUser[uid] = lastWeek.docs.map(d => d.data());
+  }));
 
-  // Get user emails from auth.users (service role required)
-  const { data: { users } } = await sb.auth.admin.listUsers({ perPage: 1000 });
+  // Get user emails from Firebase Auth
   const emailMap = {};
-  (users || []).forEach(u => { emailMap[u.id] = { email: u.email, name: u.user_metadata?.full_name || u.email.split('@')[0] }; });
+  let pageToken;
+  do {
+    const result = await auth.listUsers(1000, pageToken);
+    result.users.forEach(u => {
+      emailMap[u.uid] = { email: u.email, name: u.displayName || u.email.split('@')[0] };
+    });
+    pageToken = result.pageToken;
+  } while (pageToken);
 
   let sent = 0;
   const errors = [];
@@ -73,9 +79,11 @@ export default async function handler(req, res) {
     const info = emailMap[uid];
     if (!info?.email) continue;
 
-    const { sessions: thisSessions, lastWeek, tz } = byUser[uid];
-    const userTz = tz || 'UTC';
-    const workSessions   = thisSessions.filter(s => s.mode === 'work');
+    const thisSessions   = sessionsByUser[uid] || [];
+    const lastWeek       = lastWeekByUser[uid] || [];
+    const userTz         = tzMap[uid] || 'UTC';
+
+    const workSessions    = thisSessions.filter(s => s.mode === 'work');
     const workoutSessions = thisSessions.filter(s => s.mode === 'workout');
     const totalMins = workSessions.reduce((a, s) => a + (s.duration_minutes || 0), 0);
     const lastMins  = lastWeek.filter(s => s.mode === 'work').reduce((a, s) => a + (s.duration_minutes || 0), 0);
@@ -84,12 +92,10 @@ export default async function handler(req, res) {
     const mins = totalMins % 60;
     const timeStr = hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m`;
 
-    // Format dates in user's local timezone
     const fmtDate = (d, opts) => new Date(d).toLocaleDateString('en-US', { ...opts, timeZone: userTz });
     const weekStart = fmtDate(weekAgo, { month: 'short', day: 'numeric' });
     const weekEnd   = fmtDate(now,     { month: 'short', day: 'numeric', year: 'numeric' });
 
-    // Build a day-by-day breakdown using user's timezone
     const dayMap = {};
     workSessions.forEach(s => {
       const d = fmtDate(s.completed_at, { weekday: 'short', month: 'short', day: 'numeric' });
@@ -110,13 +116,11 @@ export default async function handler(req, res) {
       <h1 style="margin:0;font-size:1.4rem;font-weight:800;color:#eaeaea;">Your Weekly Flow Report</h1>
       <p style="margin:6px 0 0;font-size:0.85rem;color:#888;">Week of ${weekStart} – ${weekEnd}</p>
     </div>
-
     <div style="background:#16213e;border-radius:16px;padding:24px;margin-bottom:16px;text-align:center;">
       <p style="margin:0 0 4px;font-size:0.78rem;color:#888;text-transform:uppercase;letter-spacing:1px;">Total focus time</p>
       <div style="font-size:2.4rem;font-weight:800;color:#39ff14;line-height:1.1;">${timeStr}</div>
       <p style="margin:8px 0 0;font-size:0.82rem;color:#888;">${trend} vs ${lastMins > 0 ? Math.floor(lastMins/60)+'h '+lastMins%60+'m' : '0m'} last week</p>
     </div>
-
     <div style="display:flex;gap:12px;margin-bottom:16px;">
       <div style="flex:1;background:#16213e;border-radius:14px;padding:16px;text-align:center;">
         <div style="font-size:1.6rem;font-weight:800;color:#eaeaea;">${workSessions.length}</div>
@@ -131,20 +135,16 @@ export default async function handler(req, res) {
         <div style="font-size:0.72rem;color:#888;margin-top:4px;">Active days</div>
       </div>
     </div>
-
     ${dayRows ? `
     <div style="background:#16213e;border-radius:14px;padding:16px;margin-bottom:16px;">
       <p style="margin:0 0 10px;font-size:0.78rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#888;">Day by Day</p>
       <table style="border-collapse:collapse;width:100%;font-size:0.82rem;">${dayRows}</table>
     </div>` : ''}
-
     <div style="text-align:center;padding:16px;">
-      <a href="https://flow-timer.vercel.app" style="display:inline-block;padding:12px 28px;background:#39ff14;color:#111;font-weight:800;border-radius:12px;text-decoration:none;font-size:0.9rem;">Open Flow Timer →</a>
+      <a href="https://flow-timer-rho.vercel.app" style="display:inline-block;padding:12px 28px;background:#39ff14;color:#111;font-weight:800;border-radius:12px;text-decoration:none;font-size:0.9rem;">Open Flow Timer →</a>
     </div>
-
     <p style="text-align:center;font-size:0.68rem;color:#555;margin-top:24px;">
-      You're receiving this because you have a Flow Timer account.<br>
-      <a href="https://flow-timer.vercel.app" style="color:#555;">Unsubscribe</a>
+      You're receiving this because you have a Flow Timer Pro/Trial account.
     </p>
   </div>
 </body>

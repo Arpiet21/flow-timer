@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import { createClient } from '@supabase/supabase-js';
+import { upsertPlan } from './_firebase-admin.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
@@ -36,25 +36,16 @@ export default async function handler(req, res) {
     validUntil.setMonth(validUntil.getMonth() + 1);
   }
 
-  // Update Supabase
-  const supabase = createClient(
-    process.env.SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_KEY
-  );
-
-  const { error } = await supabase.from('user_plans').upsert({
-    user_id: userId,
-    plan: 'pro',
-    plan_type: plan,
-    payment_id: razorpay_payment_id,
-    valid_until: validUntil.toISOString(),
-    updated_at: now.toISOString()
-  }, { onConflict: 'user_id' });
-
-  if (error) {
-    console.error('Supabase error:', error);
-    return res.status(500).json({ ok: false, error: 'DB update failed' });
+  try {
+    await upsertPlan(userId, {
+      plan:       'pro',
+      plan_type:  plan,
+      payment_id: razorpay_payment_id,
+      valid_until: validUntil.toISOString(),
+    });
+    res.status(200).json({ ok: true });
+  } catch (err) {
+    console.error('[verify-payment] Firestore error:', err);
+    res.status(500).json({ ok: false, error: 'DB update failed' });
   }
-
-  res.status(200).json({ ok: true });
 }

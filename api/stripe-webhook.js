@@ -1,5 +1,5 @@
 import Stripe from 'stripe';
-import { createClient } from '@supabase/supabase-js';
+import { upsertPlan } from './_firebase-admin.js';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
@@ -31,11 +31,6 @@ export default async function handler(req, res) {
     const session = event.data.object;
     const { userId, plan } = session.metadata;
 
-    const supabase = createClient(
-      process.env.SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_KEY
-    );
-
     const now = new Date();
     let validUntil;
     if (plan === 'lifetime') {
@@ -48,14 +43,16 @@ export default async function handler(req, res) {
       validUntil.setMonth(validUntil.getMonth() + 1);
     }
 
-    await supabase.from('user_plans').upsert({
-      user_id: userId,
-      plan: 'pro',
-      plan_type: plan,
-      payment_id: session.payment_intent,
-      valid_until: validUntil.toISOString(),
-      updated_at: now.toISOString()
-    }, { onConflict: 'user_id' });
+    try {
+      await upsertPlan(userId, {
+        plan:       'pro',
+        plan_type:  plan,
+        payment_id: session.payment_intent,
+        valid_until: validUntil.toISOString(),
+      });
+    } catch (err) {
+      console.error('[stripe-webhook] Firestore error:', err);
+    }
   }
 
   res.status(200).json({ received: true });
