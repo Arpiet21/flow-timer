@@ -77,27 +77,37 @@ const Auth = {
     await new Promise(resolve => {
       const unsub = _auth.onAuthStateChanged(async user => {
         unsub();
-        if (user) {
-          const deviceCheck = await this._checkAndRegisterDevice(user.uid, user.email);
-          if (!deviceCheck.allowed) {
-            window.location.href = 'login.html?device_limit=1';
-            resolve(null); return;
+        try {
+          if (user) {
+            const deviceCheck = await this._checkAndRegisterDevice(user.uid, user.email);
+            if (!deviceCheck.allowed) {
+              window.location.href = 'login.html?device_limit=1';
+              resolve(null); return;
+            }
+            const planData = await this._getOrCreatePlan(user.uid);
+            this._user = this._normalize(user, planData);
+            this._loadTimezone(user.uid);
           }
-          const planData = await this._getOrCreatePlan(user.uid);
-          this._user = this._normalize(user, planData);
-          this._loadTimezone(user.uid);
+        } catch (err) {
+          console.error('[Auth.init] error loading plan:', err);
+          // Still set user even if plan fetch fails — fall back to free
+          if (user) this._user = this._normalize(user, null);
         }
         resolve(this._user);
       });
     });
 
     _auth.onAuthStateChanged(async user => {
-      if (user) {
-        const planData = await this._getOrCreatePlan(user.uid);
-        this._user = this._normalize(user, planData);
-        this._loadTimezone(user.uid);
-      } else {
-        this._user = null;
+      try {
+        if (user) {
+          const planData = await this._getOrCreatePlan(user.uid);
+          this._user = this._normalize(user, planData);
+          this._loadTimezone(user.uid);
+        } else {
+          this._user = null;
+        }
+      } catch (err) {
+        console.error('[Auth] onAuthStateChanged error:', err);
       }
     });
 
@@ -367,8 +377,27 @@ const Auth = {
   async _getOrCreatePlan(userId) {
     const planRef = _db.collection('users').doc(userId).collection('plan').doc('current');
     const snap = await planRef.get();
-    if (snap.exists) return snap.data();
 
+    if (snap.exists) {
+      const data = snap.data();
+      // Repair: if plan is 'trial' but valid_until is missing, backfill it
+      if (data.plan === 'trial' && !data.valid_until) {
+        const trialEnd = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+        const patch = { valid_until: trialEnd.toISOString(), updated_at: new Date().toISOString() };
+        await planRef.update(patch).catch(() => {});
+        return { ...data, ...patch };
+      }
+      // Repair: if plan is 'free' and no valid_until, treat as new user → give trial
+      if (data.plan === 'free' && !data.valid_until) {
+        const trialEnd = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+        const patch = { plan: 'trial', valid_until: trialEnd.toISOString(), updated_at: new Date().toISOString() };
+        await planRef.update(patch).catch(() => {});
+        return { ...data, ...patch };
+      }
+      return data;
+    }
+
+    // New user — create 7-day trial
     const trialEnd = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
     const planData = { plan: 'trial', valid_until: trialEnd.toISOString(), updated_at: new Date().toISOString() };
     await planRef.set(planData);
@@ -388,7 +417,8 @@ const Auth = {
         plan = 'pro';
       } else if (planData.plan === 'trial' && validUntil && validUntil > now) {
         plan = 'trial';
-        trialDaysLeft = Math.max(1, Math.ceil((validUntil - now) / (1000 * 60 * 60 * 24)));
+        trialDaysLeft = Math.ceil((validUntil - now) / (1000 * 60 * 60 * 24));
+        if (trialDaysLeft < 1) trialDaysLeft = 1; // show at least "1 day" when < 24h remain
       }
     }
 
