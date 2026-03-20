@@ -366,12 +366,15 @@ const TaskManager = {
     const form = document.createElement('div');
     form.className = 'cat-edit-form';
     form.id = 'cat-edit-form';
+    const existingReasons = (cat.reasons || []).filter(Boolean);
+    const reasonRows = existingReasons.length
+      ? existingReasons.map(r => `<div class="cat-reason-row"><input type="text" class="task-field cat-reason-input" value="${this._esc(r)}" placeholder="Why are you working on this?"><button class="cat-reason-del-btn" title="Remove">✕</button></div>`).join('')
+      : `<div class="cat-reason-row"><input type="text" class="task-field cat-reason-input" placeholder="Why are you working on this?"><button class="cat-reason-del-btn" title="Remove">✕</button></div>`;
     form.innerHTML = `
       <div class="cat-edit-form-title">Editing: <strong>${this._esc(name)}</strong></div>
       <input type="text" id="cat-edit-name" class="task-field" value="${this._esc(cat.name)}" placeholder="Category name…" maxlength="40">
-      <input type="text" id="cat-edit-reason-1" class="task-field" value="${this._esc(cat.reasons?.[0] || '')}" placeholder="Reason 1 — why are you working on this?">
-      <input type="text" id="cat-edit-reason-2" class="task-field" value="${this._esc(cat.reasons?.[1] || '')}" placeholder="Reason 2 (optional)">
-      <input type="text" id="cat-edit-reason-3" class="task-field" value="${this._esc(cat.reasons?.[2] || '')}" placeholder="Reason 3 (optional)">
+      <div id="cat-reason-rows">${reasonRows}</div>
+      <button class="cat-add-reason-btn" id="cat-add-reason-btn">+ Add reason</button>
       <div class="cat-edit-actions">
         <button class="btn-accent-sm" id="cat-edit-save-btn">Save</button>
         <button class="task-cancel-btn" id="cat-edit-cancel-btn">Cancel</button>
@@ -380,16 +383,25 @@ const TaskManager = {
     document.getElementById('cat-edit-name')?.focus();
     document.getElementById('cat-edit-save-btn').addEventListener('click', () => this._saveCatEdit(name));
     document.getElementById('cat-edit-cancel-btn').addEventListener('click', () => document.getElementById('cat-edit-form')?.remove());
+    document.getElementById('cat-add-reason-btn').addEventListener('click', () => {
+      const rows = document.getElementById('cat-reason-rows');
+      const row  = document.createElement('div');
+      row.className = 'cat-reason-row';
+      row.innerHTML = `<input type="text" class="task-field cat-reason-input" placeholder="Another reason…"><button class="cat-reason-del-btn" title="Remove">✕</button>`;
+      row.querySelector('.cat-reason-del-btn').addEventListener('click', () => row.remove());
+      rows.appendChild(row);
+      row.querySelector('input').focus();
+    });
+    form.querySelectorAll('.cat-reason-del-btn').forEach(btn =>
+      btn.addEventListener('click', () => btn.closest('.cat-reason-row').remove())
+    );
   },
 
   _saveCatEdit(originalName) {
     const newName = document.getElementById('cat-edit-name')?.value.trim();
     if (!newName) { document.getElementById('cat-edit-name')?.classList.add('task-field-error'); return; }
-    const reasons = [
-      document.getElementById('cat-edit-reason-1')?.value.trim() || '',
-      document.getElementById('cat-edit-reason-2')?.value.trim() || '',
-      document.getElementById('cat-edit-reason-3')?.value.trim() || ''
-    ].filter(Boolean);
+    const reasons = [...document.querySelectorAll('#cat-reason-rows .cat-reason-input')]
+      .map(i => i.value.trim()).filter(Boolean);
     const idx = this._categories.findIndex(c => c.name === originalName);
     if (idx === -1) return;
     if (newName !== originalName) {
@@ -814,12 +826,6 @@ const TaskManager = {
       list.appendChild(sec);
     }
 
-    // ── Refresh from Cloud button ──────────────────────────────────────────
-    const refreshBtn = document.createElement('button');
-    refreshBtn.id = 'task-save-cloud-btn';
-    refreshBtn.innerHTML = '🔄 Refresh from Cloud';
-    refreshBtn.onclick = () => this._refreshFromCloud();
-    list.appendChild(refreshBtn);
   },
 
   async _refreshFromCloud() {
