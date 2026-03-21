@@ -33,6 +33,34 @@ const ScriptCopier = (() => {
     } catch (e) { _scripts = []; }
   }
 
+  // Track which folders are open: { scriptId: { folderKey: true } }
+  const _openFolders = {};
+  // Track selected scripts for bulk delete
+  const _selected = new Set();
+
+  function _getFolderKey(name) {
+    // "S01_A" → "S01", "scene_1_opening — 1A" → "scene_1_opening", "🎨 Global Style" → "🎨 Global Style"
+    if (!name) return 'Other';
+    const m = name.match(/^([A-Za-z0-9]+_[A-Za-z0-9]+)_[A-Za-z0-9]+/); // S01_opening_A → S01_opening
+    if (m) return m[1];
+    const m2 = name.match(/^([A-Za-z0-9_]+)\s*—/); // "scene_1_opening — 1A"
+    if (m2) return m2[1].replace(/_/g, ' ');
+    const m3 = name.match(/^([A-Za-z]+\d+)_/);     // "S01_A" → "S01"
+    if (m3) return m3[1];
+    return name; // no grouping — use full name as its own folder
+  }
+
+  function _groupClips(clips) {
+    const groups = {};
+    const order = [];
+    clips.forEach((c, i) => {
+      const key = _getFolderKey(c.name || `Clip ${i + 1}`);
+      if (!groups[key]) { groups[key] = []; order.push(key); }
+      groups[key].push(c);
+    });
+    return { groups, order };
+  }
+
   // ── Render main list ────────────────────────────────────────────────────
   function _renderList() {
     const list = document.getElementById('script-list');
@@ -41,34 +69,99 @@ const ScriptCopier = (() => {
       list.innerHTML = '<div class="script-empty">No scripts yet. Add your first one above.</div>';
       return;
     }
-    list.innerHTML = _scripts.map(s => `
-      <div class="script-item" data-id="${s.id}">
-        <div class="script-item-header">
-          <span class="script-item-title">${_esc(s.title)}</span>
-          <span class="script-model-tag">${_esc(s.model || 'General')}</span>
-        </div>
-        <div class="script-clips">
-          ${(s.clips || []).map((c, i) => `
+    list.innerHTML = _scripts.map(s => {
+      const { groups, order } = _groupClips(s.clips || []);
+      if (!_openFolders[s.id]) _openFolders[s.id] = {};
+
+      const foldersHtml = order.map(key => {
+        const clipsInGroup = groups[key];
+        const isOpen = !!_openFolders[s.id][key];
+        const isSingle = clipsInGroup.length === 1 && key === (clipsInGroup[0].name || '');
+
+        // If only 1 clip and no grouping, render flat (no folder wrapper)
+        if (isSingle) {
+          const c = clipsInGroup[0];
+          return `
             <div class="script-clip" data-clip-id="${c.id}" data-script-id="${s.id}">
               <div class="script-clip-header">
-                <span class="script-clip-name">${_esc(c.name || 'Clip ' + (i + 1))}</span>
+                <span class="script-clip-name">${_esc(c.name)}</span>
                 <div class="script-clip-actions">
-                  <button class="script-copy-btn" data-id="${s.id}" data-clip="${c.id}" title="Copy clip">Copy</button>
-                  <button class="script-clip-del-btn" data-id="${s.id}" data-clip="${c.id}" title="Remove clip">✕</button>
+                  <button class="script-copy-btn" data-id="${s.id}" data-clip="${c.id}">Copy</button>
+                  <button class="script-clip-del-btn" data-id="${s.id}" data-clip="${c.id}">✕</button>
                 </div>
               </div>
               <div class="script-clip-preview">${_esc(c.content).substring(0, 100)}${c.content.length > 100 ? '…' : ''}</div>
+            </div>`;
+        }
+
+        return `
+          <div class="script-folder ${isOpen ? 'open' : ''}" data-folder-key="${_esc(key)}" data-script-id="${s.id}">
+            <div class="script-folder-header folder-toggle" data-folder-key="${_esc(key)}" data-script-id="${s.id}">
+              <span class="script-folder-arrow">${isOpen ? '▾' : '▸'}</span>
+              <span class="script-folder-name">${_esc(key)}</span>
+              <span class="script-folder-count">${clipsInGroup.length} clip${clipsInGroup.length > 1 ? 's' : ''}</span>
             </div>
-          `).join('')}
-        </div>
-        <div class="script-item-actions">
-          <button class="script-addclip-btn" data-id="${s.id}">+ Add Clip</button>
-          <button class="script-float-open-btn" data-id="${s.id}">Float</button>
-          <button class="script-edit-btn" data-id="${s.id}">Edit</button>
-          <button class="script-del-btn" data-id="${s.id}">Delete</button>
-        </div>
-      </div>
-    `).join('');
+            <div class="script-folder-clips" style="display:${isOpen ? 'flex' : 'none'}">
+              ${clipsInGroup.map(c => `
+                <div class="script-clip" data-clip-id="${c.id}" data-script-id="${s.id}">
+                  <div class="script-clip-header">
+                    <span class="script-clip-name">${_esc(c.name)}</span>
+                    <div class="script-clip-actions">
+                      <button class="script-copy-btn" data-id="${s.id}" data-clip="${c.id}">Copy</button>
+                      <button class="script-clip-del-btn" data-id="${s.id}" data-clip="${c.id}">✕</button>
+                    </div>
+                  </div>
+                  <div class="script-clip-preview">${_esc(c.content).substring(0, 100)}${c.content.length > 100 ? '…' : ''}</div>
+                </div>
+              `).join('')}
+            </div>
+          </div>`;
+      }).join('');
+
+      return `
+        <div class="script-item" data-id="${s.id}">
+          <div class="script-item-header">
+            <input type="checkbox" class="script-select-cb" data-id="${s.id}" ${_selected.has(s.id) ? 'checked' : ''} title="Select">
+            <span class="script-item-title">${_esc(s.title)}</span>
+            <span class="script-model-tag">${_esc(s.model || 'General')}</span>
+          </div>
+          <div class="script-clips">${foldersHtml}</div>
+          <div class="script-item-actions">
+            <button class="script-addclip-btn" data-id="${s.id}">+ Add Clip</button>
+            <button class="script-float-open-btn" data-id="${s.id}">Float</button>
+            <button class="script-edit-btn" data-id="${s.id}">Edit</button>
+            <button class="script-del-btn" data-id="${s.id}">Delete</button>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  function _renderBulkBar() {
+    let bar = document.getElementById('script-bulk-bar');
+    if (!bar) {
+      bar = document.createElement('div');
+      bar.id = 'script-bulk-bar';
+      bar.className = 'script-bulk-bar';
+      document.getElementById('script-list').before(bar);
+    }
+    if (_selected.size === 0) { bar.style.display = 'none'; return; }
+    bar.style.display = 'flex';
+    bar.innerHTML = `
+      <span>${_selected.size} selected</span>
+      <button class="script-bulk-del-btn" id="script-bulk-del">🗑 Delete Selected</button>
+      <button class="script-bulk-clear-btn" id="script-bulk-clear">✕ Clear</button>
+    `;
+    bar.querySelector('#script-bulk-del').onclick = _deleteSelected;
+    bar.querySelector('#script-bulk-clear').onclick = () => { _selected.clear(); _renderList(); _renderBulkBar(); };
+  }
+
+  async function _deleteSelected() {
+    const ids = [..._selected];
+    _scripts = _scripts.filter(x => !ids.includes(x.id));
+    _selected.clear();
+    _renderList();
+    _renderBulkBar();
+    await Promise.all(ids.map(id => _scriptsRef().doc(id).delete()));
   }
 
   // ── Bind events ─────────────────────────────────────────────────────────
@@ -87,8 +180,26 @@ const ScriptCopier = (() => {
 
     // List delegated
     document.getElementById('script-list')?.addEventListener('click', e => {
-      const sid = e.target.dataset.id;
+      const sid = e.target.dataset.id || e.target.closest('[data-script-id]')?.dataset.scriptId;
       const cid = e.target.dataset.clip;
+
+      // Folder toggle
+      if (e.target.classList.contains('folder-toggle') || e.target.closest('.folder-toggle')) {
+        const el = e.target.classList.contains('folder-toggle') ? e.target : e.target.closest('.folder-toggle');
+        const key = el.dataset.folderKey;
+        const scriptId = el.dataset.scriptId;
+        if (!_openFolders[scriptId]) _openFolders[scriptId] = {};
+        _openFolders[scriptId][key] = !_openFolders[scriptId][key];
+        _renderList();
+        return;
+      }
+
+      if (e.target.classList.contains('script-select-cb')) {
+        const id = e.target.dataset.id;
+        if (e.target.checked) _selected.add(id); else _selected.delete(id);
+        _renderBulkBar();
+        return;
+      }
       if (e.target.classList.contains('script-copy-btn')) _copyClip(sid, cid);
       if (e.target.classList.contains('script-float-open-btn')) _toggleFloat(true);
       if (e.target.classList.contains('script-edit-btn')) _showEditForm(sid);

@@ -2404,3 +2404,93 @@ kbd {
   color: var(--text-muted);
   line-height: 1.5;
 }
+
+/* ── Script Copier — folders ─────────────────────────────────────────────── */
+.script-folder {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 4px;
+}
+
+.script-folder-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  cursor: pointer;
+  background: rgba(255,255,255,0.03);
+  transition: background 0.15s;
+  user-select: none;
+}
+.script-folder-header:hover { background: rgba(57,255,20,0.07); }
+
+.script-folder-arrow {
+  font-size: 0.75rem;
+  color: var(--accent);
+  width: 12px;
+  flex-shrink: 0;
+}
+
+.script-folder-name {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text);
+  flex: 1;
+}
+
+.script-folder-count {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  background: rgba(255,255,255,0.06);
+  border-radius: 10px;
+  padding: 1px 7px;
+}
+
+.script-folder-clips {
+  flex-direction: column;
+  gap: 0;
+  border-top: 1px solid var(--border);
+}
+
+.script-folder-clips .script-clip {
+  border-radius: 0;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  padding: 8px 12px;
+}
+.script-folder-clips .script-clip:last-child { border-bottom: none; }
+
+/* ── Script bulk select bar ──────────────────────────────────────────────── */
+.script-bulk-bar {
+  display: none;
+  align-items: center;
+  gap: 10px;
+  background: rgba(233,40,69,0.12);
+  border: 1px solid #e92845;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 0.82rem;
+  color: var(--text);
+  margin-bottom: 8px;
+}
+.script-bulk-bar span { flex: 1; font-weight: 600; }
+.script-bulk-del-btn {
+  background: #e92845;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 4px 12px;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+.script-bulk-clear-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+.script-select-cb { accent-color: var(--accent); width: 15px; height: 15px; cursor: pointer; flex-shrink: 0; }
