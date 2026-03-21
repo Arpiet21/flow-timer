@@ -175,6 +175,7 @@
       <button class="mode-btn active" id="btn-work-timer" onclick="switchTimerType('work')">⏱ Work Timer</button>
       <button class="mode-btn" id="btn-workout-timer" onclick="switchTimerType('workout')">💪 Workout Timer</button>
       <button class="mode-btn" id="btn-tasks" onclick="switchTimerType('tasks')">✅ Tasks</button>
+      <button class="mode-btn" id="btn-video" onclick="switchTimerType('video')">🎬 Video</button>
     </div>
 
     <!-- ── Work Timer Section ─────────────────────────────────────────────── -->
@@ -826,6 +827,11 @@
         <div id="week-grid" class="week-grid"></div>
       </div>
 
+    </div><!-- /#task-section -->
+
+    <!-- ── Video Creation Section ────────────────────────────────────────── -->
+    <div id="video-section" class="hidden">
+
       <!-- Script Copier Card -->
       <div class="card script-copier-card">
         <div class="script-copier-header">
@@ -880,7 +886,7 @@
         </div>
       </div>
 
-    </div><!-- /#task-section -->
+    </div><!-- /#video-section -->
 
     <!-- Import from ChatGPT Modal -->
     <div id="script-import-modal" class="script-import-modal" style="display:none">
@@ -1049,18 +1055,21 @@
       const isWork    = mode === 'work';
       const isWorkout = mode === 'workout';
       const isTasks   = mode === 'tasks';
+      const isVideo   = mode === 'video';
 
       document.getElementById('flow-section').classList.toggle('hidden', !isWork);
       document.getElementById('workout-section').classList.toggle('hidden', !isWorkout);
       document.getElementById('task-section').classList.toggle('hidden', !isTasks);
+      document.getElementById('video-section').classList.toggle('hidden', !isVideo);
 
-      // Hide heatmap card in Tasks tab (calendar replaces it)
+      // Hide heatmap card in Tasks or Video tab
       const heatmapEl = document.getElementById('heatmap-card');
-      if (heatmapEl) heatmapEl.style.display = isTasks ? 'none' : '';
+      if (heatmapEl) heatmapEl.style.display = (isTasks || isVideo) ? 'none' : '';
 
       document.getElementById('btn-work-timer').classList.toggle('active', isWork);
       document.getElementById('btn-workout-timer').classList.toggle('active', isWorkout);
       document.getElementById('btn-tasks').classList.toggle('active', isTasks);
+      document.getElementById('btn-video').classList.toggle('active', isVideo);
 
       // Auto-pause running timers when switching away
       if (!isWorkout && typeof wo !== 'undefined' && wo.status === 'running') woPause();
@@ -1073,12 +1082,12 @@
       // Sync floating widget
       if (typeof syncPip === 'function') syncPip();
 
-      // Re-render heatmap / tasks
-      if (!isTasks && typeof renderActivityHeatmap === 'function') renderActivityHeatmap();
+      // Re-render heatmap / tasks / video
+      if (!isTasks && !isVideo && typeof renderActivityHeatmap === 'function') renderActivityHeatmap();
       if (isTasks && typeof TaskManager !== 'undefined') TaskManager.init();
       if (isTasks && typeof BrainDump !== 'undefined') BrainDump.init();
       if (isTasks && typeof WeekPlanner !== 'undefined') WeekPlanner.init();
-      if (isTasks && typeof ScriptCopier !== 'undefined') ScriptCopier.init();
+      if (isVideo && typeof ScriptCopier !== 'undefined') ScriptCopier.init();
     }
   </script>
 </body>
