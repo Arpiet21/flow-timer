@@ -836,10 +836,13 @@
           <button class="script-float-toggle" id="script-float-btn" title="Open floating panel">⧉ Float</button>
         </div>
 
-        <!-- Add trigger -->
-        <button class="task-add-trigger" id="script-add-trigger">
-          <span class="task-add-plus">+</span> Add a script…
-        </button>
+        <!-- Add trigger row -->
+        <div class="script-trigger-row">
+          <button class="task-add-trigger" id="script-add-trigger" style="flex:1">
+            <span class="task-add-plus">+</span> Add a script…
+          </button>
+          <button class="script-import-btn" id="script-import-btn" title="Import from ChatGPT">⬇ Import from ChatGPT</button>
+        </div>
 
         <!-- Add / Edit form -->
         <div class="script-add-form" id="script-add-form" style="display:none">
@@ -856,7 +859,7 @@
               <option value="Other" selected>Other / General</option>
             </select>
           </div>
-          <textarea id="script-content-input" class="task-field script-textarea" placeholder="Paste or type your video script / prompt here…" rows="5"></textarea>
+          <textarea id="script-content-input" class="task-field script-textarea" placeholder="Paste or type your first clip / prompt here…" rows="5"></textarea>
           <div class="task-form-actions">
             <button class="btn-accent-sm" id="script-submit-btn">Save Script</button>
             <button class="task-cancel-btn" id="script-cancel-btn">Cancel</button>
@@ -865,17 +868,47 @@
 
         <!-- Script list -->
         <div id="script-list" class="script-list"></div>
+
+        <!-- Add clip inline form (moved into list by JS) -->
+        <div id="script-clip-add-form" class="script-clip-add-form" style="display:none">
+          <input type="text" id="script-clip-name-input" class="task-field" placeholder="Clip name (e.g. Scene 2, Clip 3)…" maxlength="60">
+          <textarea id="script-clip-content-input" class="task-field script-textarea" placeholder="Paste clip / prompt here…" rows="4"></textarea>
+          <div class="task-form-actions">
+            <button class="btn-accent-sm" id="script-clip-add-save">Save Clip</button>
+            <button class="task-cancel-btn" id="script-clip-add-cancel">Cancel</button>
+          </div>
+        </div>
       </div>
 
     </div><!-- /#task-section -->
 
-    <!-- Script Copier Floating Panel -->
-    <div id="script-float-panel" class="script-float-panel" style="display:none">
-      <div class="float-script-header">
-        <span class="float-script-title-bar">🎬 Script Copier</span>
-        <button class="float-script-close" id="float-script-close">✕</button>
+    <!-- Import from ChatGPT Modal -->
+    <div id="script-import-modal" class="script-import-modal" style="display:none">
+      <div class="script-import-dialog">
+        <div class="script-import-dialog-header">
+          <span>⬇ Import from ChatGPT</span>
+          <button class="float-script-close" id="script-import-cancel">✕</button>
+        </div>
+        <p class="script-import-hint">Paste your full ChatGPT script below. If it has sections (Scene 1, Clip 1, Part 1…) they will be auto-split into separate clips.</p>
+        <input type="text" id="script-import-title" class="task-field" placeholder="Script title…" maxlength="100">
+        <div class="script-form-row" style="margin-top:6px">
+          <select id="script-import-model" class="task-select">
+            <option value="Sora">Sora</option>
+            <option value="Runway">Runway</option>
+            <option value="Kling">Kling</option>
+            <option value="Pika">Pika</option>
+            <option value="Luma">Luma</option>
+            <option value="Hailuo">Hailuo</option>
+            <option value="Vidu">Vidu</option>
+            <option value="Other" selected>Other / General</option>
+          </select>
+        </div>
+        <textarea id="script-import-text" class="task-field script-textarea" placeholder="Paste full ChatGPT output here…" rows="10" style="margin-top:8px"></textarea>
+        <div class="task-form-actions" style="margin-top:10px">
+          <button class="btn-accent-sm" id="script-import-submit">Import &amp; Split</button>
+          <button class="task-cancel-btn" id="script-import-cancel2">Cancel</button>
+        </div>
       </div>
-      <div id="float-script-list" class="float-script-list"></div>
     </div>
 
     <!-- ── Activity Heatmap ──────────────────────────────────────────────── -->
