@@ -13,7 +13,7 @@ const ScriptCopier = (() => {
   async function init() {
     const user = Auth.getUser();
     if (!user) return;
-    _uid = user.uid;
+    _uid = user.uid || user.id;
     await _load();
     _renderList();
     _bindEvents();
