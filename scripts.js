@@ -200,6 +200,26 @@ const ScriptCopier = (() => {
 
       // Format: { scenes: [ { scene_id, clips: [ { id, prompt, duration } ] } ] }
       if (json.scenes && Array.isArray(json.scenes)) {
+        // Build global style block to append to every clip
+        let globalStyleBlock = '';
+        if (json.global_style) {
+          const gs = json.global_style;
+          const lines = ['--- GLOBAL STYLE ---'];
+          if (gs.cinematic_style)  lines.push(`Cinematic Style: ${gs.cinematic_style}`);
+          if (gs.camera)           lines.push(`Camera: ${gs.camera}`);
+          if (gs.lighting)         lines.push(`Lighting: ${gs.lighting}`);
+          if (gs.color_grade)      lines.push(`Color Grade: ${gs.color_grade}`);
+          if (gs.resolution)       lines.push(`Resolution: ${gs.resolution}`);
+          if (gs.texture)          lines.push(`Texture: ${gs.texture}`);
+          if (gs.music_theme)      lines.push(`Music: ${gs.music_theme}`);
+          if (gs.factory_type)     lines.push(`Factory: ${gs.factory_type}`);
+          if (gs.character_consistency) {
+            const cc = gs.character_consistency;
+            Object.entries(cc).forEach(([k, v]) => lines.push(`Character (${k}): ${v}`));
+          }
+          globalStyleBlock = '\n\n' + lines.join('\n');
+        }
+
         json.scenes.forEach(scene => {
           const sceneLabel = scene.scene_id || scene.id || 'Scene';
           if (scene.clips && Array.isArray(scene.clips)) {
@@ -207,16 +227,16 @@ const ScriptCopier = (() => {
               const name = `${sceneLabel} — ${clip.id || ''}`.trim().replace(/—\s*$/, '');
               const content = clip.prompt || clip.content || clip.text || JSON.stringify(clip);
               const extras = [
-                clip.duration   ? `Duration: ${clip.duration}` : '',
-                clip.motion     ? `Motion: ${clip.motion}` : '',
-                scene.style_override ? `Style: ${scene.style_override}` : ''
+                clip.duration        ? `Duration: ${clip.duration}` : '',
+                clip.motion          ? `Motion: ${clip.motion}` : '',
+                scene.style_override ? `Style Override: ${scene.style_override}` : ''
               ].filter(Boolean).join('\n');
-              clips.push({ id: crypto.randomUUID(), name, content: extras ? `${content}\n\n${extras}` : content });
+              const full = [content, extras, globalStyleBlock.trim()].filter(Boolean).join('\n\n');
+              clips.push({ id: crypto.randomUUID(), name, content: full });
             });
           } else {
-            // Scene has no sub-clips
             const content = scene.prompt || scene.description || JSON.stringify(scene);
-            clips.push({ id: crypto.randomUUID(), name: sceneLabel, content });
+            clips.push({ id: crypto.randomUUID(), name: sceneLabel, content: content + globalStyleBlock });
           }
         });
         if (clips.length) return clips;
