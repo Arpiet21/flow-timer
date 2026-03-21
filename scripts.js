@@ -191,10 +191,55 @@ const ScriptCopier = (() => {
     _hideImport();
   }
 
-  // Auto-detect section headers and split into clips
+  // Auto-detect format and split into clips
   function _parseClips(text) {
-    // Detect common headers: "Scene 1", "Clip 1:", "Part 1", "Section 1", "1.", "**Scene"
-    const headerRe = /^(?:\*{0,2}(?:scene|clip|part|section|shot|act)\s*\d+[:\.\-\s]|\d+[\.\)]\s+\S)/im;
+    // ── Try JSON first ──────────────────────────────────────────────────────
+    try {
+      const json = JSON.parse(text);
+      const clips = [];
+
+      // Format: { scenes: [ { scene_id, clips: [ { id, prompt, duration } ] } ] }
+      if (json.scenes && Array.isArray(json.scenes)) {
+        json.scenes.forEach(scene => {
+          const sceneLabel = scene.scene_id || scene.id || 'Scene';
+          if (scene.clips && Array.isArray(scene.clips)) {
+            scene.clips.forEach(clip => {
+              const name = `${sceneLabel} — ${clip.id || ''}`.trim().replace(/—\s*$/, '');
+              const content = clip.prompt || clip.content || clip.text || JSON.stringify(clip);
+              const extras = [
+                clip.duration   ? `Duration: ${clip.duration}` : '',
+                clip.motion     ? `Motion: ${clip.motion}` : '',
+                scene.style_override ? `Style: ${scene.style_override}` : ''
+              ].filter(Boolean).join('\n');
+              clips.push({ id: crypto.randomUUID(), name, content: extras ? `${content}\n\n${extras}` : content });
+            });
+          } else {
+            // Scene has no sub-clips
+            const content = scene.prompt || scene.description || JSON.stringify(scene);
+            clips.push({ id: crypto.randomUUID(), name: sceneLabel, content });
+          }
+        });
+        if (clips.length) return clips;
+      }
+
+      // Format: { clips: [ { id, prompt } ] }
+      if (json.clips && Array.isArray(json.clips)) {
+        json.clips.forEach((clip, i) => {
+          const name = clip.id || clip.name || `Clip ${i + 1}`;
+          const content = clip.prompt || clip.content || clip.text || JSON.stringify(clip);
+          clips.push({ id: crypto.randomUUID(), name, content });
+        });
+        if (clips.length) return clips;
+      }
+
+      // Generic JSON — save as single clip (pretty-printed)
+      return [{ id: crypto.randomUUID(), name: 'Clip 1', content: JSON.stringify(json, null, 2) }];
+
+    } catch (_) {
+      // Not JSON — fall through to text parsing
+    }
+
+    // ── Text: split by section headers ─────────────────────────────────────
     const lines = text.split('\n');
     const sections = [];
     let cur = null;
@@ -214,7 +259,6 @@ const ScriptCopier = (() => {
     if (cur) sections.push(cur);
 
     if (sections.length <= 1) {
-      // No sections detected — save as single clip
       return [{ id: crypto.randomUUID(), name: 'Clip 1', content: text.trim() }];
     }
 
