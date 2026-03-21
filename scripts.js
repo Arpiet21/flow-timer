@@ -97,23 +97,9 @@ const ScriptCopier = (() => {
       };
     }
 
-    // Floating panel
+    // Float button — opens Document PiP window
     const floatBtn = document.getElementById('script-float-btn');
     if (floatBtn) floatBtn.onclick = () => _toggleFloat();
-
-    const floatClose = document.getElementById('float-script-close');
-    if (floatClose) floatClose.onclick = () => _closeFloat();
-
-    const floatList = document.getElementById('float-script-list');
-    if (floatList) {
-      floatList.onclick = e => {
-        const id = e.target.dataset.id;
-        if (id && e.target.classList.contains('script-copy-btn')) _copyScript(id);
-      };
-    }
-
-    // Drag to move floating panel
-    _makeDraggable(document.getElementById('script-float-panel'));
   }
 
   function _showForm(script = null) {
@@ -161,7 +147,6 @@ const ScriptCopier = (() => {
       if (idx !== -1) {
         _scripts[idx] = { ..._scripts[idx], title, content, model };
         _renderList();
-        _renderFloatList();
         await _scriptsRef().doc(_editingId).update({ title, content, model });
       }
     } else {
@@ -170,7 +155,6 @@ const ScriptCopier = (() => {
       const row = { id, title, content, model, created_at: new Date().toISOString() };
       _scripts.unshift(row);
       _renderList();
-      _renderFloatList();
       await _scriptsRef().doc(id).set(row);
     }
     _hideForm();
@@ -202,54 +186,103 @@ const ScriptCopier = (() => {
     });
   }
 
+  let _pipWin = null;
+
   function _openFloat(id) {
-    // Scroll to the script in float panel and open it
     _toggleFloat(true);
-    setTimeout(() => {
-      const el = document.querySelector(`#float-script-list [data-id="${id}"]`);
-      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }, 100);
   }
 
-  function _toggleFloat(forceOpen = false) {
-    const panel = document.getElementById('script-float-panel');
-    if (!panel) return;
-    const isOpen = panel.style.display !== 'none' && panel.style.display !== '';
-    if (forceOpen || !isOpen) {
-      panel.style.display = 'flex';
-      _renderFloatList();
+  async function _toggleFloat(forceOpen = false) {
+    // If PiP window already open, close it (toggle)
+    if (_pipWin && !forceOpen) {
+      _pipWin.close();
+      _pipWin = null;
+      return;
+    }
+    if (_pipWin) return; // already open
+
+    if ('documentPictureInPicture' in window) {
+      try {
+        _pipWin = await window.documentPictureInPicture.requestWindow({ width: 300, height: 420 });
+        const style = _pipWin.document.createElement('style');
+        style.textContent = SCRIPT_PIP_STYLES;
+        _pipWin.document.head.appendChild(style);
+        _pipWin.document.body.innerHTML = _buildPipHtml();
+        _pipWin.document.body.onclick = e => {
+          const id = e.target.dataset.id;
+          if (id && e.target.classList.contains('pip-copy-btn')) {
+            const s = _scripts.find(x => x.id === id);
+            if (s) {
+              // Copy via parent window clipboard
+              navigator.clipboard.writeText(s.content).then(() => {
+                e.target.textContent = 'Copied!';
+                e.target.style.background = '#39ff14';
+                e.target.style.color = '#000';
+                setTimeout(() => { e.target.textContent = 'Copy'; e.target.style.background = ''; e.target.style.color = ''; }, 1500);
+              });
+            }
+          }
+        };
+        _pipWin.addEventListener('pagehide', () => { _pipWin = null; });
+      } catch (_) { _fallbackPopup(); }
     } else {
-      panel.style.display = 'none';
+      _fallbackPopup();
     }
   }
 
-  function _closeFloat() {
-    const panel = document.getElementById('script-float-panel');
-    if (panel) panel.style.display = 'none';
-  }
-
-  function _makeDraggable(el) {
-    if (!el) return;
-    let ox = 0, oy = 0, mx = 0, my = 0;
-    const header = el.querySelector('.float-script-header');
-    if (!header) return;
-    header.style.cursor = 'grab';
-    header.onmousedown = e => {
-      e.preventDefault();
-      mx = e.clientX; my = e.clientY;
-      document.onmousemove = drag;
-      document.onmouseup = () => { document.onmousemove = null; document.onmouseup = null; header.style.cursor = 'grab'; };
-      header.style.cursor = 'grabbing';
+  function _fallbackPopup() {
+    const w = window.open('', 'script-copier-pip', 'width=300,height=420,resizable=yes,scrollbars=yes,toolbar=no,menubar=no,location=no');
+    if (!w) return;
+    w.document.write(`<!DOCTYPE html><html><head><style>${SCRIPT_PIP_STYLES}</style></head><body>${_buildPipHtml()}</body></html>`);
+    w.document.close();
+    w.document.body.onclick = e => {
+      const id = e.target.dataset.id;
+      if (id && e.target.classList.contains('pip-copy-btn')) {
+        const s = _scripts.find(x => x.id === id);
+        if (s) {
+          navigator.clipboard.writeText(s.content).then(() => {
+            e.target.textContent = 'Copied!';
+            setTimeout(() => { e.target.textContent = 'Copy'; }, 1500);
+          });
+        }
+      }
     };
-    function drag(e) {
-      ox = mx - e.clientX; oy = my - e.clientY;
-      mx = e.clientX; my = e.clientY;
-      el.style.top  = (el.offsetTop - oy) + 'px';
-      el.style.left = (el.offsetLeft - ox) + 'px';
-      el.style.right = 'auto';
-      el.style.bottom = 'auto';
-    }
   }
+
+  function _buildPipHtml() {
+    if (!_scripts.length) return '<div class="pip-empty">No scripts saved yet.</div>';
+    return _scripts.map(s => `
+      <div class="pip-script-item">
+        <div class="pip-script-top">
+          <span class="pip-script-title">${_esc(s.title)}</span>
+          <span class="pip-model-tag">${_esc(s.model || 'General')}</span>
+        </div>
+        <div class="pip-script-preview">${_esc(s.content).substring(0, 90)}${s.content.length > 90 ? '…' : ''}</div>
+        <button class="pip-copy-btn" data-id="${s.id}">Copy</button>
+      </div>
+    `).join('');
+  }
+
+const SCRIPT_PIP_STYLES = `
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Segoe UI',system-ui,sans-serif;background:#1a1a2e;color:#eaeaea;
+    padding:10px;display:flex;flex-direction:column;gap:8px;overflow-y:auto;height:100vh}
+  .pip-header{font-size:.75rem;font-weight:700;color:#39ff14;letter-spacing:.5px;padding-bottom:6px;
+    border-bottom:1px solid #2a2a4a;margin-bottom:2px}
+  .pip-script-item{background:#16213e;border:1px solid #2a2a4a;border-radius:8px;padding:8px 10px;
+    display:flex;flex-direction:column;gap:4px}
+  .pip-script-top{display:flex;align-items:center;gap:6px}
+  .pip-script-title{font-weight:600;font-size:.82rem;flex:1;white-space:nowrap;
+    overflow:hidden;text-overflow:ellipsis}
+  .pip-model-tag{background:#39ff14;color:#000;font-size:.62rem;font-weight:700;
+    border-radius:4px;padding:1px 6px;white-space:nowrap}
+  .pip-script-preview{font-size:.72rem;color:#888;line-height:1.4}
+  .pip-copy-btn{align-self:flex-end;background:transparent;border:1px solid #2a2a4a;
+    color:#888;border-radius:5px;padding:3px 10px;font-size:.72rem;cursor:pointer;
+    transition:border-color .15s,color .15s}
+  .pip-copy-btn:hover{border-color:#39ff14;color:#39ff14}
+  .pip-empty{color:#888;font-size:.8rem;text-align:center;padding:20px 0}
+`;
 
   function _esc(str) {
     return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
