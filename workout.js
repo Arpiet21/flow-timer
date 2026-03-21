@@ -564,21 +564,10 @@ function woLogCompletion() {
     (wo.settings.rounds * (wo.settings.workSecs + wo.settings.restSecs) + wo.settings.prepareSecs) / 60
   ) || 1;
 
-  // Log to Supabase (linked to user ID)
+  // Log to Firebase Firestore only
   if (typeof Auth !== 'undefined' && Auth.isLoggedIn()) {
     Auth.logSession('workout', totalMins);
   }
-
-  // Also keep localStorage as offline fallback
-  try {
-    const history = JSON.parse(localStorage.getItem('flow-workout-history') || '[]');
-    history.unshift({
-      preset: wo.preset,
-      rounds: wo.settings.rounds,
-      completedAt: new Date().toISOString()
-    });
-    localStorage.setItem('flow-workout-history', JSON.stringify(history.slice(0, 500)));
-  } catch (_) {}
 }
 
 window.addEventListener('DOMContentLoaded', woInit);

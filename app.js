@@ -129,9 +129,9 @@ function onTimerEnd() {
   sendNotification();
 
   if (state.mode === 'work') {
-    // Log to Supabase
+    // Log to Firebase Firestore
     if (typeof Auth !== 'undefined' && Auth.isLoggedIn()) {
-      Auth.logSession(state.mode, state.settings.work);
+      Auth.logSession(state.mode, state.settings.work, state.task);
     }
     // Save to local history
     addLocalHistory(state.mode, state.settings.work, state.task);
@@ -420,30 +420,32 @@ function toggleTheme() {
   renderActivityHeatmap();
 }
 
-// ─── History ──────────────────────────────────────────────────────────────────
+// ─── History (Firebase only) ───────────────────────────────────────────────────
 function addLocalHistory(mode, minutes, task) {
-  const history = getLocalHistory();
-  history.unshift({
-    mode, minutes, task: task || '',
-    completedAt: new Date().toISOString()
-  });
-  localStorage.setItem('flow-timer-history', JSON.stringify(history.slice(0, 100)));
+  // Session is already written to Firestore via Auth.logSession() — nothing to do here
 }
 
-function getLocalHistory() {
-  try { return JSON.parse(localStorage.getItem('flow-timer-history') || '[]'); }
-  catch (_) { return []; }
-}
-
-function loadHistory() {
+async function loadHistory() {
   const list = document.getElementById('history-list');
   if (!list) return;
-  const history = getLocalHistory();
 
-  if (!history.length) {
+  let sessions = [];
+  if (typeof Auth !== 'undefined' && Auth.isLoggedIn()) {
+    sessions = await Auth.getSessions();
+  }
+
+  if (!sessions.length) {
     list.innerHTML = '<p class="history-empty">No sessions yet. Start your first session!</p>';
     return;
   }
+
+  // Normalise field names (Firestore uses completed_at / duration_minutes)
+  const history = sessions.map(s => ({
+    mode:        s.mode,
+    minutes:     s.duration_minutes,
+    task:        s.task || '',
+    completedAt: s.completed_at
+  }));
 
   // Group by date
   const grouped = {};
@@ -460,7 +462,7 @@ function loadHistory() {
         <div class="history-item history-${h.mode}">
           <div class="history-item-left">
             <span class="history-mode-dot"></span>
-            <span class="history-mode-label">${h.mode === 'work' ? 'Focus' : h.mode === 'short' ? 'Short Break' : 'Long Break'}</span>
+            <span class="history-mode-label">${h.mode === 'work' ? 'Focus' : h.mode === 'short' ? 'Short Break' : h.mode === 'workout' ? 'Workout' : 'Long Break'}</span>
             ${h.task ? `<span class="history-task">"${h.task}"</span>` : ''}
           </div>
           <div class="history-item-right">
@@ -1192,12 +1194,12 @@ function registerServiceWorker() {
 function _checkPwaInstallPrompt() {
   if (!_pwaPrompt) return;
   if (localStorage.getItem('flow-pwa-dismissed')) return;
-  // Count total completed work sessions
-  try {
-    const h = JSON.parse(localStorage.getItem('flow-timer-history') || '[]');
-    const workCount = h.filter(e => e.mode === 'work').length;
-    if (workCount >= 3) _showPwaBanner();
-  } catch (_) {}
+  // Count sessions from Firestore
+  if (typeof Auth !== 'undefined' && Auth.isLoggedIn()) {
+    Auth.getSessions().then(sessions => {
+      if (sessions.filter(s => s.mode === 'work').length >= 3) _showPwaBanner();
+    }).catch(() => {});
+  }
 }
 
 function _showPwaBanner() {
@@ -1267,26 +1269,24 @@ function renderActivityHeatmap() {
   const isWorkout = window.activeTimerMode === 'workout';
   const sbMode    = isWorkout ? 'workout' : 'work';
 
-  // Try Supabase first; fall back to localStorage
+  // Firebase only — no localStorage fallback
   if (typeof Auth !== 'undefined' && Auth.isLoggedIn()) {
-    // Check if team view is active
     const teamMode = document.getElementById('heatmap-team-toggle')?.dataset.team === '1';
     if (teamMode && window._currentTeam) {
       Auth.getTeamActivity(window._currentTeam.id, sbMode).then(counts => {
-        _drawHeatmap(counts, isWorkout, true);
+        _drawHeatmap(counts || {}, isWorkout, true);
       });
     } else {
       Promise.all([
         Auth.getHeatmapData(sbMode),
         Auth.getStreak(sbMode)
       ]).then(([counts, streak]) => {
-        _drawHeatmap(counts || _localHeatmapCounts(isWorkout), isWorkout);
+        _drawHeatmap(counts || {}, isWorkout);
         _renderStreak(streak);
       });
     }
   } else {
-    _drawHeatmap(_localHeatmapCounts(isWorkout), isWorkout);
-    _renderStreak(_localStreak(isWorkout));
+    _drawHeatmap({}, isWorkout);
   }
 }
 
@@ -1298,44 +1298,6 @@ function _renderStreak(streak) {
   el.textContent = `🔥 ${streak} day streak`;
 }
 
-function _localStreak(isWorkout) {
-  try {
-    const key = isWorkout ? 'flow-workout-history' : 'flow-timer-history';
-    const h = JSON.parse(localStorage.getItem(key) || '[]');
-    const filter = isWorkout ? () => true : e => e.mode === 'work';
-    const days = new Set(h.filter(filter).map(e => e.completedAt?.slice(0, 10)).filter(Boolean));
-    const cur = new Date();
-    cur.setHours(0, 0, 0, 0);
-    const todayStr = cur.toISOString().slice(0, 10);
-    if (!days.has(todayStr)) cur.setDate(cur.getDate() - 1);
-    let streak = 0;
-    while (days.has(cur.toISOString().slice(0, 10))) {
-      streak++;
-      cur.setDate(cur.getDate() - 1);
-    }
-    return streak;
-  } catch (_) { return 0; }
-}
-
-function _localHeatmapCounts(isWorkout) {
-  const counts = {};
-  try {
-    if (isWorkout) {
-      const h = JSON.parse(localStorage.getItem('flow-workout-history') || '[]');
-      h.forEach(e => {
-        const d = e.completedAt?.slice(0, 10);
-        if (d) counts[d] = (counts[d] || 0) + 1;
-      });
-    } else {
-      const h = JSON.parse(localStorage.getItem('flow-timer-history') || '[]');
-      h.filter(e => e.mode === 'work').forEach(e => {
-        const d = e.completedAt?.slice(0, 10);
-        if (d) counts[d] = (counts[d] || 0) + 1;
-      });
-    }
-  } catch (_) {}
-  return counts;
-}
 
 function _drawHeatmap(counts, isWorkout) {
   const grid      = document.getElementById('heatmap-grid');

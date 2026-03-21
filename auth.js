@@ -184,11 +184,12 @@ const Auth = {
   },
 
   // ── Session history ──────────────────────────────────────────────────────
-  async logSession(mode, durationMinutes) {
+  async logSession(mode, durationMinutes, task = '') {
     if (!this._user) return;
     await _db.collection('users').doc(this._user.id).collection('sessions').add({
       mode,
       duration_minutes: durationMinutes,
+      task: task || '',
       completed_at: new Date().toISOString()
     });
   },
