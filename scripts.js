@@ -253,12 +253,30 @@ const ScriptCopier = (() => {
         if (clips.length) return clips;
       }
 
-      // Format: { clips: [ { id, prompt } ] }
-      if (json.clips && Array.isArray(json.clips)) {
-        json.clips.forEach((clip, i) => {
-          const name = clip.id || clip.name || `Clip ${i + 1}`;
-          const content = clip.prompt || clip.content || clip.text || JSON.stringify(clip);
-          clips.push({ id: crypto.randomUUID(), name, content });
+      // Format: { shots/clips/frames: [ { id, prompt } ] } — flat array
+      const flatArray = json.shots || json.clips || json.frames || json.prompts;
+      if (flatArray && Array.isArray(flatArray)) {
+        // Global style clip first
+        if (json.global_style) {
+          clips.push({
+            id: crypto.randomUUID(),
+            name: '🎨 Global Style',
+            content: JSON.stringify({ global_style: json.global_style }, null, 2)
+          });
+          globalStyleBlock = Object.entries(json.global_style)
+            .map(([k, v]) => typeof v === 'object' ? Object.entries(v).map(([k2,v2]) => `${k} (${k2}): ${v2}`).join('\n') : `${k}: ${v}`)
+            .join('\n');
+        }
+        flatArray.forEach((shot, i) => {
+          const name = shot.id || shot.name || `Shot ${i + 1}`;
+          const payload = {};
+          if (shot.id)       payload.shot_id  = shot.id;
+          if (shot.duration) payload.duration = shot.duration;
+          if (shot.motion)   payload.motion   = shot.motion;
+          if (shot.mood)     payload.mood     = shot.mood;
+          if (shot.prompt)   payload.prompt   = shot.prompt;
+          if (json.global_style) payload.global_style = json.global_style;
+          clips.push({ id: crypto.randomUUID(), name, content: JSON.stringify(payload, null, 2) });
         });
         if (clips.length) return clips;
       }
