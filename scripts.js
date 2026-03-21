@@ -138,6 +138,9 @@ const ScriptCopier = (() => {
   function _hideForm() {
     document.getElementById('script-add-form').style.display = 'none';
     document.getElementById('script-add-trigger').style.display = 'flex';
+    document.getElementById('script-title-input').value = '';
+    document.getElementById('script-content-input').value = '';
+    document.getElementById('script-model-select').value = 'Other';
     _editingId = null;
   }
 
