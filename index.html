@@ -826,7 +826,57 @@
         <div id="week-grid" class="week-grid"></div>
       </div>
 
+      <!-- Script Copier Card -->
+      <div class="card script-copier-card">
+        <div class="script-copier-header">
+          <div>
+            <span class="task-section-title">🎬 Script Copier</span>
+            <span class="task-section-hint">Save &amp; copy scripts for any video AI model</span>
+          </div>
+          <button class="script-float-toggle" id="script-float-btn" title="Open floating panel">⧉ Float</button>
+        </div>
+
+        <!-- Add trigger -->
+        <button class="task-add-trigger" id="script-add-trigger">
+          <span class="task-add-plus">+</span> Add a script…
+        </button>
+
+        <!-- Add / Edit form -->
+        <div class="script-add-form" id="script-add-form" style="display:none">
+          <input type="text" id="script-title-input" class="task-field" placeholder="Script title…" maxlength="100">
+          <div class="script-form-row">
+            <select id="script-model-select" class="task-select">
+              <option value="Sora">Sora</option>
+              <option value="Runway">Runway</option>
+              <option value="Kling">Kling</option>
+              <option value="Pika">Pika</option>
+              <option value="Luma">Luma</option>
+              <option value="Hailuo">Hailuo</option>
+              <option value="Vidu">Vidu</option>
+              <option value="Other" selected>Other / General</option>
+            </select>
+          </div>
+          <textarea id="script-content-input" class="task-field script-textarea" placeholder="Paste or type your video script / prompt here…" rows="5"></textarea>
+          <div class="task-form-actions">
+            <button class="btn-accent-sm" id="script-submit-btn">Save Script</button>
+            <button class="task-cancel-btn" id="script-cancel-btn">Cancel</button>
+          </div>
+        </div>
+
+        <!-- Script list -->
+        <div id="script-list" class="script-list"></div>
+      </div>
+
     </div><!-- /#task-section -->
+
+    <!-- Script Copier Floating Panel -->
+    <div id="script-float-panel" class="script-float-panel" style="display:none">
+      <div class="float-script-header">
+        <span class="float-script-title-bar">🎬 Script Copier</span>
+        <button class="float-script-close" id="float-script-close">✕</button>
+      </div>
+      <div id="float-script-list" class="float-script-list"></div>
+    </div>
 
     <!-- ── Activity Heatmap ──────────────────────────────────────────────── -->
     <div class="card heatmap-card" id="heatmap-card">
@@ -955,6 +1005,7 @@
   <script src="app.js"></script>
   <script src="workout.js"></script>
   <script src="tasks.js"></script>
+  <script src="scripts.js"></script>
   <script>
     document.getElementById('signout-btn').addEventListener('click', () => Auth.signOut());
 
@@ -994,6 +1045,7 @@
       if (isTasks && typeof TaskManager !== 'undefined') TaskManager.init();
       if (isTasks && typeof BrainDump !== 'undefined') BrainDump.init();
       if (isTasks && typeof WeekPlanner !== 'undefined') WeekPlanner.init();
+      if (isTasks && typeof ScriptCopier !== 'undefined') ScriptCopier.init();
     }
   </script>
 </body>
