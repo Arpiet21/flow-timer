@@ -2494,3 +2494,11 @@ kbd {
   cursor: pointer;
 }
 .script-select-cb { accent-color: var(--accent); width: 15px; height: 15px; cursor: pointer; flex-shrink: 0; }
+
+/* ── Script item as collapsible folder ───────────────────────────────────── */
+.script-item-toggle {
+  cursor: pointer;
+  user-select: none;
+  gap: 8px;
+}
+.script-item-toggle:hover { background: rgba(57,255,20,0.05); border-radius: 8px; }

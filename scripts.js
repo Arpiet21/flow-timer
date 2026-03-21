@@ -35,6 +35,8 @@ const ScriptCopier = (() => {
 
   // Track which folders are open: { scriptId: { folderKey: true } }
   const _openFolders = {};
+  // Track which scripts are expanded (collapsed by default)
+  const _openScripts = new Set();
   // Track selected scripts for bulk delete
   const _selected = new Set();
 
@@ -70,68 +72,41 @@ const ScriptCopier = (() => {
       return;
     }
     list.innerHTML = _scripts.map(s => {
-      const { groups, order } = _groupClips(s.clips || []);
-      if (!_openFolders[s.id]) _openFolders[s.id] = {};
+      const isExpanded = _openScripts.has(s.id);
+      const clips = s.clips || [];
 
-      const foldersHtml = order.map(key => {
-        const clipsInGroup = groups[key];
-        const isOpen = !!_openFolders[s.id][key];
-        const isSingle = clipsInGroup.length === 1 && key === (clipsInGroup[0].name || '');
-
-        // If only 1 clip and no grouping, render flat (no folder wrapper)
-        if (isSingle) {
-          const c = clipsInGroup[0];
-          return `
-            <div class="script-clip" data-clip-id="${c.id}" data-script-id="${s.id}">
-              <div class="script-clip-header">
-                <span class="script-clip-name">${_esc(c.name)}</span>
-                <div class="script-clip-actions">
-                  <button class="script-copy-btn" data-id="${s.id}" data-clip="${c.id}">Copy</button>
-                  <button class="script-clip-del-btn" data-id="${s.id}" data-clip="${c.id}">✕</button>
-                </div>
-              </div>
-              <div class="script-clip-preview">${_esc(c.content).substring(0, 100)}${c.content.length > 100 ? '…' : ''}</div>
-            </div>`;
-        }
-
-        return `
-          <div class="script-folder ${isOpen ? 'open' : ''}" data-folder-key="${_esc(key)}" data-script-id="${s.id}">
-            <div class="script-folder-header folder-toggle" data-folder-key="${_esc(key)}" data-script-id="${s.id}">
-              <span class="script-folder-arrow">${isOpen ? '▾' : '▸'}</span>
-              <span class="script-folder-name">${_esc(key)}</span>
-              <span class="script-folder-count">${clipsInGroup.length} clip${clipsInGroup.length > 1 ? 's' : ''}</span>
+      const clipsHtml = clips.map(c => `
+        <div class="script-clip" data-clip-id="${c.id}" data-script-id="${s.id}">
+          <div class="script-clip-header">
+            <span class="script-clip-name">${_esc(c.name)}</span>
+            <div class="script-clip-actions">
+              <button class="script-copy-btn" data-id="${s.id}" data-clip="${c.id}">Copy</button>
+              <button class="script-clip-del-btn" data-id="${s.id}" data-clip="${c.id}">✕</button>
             </div>
-            <div class="script-folder-clips" style="display:${isOpen ? 'flex' : 'none'}">
-              ${clipsInGroup.map(c => `
-                <div class="script-clip" data-clip-id="${c.id}" data-script-id="${s.id}">
-                  <div class="script-clip-header">
-                    <span class="script-clip-name">${_esc(c.name)}</span>
-                    <div class="script-clip-actions">
-                      <button class="script-copy-btn" data-id="${s.id}" data-clip="${c.id}">Copy</button>
-                      <button class="script-clip-del-btn" data-id="${s.id}" data-clip="${c.id}">✕</button>
-                    </div>
-                  </div>
-                  <div class="script-clip-preview">${_esc(c.content).substring(0, 100)}${c.content.length > 100 ? '…' : ''}</div>
-                </div>
-              `).join('')}
-            </div>
-          </div>`;
-      }).join('');
+          </div>
+          <div class="script-clip-preview">${_esc(c.content).substring(0, 100)}${c.content.length > 100 ? '…' : ''}</div>
+        </div>
+      `).join('');
 
       return `
         <div class="script-item" data-id="${s.id}">
-          <div class="script-item-header">
+          <div class="script-item-header script-item-toggle" data-id="${s.id}">
             <input type="checkbox" class="script-select-cb" data-id="${s.id}" ${_selected.has(s.id) ? 'checked' : ''} title="Select">
+            <span class="script-folder-arrow">${isExpanded ? '▾' : '▸'}</span>
             <span class="script-item-title">${_esc(s.title)}</span>
             <span class="script-model-tag">${_esc(s.model || 'General')}</span>
+            <span class="script-folder-count">${clips.length} clip${clips.length !== 1 ? 's' : ''}</span>
           </div>
-          <div class="script-clips">${foldersHtml}</div>
+          <div class="script-clips" style="display:${isExpanded ? 'flex' : 'none'};flex-direction:column;gap:6px;padding-top:6px">
+            ${clipsHtml}
+          </div>
+          ${isExpanded ? `
           <div class="script-item-actions">
             <button class="script-addclip-btn" data-id="${s.id}">+ Add Clip</button>
             <button class="script-float-open-btn" data-id="${s.id}">Float</button>
             <button class="script-edit-btn" data-id="${s.id}">Edit</button>
             <button class="script-del-btn" data-id="${s.id}">Delete</button>
-          </div>
+          </div>` : ''}
         </div>`;
     }).join('');
   }
@@ -183,14 +158,15 @@ const ScriptCopier = (() => {
       const sid = e.target.dataset.id || e.target.closest('[data-script-id]')?.dataset.scriptId;
       const cid = e.target.dataset.clip;
 
-      // Folder toggle
-      if (e.target.classList.contains('folder-toggle') || e.target.closest('.folder-toggle')) {
-        const el = e.target.classList.contains('folder-toggle') ? e.target : e.target.closest('.folder-toggle');
-        const key = el.dataset.folderKey;
-        const scriptId = el.dataset.scriptId;
-        if (!_openFolders[scriptId]) _openFolders[scriptId] = {};
-        _openFolders[scriptId][key] = !_openFolders[scriptId][key];
+      // Script folder toggle
+      if (e.target.classList.contains('script-item-toggle') || e.target.closest('.script-item-toggle')) {
+        if (e.target.classList.contains('script-select-cb')) return; // let checkbox handle itself
+        const el = e.target.closest('.script-item-toggle');
+        const id = el?.dataset.id;
+        if (!id) return;
+        if (_openScripts.has(id)) _openScripts.delete(id); else _openScripts.add(id);
         _renderList();
+        _renderBulkBar();
         return;
       }
 
