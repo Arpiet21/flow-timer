@@ -200,11 +200,11 @@ const ScriptCopier = (() => {
 
       // Format: { scenes: [ { scene_id, clips: [ { id, prompt, duration } ] } ] }
       if (json.scenes && Array.isArray(json.scenes)) {
-        // Build global style block to append to every clip
+        // Build global style block — added as first clip AND appended to every scene clip
         let globalStyleBlock = '';
         if (json.global_style) {
           const gs = json.global_style;
-          const lines = ['--- GLOBAL STYLE ---'];
+          const lines = [];
           if (gs.cinematic_style)  lines.push(`Cinematic Style: ${gs.cinematic_style}`);
           if (gs.camera)           lines.push(`Camera: ${gs.camera}`);
           if (gs.lighting)         lines.push(`Lighting: ${gs.lighting}`);
@@ -214,10 +214,15 @@ const ScriptCopier = (() => {
           if (gs.music_theme)      lines.push(`Music: ${gs.music_theme}`);
           if (gs.factory_type)     lines.push(`Factory: ${gs.factory_type}`);
           if (gs.character_consistency) {
-            const cc = gs.character_consistency;
-            Object.entries(cc).forEach(([k, v]) => lines.push(`Character (${k}): ${v}`));
+            Object.entries(gs.character_consistency).forEach(([k, v]) => lines.push(`Character (${k}): ${v}`));
           }
-          globalStyleBlock = '\n\n' + lines.join('\n');
+          globalStyleBlock = lines.join('\n');
+          // Add as a standalone clip at the top
+          clips.push({
+            id: crypto.randomUUID(),
+            name: '🎨 Global Style',
+            content: globalStyleBlock
+          });
         }
 
         json.scenes.forEach(scene => {
@@ -231,12 +236,14 @@ const ScriptCopier = (() => {
                 clip.motion          ? `Motion: ${clip.motion}` : '',
                 scene.style_override ? `Style Override: ${scene.style_override}` : ''
               ].filter(Boolean).join('\n');
-              const full = [content, extras, globalStyleBlock.trim()].filter(Boolean).join('\n\n');
+              const globalSection = globalStyleBlock ? `--- GLOBAL STYLE ---\n${globalStyleBlock}` : '';
+              const full = [content, extras, globalSection].filter(Boolean).join('\n\n');
               clips.push({ id: crypto.randomUUID(), name, content: full });
             });
           } else {
             const content = scene.prompt || scene.description || JSON.stringify(scene);
-            clips.push({ id: crypto.randomUUID(), name: sceneLabel, content: content + globalStyleBlock });
+            const globalSection = globalStyleBlock ? `\n\n--- GLOBAL STYLE ---\n${globalStyleBlock}` : '';
+            clips.push({ id: crypto.randomUUID(), name: sceneLabel, content: content + globalSection });
           }
         });
         if (clips.length) return clips;
