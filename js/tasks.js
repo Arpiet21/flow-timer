@@ -1019,11 +1019,12 @@ const TaskManager = {
     const task = this._tasks.find(t => t.id === taskId);
     if (!task) return;
     task.subtasks = (task.subtasks || []).filter(s => s.id !== subtaskId);
+    // Always recalculate — deduct deleted subtask's minutes
     const total = task.subtasks.reduce((sum, s) => sum + (s.minutes || 0), 0);
-    if (total > 0) task.estimated_minutes = total;
+    task.estimated_minutes = total;
     this._saveCache();
     this._render();
-    this._sbUpdate(taskId, { subtasks: task.subtasks, estimated_minutes: task.estimated_minutes });
+    this._sbUpdate(taskId, { subtasks: task.subtasks, estimated_minutes: total });
   },
 
   updateSubtaskMinutes(taskId, subtaskId, mins) {
@@ -1032,12 +1033,11 @@ const TaskManager = {
     const sub = (task.subtasks || []).find(s => s.id === subtaskId);
     if (!sub) return;
     sub.minutes = mins;
-    // Sum all subtask times → update main task estimated_minutes
     const total = task.subtasks.reduce((sum, s) => sum + (s.minutes || 0), 0);
-    if (total > 0) task.estimated_minutes = total;
+    task.estimated_minutes = total;
     this._saveCache();
     this._render();
-    this._sbUpdate(taskId, { subtasks: task.subtasks, estimated_minutes: total || task.estimated_minutes });
+    this._sbUpdate(taskId, { subtasks: task.subtasks, estimated_minutes: total });
   },
 
   // ── Completion style ──────────────────────────────────────────────────────
