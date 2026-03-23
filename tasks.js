@@ -1320,7 +1320,6 @@ const WeekPlanner = {
             <div class="week-item-check${isDone ? ' done' : ''}"></div>
             <span class="week-item-text${isDone ? ' done' : ''}">${this._esc(t.title)}</span>
             <div class="week-task-actions">
-              ${!isRecurring ? `<button class="week-task-shift-btn" title="Move to next day">→</button>` : ''}
               <button class="week-task-edit-btn" title="Edit task">✏</button>
             </div>`;
           el.querySelector('.week-item-check').addEventListener('click', () => {
