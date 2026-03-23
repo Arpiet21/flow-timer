@@ -95,6 +95,28 @@ main {
 }
 
 /* ─── Mode Tabs ──────────────────────────────────────────────────────────────── */
+.mode-tabs-secondary {
+  display: flex;
+  gap: 8px;
+  background: var(--surface2);
+  padding: 4px;
+  border-radius: 12px;
+  margin-top: 8px;
+}
+.mode-btn-secondary {
+  flex: 1;
+  padding: 8px 4px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  border-radius: 9px;
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+.mode-btn-secondary:hover { color: var(--text); background: rgba(255,255,255,0.05); }
+.mode-btn-secondary.active { background: var(--accent); color: #000; }
 .mode-tabs {
   display: flex;
   gap: 8px;
