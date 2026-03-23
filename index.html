@@ -6,7 +6,7 @@
   <meta name="description" content="A beautiful Flow Timer with floating analog clock widget">
   <title>Flow Timer</title>
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="css/style.css">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#39ff14">
   <link rel="apple-touch-icon" href="assets/icon-192.png">
@@ -17,8 +17,8 @@
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-<script src="firebase-client.js"></script>
-<script src="auth.js"></script>
+<script src="js/firebase-client.js"></script>
+<script src="js/auth.js"></script>
 <script>
   document.body.style.visibility = 'hidden';
   Auth.requireAuth().then(ok => {
@@ -1086,12 +1086,12 @@
     <kbd>H</kbd> history
   </p>
 
-  <script src="music.js"></script>
-  <script src="app.js"></script>
-  <script src="workout.js"></script>
-  <script src="tasks.js"></script>
-  <script src="scripts.js"></script>
-  <script src="meditation.js"></script>
+  <script src="js/music.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/workout.js"></script>
+  <script src="js/tasks.js"></script>
+  <script src="js/scripts.js"></script>
+  <script src="js/meditation.js"></script>
   <script>
     document.getElementById('signout-btn').addEventListener('click', () => Auth.signOut());
 
