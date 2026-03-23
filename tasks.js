@@ -502,9 +502,11 @@ const TaskManager = {
     }
     this.setPriority(task.priority || 2);
 
-    // Set category
-    const sel = document.getElementById('task-category-select');
-    if (sel && task.category) sel.value = task.category;
+    // Set category — defer so select options are rendered first
+    setTimeout(() => {
+      const sel = document.getElementById('task-category-select');
+      if (sel && task.category) sel.value = task.category;
+    }, 50);
 
     // Set recurring days
     document.querySelectorAll('#task-recur-days .recur-day-btn').forEach(btn => {
@@ -529,8 +531,8 @@ const TaskManager = {
       return;
     }
 
-    const category = document.getElementById('task-category-select')?.value;
-    if (!category || category === '__new__') return;
+    let category = document.getElementById('task-category-select')?.value;
+    if (!category || category === '__new__') category = task.category || '';
 
     const estMins  = parseInt(document.getElementById('task-est-select')?.value || '25');
     const tagsRaw  = document.getElementById('task-tags-input')?.value.trim() || '';
