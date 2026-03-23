@@ -125,7 +125,7 @@ main {
   padding: 4px;
   border-radius: 12px;
 }
-.mode-tabs-divider { width: 100%; height: 0; }
+.mode-tabs-divider { width: 100%; height: 1px; background: rgba(255,255,255,0.08); margin: 2px 0; }
 .mode-btn-full { flex: 1 1 100%; }
 
 .mode-btn {
