@@ -85,16 +85,17 @@
 
   // Load published posts
   async function loadPosts() {
-    const { data: posts, error } = await _sb
-      .from('blog_posts')
-      .select('id,title,slug,excerpt,cover_image,created_at,tag')
-      .eq('published', true)
-      .order('created_at', { ascending: false });
-
     const grid = document.getElementById('posts-grid');
     const empty = document.getElementById('empty-state');
+    let posts = [];
+    try {
+      const snap = await _db.collection('blog_posts')
+        .where('published', '==', true)
+        .orderBy('created_at', 'desc').get();
+      posts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    } catch(e) {}
 
-    if (error || !posts || posts.length === 0) {
+    if (!posts.length) {
       grid.style.display = 'none';
       empty.style.display = 'block';
       return;

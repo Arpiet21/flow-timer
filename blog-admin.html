@@ -220,20 +220,15 @@
 
   // ── List ──────────────────────────────────────────────────────────────
   async function loadPosts() {
-    const { data: posts, error } = await _sb
-      .from('blog_posts')
-      .select('id,title,slug,published,created_at,tag')
-      .order('created_at', { ascending: false });
-
     const list = document.getElementById('posts-list');
-
-    if (error) { list.innerHTML = `<div style="color:#e92845">Error: ${error.message}</div>`; return; }
-    if (!posts || posts.length === 0) {
-      list.innerHTML = '<div style="color:var(--text-muted);text-align:center;padding:40px;">No posts yet. Click "+ New Post" to create one.</div>';
-      return;
-    }
-
-    list.innerHTML = posts.map(p => `
+    try {
+      const snap = await _db.collection('blog_posts').orderBy('created_at', 'desc').get();
+      const posts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      if (!posts.length) {
+        list.innerHTML = '<div style="color:var(--text-muted);text-align:center;padding:40px;">No posts yet. Click "+ New Post" to create one.</div>';
+        return;
+      }
+      list.innerHTML = posts.map(p => `
       <div class="post-row">
         <div class="post-row-title">${esc(p.title)}</div>
         <div class="post-row-meta">${fmtDate(p.created_at)}</div>
@@ -242,7 +237,8 @@
         <button class="btn-sm btn-edit" onclick="editPost(${JSON.stringify(p.id)})">Edit</button>
         <a href="blog-post.html?slug=${encodeURIComponent(p.slug)}" target="_blank" class="btn-sm btn-edit" style="text-decoration:none;">View</a>
       </div>
-    `).join('');
+      `).join('');
+    } catch(e) { list.innerHTML = `<div style="color:#e92845">Error: ${e.message}</div>`; }
   }
 
   // ── Editor ────────────────────────────────────────────────────────────
@@ -278,9 +274,13 @@
 
   async function editPost(id) {
     setLoading(true);
-    const { data: post, error } = await _sb.from('blog_posts').select('*').eq('id', id).single();
+    let post;
+    try {
+      const snap = await _db.collection('blog_posts').doc(id).get();
+      post = snap.exists ? { id: snap.id, ...snap.data() } : null;
+    } catch(e) { post = null; }
     setLoading(false);
-    if (error || !post) { toast('Failed to load post', true); return; }
+    if (!post) { toast('Failed to load post', true); return; }
 
     editingId = id;
     document.getElementById('editor-title').textContent = 'Edit Post';
@@ -345,29 +345,29 @@
     };
 
     setLoading(true);
-    let error;
-    if (editingId) {
-      ({ error } = await _sb.from('blog_posts').update(payload).eq('id', editingId));
-    } else {
-      payload.created_at = new Date().toISOString();
-      ({ error } = await _sb.from('blog_posts').insert(payload));
-    }
+    try {
+      if (editingId) {
+        await _db.collection('blog_posts').doc(editingId).update(payload);
+      } else {
+        payload.created_at = new Date().toISOString();
+        await _db.collection('blog_posts').add(payload);
+      }
+      toast('Post saved!');
+      showList();
+    } catch(e) { toast('Save failed: ' + e.message, true); }
     setLoading(false);
-
-    if (error) { toast('Save failed: ' + error.message, true); return; }
-    toast('Post saved!');
-    showList();
   }
 
   async function deletePost() {
     if (!editingId) return;
     if (!confirm('Delete this post? This cannot be undone.')) return;
     setLoading(true);
-    const { error } = await _sb.from('blog_posts').delete().eq('id', editingId);
+    try {
+      await _db.collection('blog_posts').doc(editingId).delete();
+      toast('Post deleted');
+      showList();
+    } catch(e) { toast('Delete failed: ' + e.message, true); }
     setLoading(false);
-    if (error) { toast('Delete failed: ' + error.message, true); return; }
-    toast('Post deleted');
-    showList();
   }
 
   function previewPost() {

@@ -79,14 +79,16 @@
   }
 
   async function loadPost(slug) {
-    const { data: post, error } = await _sb
-      .from('blog_posts')
-      .select('*')
-      .eq('slug', slug)
-      .eq('published', true)
-      .single();
+    let post = null;
+    try {
+      const snap = await _db.collection('blog_posts')
+        .where('slug', '==', slug)
+        .where('published', '==', true)
+        .limit(1).get();
+      if (!snap.empty) post = { id: snap.docs[0].id, ...snap.docs[0].data() };
+    } catch(e) {}
 
-    if (error || !post) {
+    if (!post) {
       container.innerHTML = '<div class="not-found"><div style="font-size:3rem">😕</div><p>Post not found or not published yet.</p><a href="blog.html" class="btn btn-outline" style="margin-top:16px;display:inline-block;">Browse all posts</a></div>';
       return;
     }
