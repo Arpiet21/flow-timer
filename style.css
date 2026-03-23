@@ -1992,13 +1992,18 @@ kbd {
   border-radius: 3px; padding: 1px 5px; flex-shrink: 0;
   letter-spacing: 0.02em;
 }
-.week-task-shift-btn {
-  background: none; border: none; color: var(--text-muted);
-  font-size: 0.85rem; cursor: pointer; padding: 0 4px; flex-shrink: 0;
-  opacity: 0; transition: opacity 0.15s; line-height: 1;
+.week-task-actions {
+  display: flex; gap: 2px; flex-shrink: 0;
+  opacity: 0; transition: opacity 0.15s;
 }
-.week-day-item:hover .week-task-shift-btn { opacity: 1; }
-.week-task-shift-btn:hover { color: var(--accent); }
+.week-day-item:hover .week-task-actions { opacity: 1; }
+.week-task-shift-btn, .week-task-edit-btn {
+  background: none; border: none; color: var(--text-muted);
+  font-size: 0.82rem; cursor: pointer; padding: 2px 5px; line-height: 1;
+  border-radius: 4px; transition: background 0.15s, color 0.15s;
+}
+.week-task-shift-btn:hover { color: var(--accent); background: rgba(57,255,20,0.08); }
+.week-task-edit-btn:hover  { color: #60a5fa; background: rgba(96,165,250,0.1); }
 .week-task-draggable { cursor: grab; }
 .week-task-draggable:active { cursor: grabbing; }
 .week-task-draggable.dragging { opacity: 0.4; }

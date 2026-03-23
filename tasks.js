@@ -1319,7 +1319,10 @@ const WeekPlanner = {
           el.innerHTML = `
             <div class="week-item-check${isDone ? ' done' : ''}"></div>
             <span class="week-item-text${isDone ? ' done' : ''}">${this._esc(t.title)}</span>
-            ${!isRecurring ? `<button class="week-task-shift-btn" title="Move to next day">→</button>` : `<span class="week-task-badge">task</span>`}`;
+            <div class="week-task-actions">
+              ${!isRecurring ? `<button class="week-task-shift-btn" title="Move to next day">→</button>` : ''}
+              <button class="week-task-edit-btn" title="Edit task">✏</button>
+            </div>`;
           el.querySelector('.week-item-check').addEventListener('click', () => {
             if (typeof TaskManager === 'undefined') return;
             if (isRecurring) TaskManager.toggleDoneOn(t.id, ds);
@@ -1338,6 +1341,13 @@ const WeekPlanner = {
             TaskManager._render();
             TaskManager._sbUpdate(t.id, { scheduled_date: nextDs });
             WeekPlanner._render();
+          });
+          el.querySelector('.week-task-edit-btn')?.addEventListener('click', e => {
+            e.stopPropagation();
+            if (typeof TaskManager === 'undefined') return;
+            // Switch to Tasks tab and open edit form
+            if (typeof switchTimerType === 'function') switchTimerType('tasks');
+            setTimeout(() => TaskManager.showEditForm(t.id), 200);
           });
           tasksDiv.appendChild(el);
         });
