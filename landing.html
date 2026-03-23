@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="The most beautiful Flow Timer. Stay focused, beat procrastination, get more done.">
-  <title>Flow Timer — Stay Focused, Do More</title>
+  <meta name="description" content="Flow Timer — focus timer, task manager, HIIT workouts, weekly planner, and binaural beats in one app.">
+  <title>Flow Timer — Focus, Plan, Do</title>
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link rel="stylesheet" href="css/auth.css">
   <style>
@@ -74,26 +74,12 @@ document.addEventListener('click', e => {
 <!-- ── Hero ── -->
 <section class="hero">
   <div class="hero-content">
-    <div class="hero-badge">🚀 Tasks · HIIT · Binaural Beats · Weekly Planner · Floating Widget</div>
-    <h1>Focus deeper.<br><span>Plan smarter.</span><br>Burn less out.</h1>
-    <p>The all-in-one productivity app — Pomodoro timer, smart task manager, HIIT workouts, binaural beats, weekly planner, and a floating analog widget. One app, zero distractions.</p>
+    <div class="hero-badge">Timer · Tasks · HIIT · Binaural Beats · Weekly Planner</div>
+    <h1>Focus deeper.<br><span>Plan smarter.</span></h1>
+    <p>A clean, all-in-one focus app — Pomodoro timer, task manager, HIIT workouts, binaural beats, weekly planner, and a floating analog widget.</p>
     <div class="hero-ctas">
       <a href="signup.html" class="btn btn-primary btn-lg">Start 7-Day Free Trial</a>
       <a href="index.html" class="btn btn-outline btn-lg">Try without account</a>
-    </div>
-    <div class="hero-stats">
-      <div class="stat-item">
-        <span class="stat-num">12k+</span>
-        <span class="stat-label">Active users</span>
-      </div>
-      <div class="stat-item">
-        <span class="stat-num">4.9★</span>
-        <span class="stat-label">Average rating</span>
-      </div>
-      <div class="stat-item">
-        <span class="stat-num">2M+</span>
-        <span class="stat-label">Sessions logged</span>
-      </div>
     </div>
   </div>
 
@@ -263,7 +249,7 @@ document.addEventListener('click', e => {
     <div class="feature-card">
       <span class="feature-icon">☁️</span>
       <h3>Cloud Sync — Your Data Everywhere</h3>
-      <p>Tasks saved to Supabase in real-time. Log in from any device, your tasks are always there. Instant optimistic updates — never waits on the network.</p>
+      <p>Tasks saved to Firebase in real-time. Log in from any device, your tasks are always there. Instant optimistic updates — never waits on the network.</p>
     </div>
     <div class="feature-card">
       <span class="feature-icon">🔁</span>
@@ -332,7 +318,7 @@ document.addEventListener('click', e => {
         </div>
         <div style="display:flex;gap:14px;align-items:flex-start;">
           <span style="font-size:1.6rem;">☁️</span>
-          <div><strong style="color:var(--text,#fff);">Real-time cloud storage</strong><br><span style="color:#888;font-size:0.85rem;">Every task saved to Supabase instantly. Delete, complete, or reschedule — always in sync across devices.</span></div>
+          <div><strong style="color:var(--text,#fff);">Real-time cloud storage</strong><br><span style="color:#888;font-size:0.85rem;">Every task saved to Firebase instantly. Delete, complete, or reschedule — always in sync across devices.</span></div>
         </div>
       </div>
     </div>
@@ -383,8 +369,6 @@ document.addEventListener('click', e => {
         </div>
         <span style="color:#39ff14;font-size:0.7rem;opacity:0.6;">▶</span>
       </div>
-      <!-- Refresh button -->
-      <button style="width:100%;margin-top:14px;padding:9px;border:1px solid rgba(57,255,20,0.25);border-radius:10px;background:rgba(57,255,20,0.06);color:#39ff14;font-size:0.72rem;font-weight:700;cursor:pointer;">🔄 Refresh from Cloud</button>
     </div>
 
   </div>
@@ -590,56 +574,13 @@ document.addEventListener('click', e => {
   setBilling('monthly');
 </script>
 
-<!-- ── Testimonials ── -->
-<section class="section" style="padding-top:0;">
-  <p class="section-label">Loved by focused people</p>
-  <h2 class="section-title">What our users say</h2>
-  <p class="section-sub" style="margin-bottom:40px;">Join thousands who get more done every day.</p>
-
-  <div class="testi-grid">
-    <div class="testi-card">
-      <div class="testi-stars">★★★★★</div>
-      <p class="testi-text">"The floating widget is a game changer. I keep it in the corner of my screen all day and it actually keeps me accountable."</p>
-      <div class="testi-author">
-        <div class="testi-avatar">👩</div>
-        <div>
-          <div class="testi-name">Sarah K.</div>
-          <div class="testi-role">Product Designer</div>
-        </div>
-      </div>
-    </div>
-    <div class="testi-card">
-      <div class="testi-stars">★★★★★</div>
-      <p class="testi-text">"Finally a Flow Timer app that looks good AND works anywhere. The analog clock feels like a real timer on my desk."</p>
-      <div class="testi-author">
-        <div class="testi-avatar">👨</div>
-        <div>
-          <div class="testi-name">Marcus T.</div>
-          <div class="testi-role">Software Engineer</div>
-        </div>
-      </div>
-    </div>
-    <div class="testi-card">
-      <div class="testi-stars">★★★★★</div>
-      <p class="testi-text">"I switched from a physical timer to this. 90-minute deep work sessions with the floating clock — my productivity doubled."</p>
-      <div class="testi-author">
-        <div class="testi-avatar">👩</div>
-        <div>
-          <div class="testi-name">Priya M.</div>
-          <div class="testi-role">Freelance Writer</div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
 <!-- ── CTA Banner ── -->
 <div class="cta-banner">
   <h2>Ready to get focused?</h2>
-  <p>Join 12,000+ people who use Flow Timer to do their best work.</p>
+  <p>Try it free for 7 days. No credit card required.</p>
   <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
     <a href="signup.html" class="btn btn-primary btn-lg">Start 7-Day Free Trial</a>
-    <a href="index.html" class="btn btn-outline btn-lg">Try the Timer</a>
+    <a href="index.html" class="btn btn-outline btn-lg">Try without account</a>
   </div>
 </div>
 
