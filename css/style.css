@@ -129,9 +129,10 @@ main {
 .mode-btn-full { flex: 1 1 100%; }
 
 /* Mobile: 2×2 grid for top 4 tabs */
-@media (max-width: 480px) {
-  .mode-btn { flex: 1 1 calc(50% - 6px); font-size: 0.74rem; padding: 8px 4px; }
-  .mode-btn-full { font-size: 0.74rem; padding: 8px 4px; }
+@media (max-width: 640px) {
+  .mode-tabs { gap: 6px; }
+  .mode-btn { flex: 1 1 calc(50% - 6px); min-width: calc(50% - 6px); font-size: 0.78rem; padding: 10px 4px; }
+  .mode-btn-full { font-size: 0.78rem; padding: 10px 4px; }
 }
 
 .mode-btn {
