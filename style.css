@@ -1992,6 +1992,13 @@ kbd {
   border-radius: 3px; padding: 1px 5px; flex-shrink: 0;
   letter-spacing: 0.02em;
 }
+.week-task-shift-btn {
+  background: none; border: none; color: var(--text-muted);
+  font-size: 0.85rem; cursor: pointer; padding: 0 4px; flex-shrink: 0;
+  opacity: 0; transition: opacity 0.15s; line-height: 1;
+}
+.week-day-item:hover .week-task-shift-btn { opacity: 1; }
+.week-task-shift-btn:hover { color: var(--accent); }
 .week-task-draggable { cursor: grab; }
 .week-task-draggable:active { cursor: grabbing; }
 .week-task-draggable.dragging { opacity: 0.4; }

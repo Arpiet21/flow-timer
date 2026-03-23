@@ -1319,11 +1319,25 @@ const WeekPlanner = {
           el.innerHTML = `
             <div class="week-item-check${isDone ? ' done' : ''}"></div>
             <span class="week-item-text${isDone ? ' done' : ''}">${this._esc(t.title)}</span>
-            <span class="week-task-badge">task</span>`;
+            ${!isRecurring ? `<button class="week-task-shift-btn" title="Move to next day">→</button>` : `<span class="week-task-badge">task</span>`}`;
           el.querySelector('.week-item-check').addEventListener('click', () => {
             if (typeof TaskManager === 'undefined') return;
             if (isRecurring) TaskManager.toggleDoneOn(t.id, ds);
             else TaskManager.toggleComplete(t.id);
+          });
+          el.querySelector('.week-task-shift-btn')?.addEventListener('click', e => {
+            e.stopPropagation();
+            if (typeof TaskManager === 'undefined') return;
+            const next = new Date(ds + 'T00:00:00');
+            next.setDate(next.getDate() + 1);
+            const nextDs = next.toISOString().slice(0, 10);
+            const task = TaskManager._tasks.find(tk => tk.id === t.id);
+            if (!task) return;
+            task.scheduled_date = nextDs;
+            TaskManager._saveCache();
+            TaskManager._render();
+            TaskManager._sbUpdate(t.id, { scheduled_date: nextDs });
+            WeekPlanner._render();
           });
           tasksDiv.appendChild(el);
         });
