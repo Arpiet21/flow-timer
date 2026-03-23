@@ -886,12 +886,14 @@ const TaskManager = {
     const subtasks = task.subtasks || [];
     const subDone  = subtasks.filter(s => s.completed).length;
     const subBadge = subtasks.length ? `<span class="task-sub-badge">${subDone}/${subtasks.length}</span>` : '';
+    const subTotal = subtasks.reduce((sum, s) => sum + (s.minutes || 0), 0);
     const subHtml  = subtasks.map(s => `
       <div class="task-subtask${s.completed ? ' task-subtask-done' : ''}" data-sid="${this._esc(s.id)}">
         <button class="task-subtask-check${s.completed ? ' checked' : ''}">
           ${s.completed ? `<svg viewBox="0 0 12 12" fill="none"><polyline points="1.5,6 5,9.5 10.5,2.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>` : ''}
         </button>
         <span class="task-subtask-title">${this._esc(s.title)}</span>
+        <input class="task-subtask-mins" type="number" min="1" max="120" placeholder="min" value="${s.minutes || ''}" title="Time in minutes">
         <button class="task-subtask-del" title="Remove">✕</button>
       </div>`).join('');
 
@@ -906,7 +908,7 @@ const TaskManager = {
           ${dateLabel}
           ${recurLabel}
           ${subBadge}
-          ${task.estimated_minutes ? `<span class="task-est-badge">${task.estimated_minutes}m</span>` : ''}
+          ${subTotal > 0 ? `<span class="task-est-badge">${subTotal}m</span>` : task.estimated_minutes ? `<span class="task-est-badge">${task.estimated_minutes}m</span>` : ''}
         </div>
         ${subHtml ? `<div class="task-subtasks">${subHtml}</div>` : ''}
         <div class="task-subtask-add-row">
@@ -948,6 +950,13 @@ const TaskManager = {
     el.querySelectorAll('.task-subtask-del').forEach(btn => {
       btn.addEventListener('click', () => this.deleteSubtask(task.id, btn.closest('.task-subtask').dataset.sid));
     });
+    // Subtask: time input → save and recalculate total
+    el.querySelectorAll('.task-subtask-mins').forEach(input => {
+      input.addEventListener('change', () => {
+        const sid = input.closest('.task-subtask').dataset.sid;
+        this.updateSubtaskMinutes(task.id, sid, parseInt(input.value) || 0);
+      });
+    });
 
     return el;
   },
@@ -979,9 +988,25 @@ const TaskManager = {
     const task = this._tasks.find(t => t.id === taskId);
     if (!task) return;
     task.subtasks = (task.subtasks || []).filter(s => s.id !== subtaskId);
+    const total = task.subtasks.reduce((sum, s) => sum + (s.minutes || 0), 0);
+    if (total > 0) task.estimated_minutes = total;
     this._saveCache();
     this._render();
-    this._sbUpdate(taskId, { subtasks: task.subtasks });
+    this._sbUpdate(taskId, { subtasks: task.subtasks, estimated_minutes: task.estimated_minutes });
+  },
+
+  updateSubtaskMinutes(taskId, subtaskId, mins) {
+    const task = this._tasks.find(t => t.id === taskId);
+    if (!task) return;
+    const sub = (task.subtasks || []).find(s => s.id === subtaskId);
+    if (!sub) return;
+    sub.minutes = mins;
+    // Sum all subtask times → update main task estimated_minutes
+    const total = task.subtasks.reduce((sum, s) => sum + (s.minutes || 0), 0);
+    if (total > 0) task.estimated_minutes = total;
+    this._saveCache();
+    this._render();
+    this._sbUpdate(taskId, { subtasks: task.subtasks, estimated_minutes: total || task.estimated_minutes });
   },
 
   // ── Completion style ──────────────────────────────────────────────────────
