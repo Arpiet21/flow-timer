@@ -176,6 +176,7 @@
       <button class="mode-btn" id="btn-workout-timer" onclick="switchTimerType('workout')">💪 Workout Timer</button>
       <button class="mode-btn" id="btn-tasks" onclick="switchTimerType('tasks')">✅ Tasks</button>
       <button class="mode-btn" id="btn-video" onclick="switchTimerType('video')">🎬 Video</button>
+      <button class="mode-btn" id="btn-meditation" onclick="switchTimerType('meditation')">🧘 Meditation</button>
     </div>
 
     <!-- ── Work Timer Section ─────────────────────────────────────────────── -->
@@ -888,6 +889,49 @@
 
     </div><!-- /#video-section -->
 
+    <!-- ── Meditation Timer Section ──────────────────────────────────────── -->
+    <div id="meditation-section" class="hidden">
+      <div class="card" style="text-align:center;">
+        <h2 style="font-size:1.2rem;margin-bottom:4px;">🧘 Meditation Timer</h2>
+        <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:24px;">Breathe. Focus. Rest your mind.</p>
+
+        <!-- Duration Picker -->
+        <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:24px;">
+          <button class="med-dur-btn active" data-mins="5">5 min</button>
+          <button class="med-dur-btn" data-mins="10">10 min</button>
+          <button class="med-dur-btn" data-mins="15">15 min</button>
+          <button class="med-dur-btn" data-mins="20">20 min</button>
+          <button class="med-dur-btn" data-mins="30">30 min</button>
+        </div>
+
+        <!-- Breathing Guide -->
+        <div id="med-breath-ring" style="width:120px;height:120px;border-radius:50%;border:3px solid var(--accent);margin:0 auto 16px;display:flex;align-items:center;justify-content:center;font-size:0.9rem;color:var(--accent);transition:transform 4s ease-in-out;">
+          Breathe
+        </div>
+        <div id="med-breath-label" style="font-size:0.85rem;color:var(--text-muted);margin-bottom:20px;">Press Start to begin</div>
+
+        <!-- Timer Display -->
+        <div id="med-timer-display" style="font-size:3rem;font-weight:700;letter-spacing:2px;margin-bottom:24px;">05:00</div>
+
+        <!-- Controls -->
+        <div style="display:flex;gap:12px;justify-content:center;">
+          <button id="med-start-btn" class="btn-primary" style="min-width:100px;">Start</button>
+          <button id="med-reset-btn" class="btn-secondary" style="min-width:100px;">Reset</button>
+        </div>
+
+        <!-- Ambient Sound -->
+        <div style="margin-top:24px;">
+          <p style="font-size:0.8rem;color:var(--text-muted);margin-bottom:10px;">Ambient Sound</p>
+          <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
+            <button class="med-sound-btn active" data-sound="none">🔇 None</button>
+            <button class="med-sound-btn" data-sound="rain">🌧 Rain</button>
+            <button class="med-sound-btn" data-sound="bowl">🎵 Singing Bowl</button>
+            <button class="med-sound-btn" data-sound="om">🕉 Om</button>
+          </div>
+        </div>
+      </div>
+    </div><!-- /#meditation-section -->
+
     <!-- Import from ChatGPT Modal -->
     <div id="script-import-modal" class="script-import-modal" style="display:none">
       <div class="script-import-dialog">
@@ -1045,6 +1089,7 @@
   <script src="workout.js"></script>
   <script src="tasks.js"></script>
   <script src="scripts.js"></script>
+  <script src="meditation.js"></script>
   <script>
     document.getElementById('signout-btn').addEventListener('click', () => Auth.signOut());
 
@@ -1052,24 +1097,27 @@
 
     function switchTimerType(mode) {
       window.activeTimerMode = mode;
-      const isWork    = mode === 'work';
-      const isWorkout = mode === 'workout';
-      const isTasks   = mode === 'tasks';
-      const isVideo   = mode === 'video';
+      const isWork      = mode === 'work';
+      const isWorkout   = mode === 'workout';
+      const isTasks     = mode === 'tasks';
+      const isVideo     = mode === 'video';
+      const isMeditation = mode === 'meditation';
 
       document.getElementById('flow-section').classList.toggle('hidden', !isWork);
       document.getElementById('workout-section').classList.toggle('hidden', !isWorkout);
       document.getElementById('task-section').classList.toggle('hidden', !isTasks);
       document.getElementById('video-section').classList.toggle('hidden', !isVideo);
+      document.getElementById('meditation-section').classList.toggle('hidden', !isMeditation);
 
-      // Hide heatmap card in Tasks or Video tab
+      // Hide heatmap card in Tasks, Video or Meditation tab
       const heatmapEl = document.getElementById('heatmap-card');
-      if (heatmapEl) heatmapEl.style.display = (isTasks || isVideo) ? 'none' : '';
+      if (heatmapEl) heatmapEl.style.display = (isTasks || isVideo || isMeditation) ? 'none' : '';
 
       document.getElementById('btn-work-timer').classList.toggle('active', isWork);
       document.getElementById('btn-workout-timer').classList.toggle('active', isWorkout);
       document.getElementById('btn-tasks').classList.toggle('active', isTasks);
       document.getElementById('btn-video').classList.toggle('active', isVideo);
+      document.getElementById('btn-meditation').classList.toggle('active', isMeditation);
 
       // Auto-pause running timers when switching away
       if (!isWorkout && typeof wo !== 'undefined' && wo.status === 'running') woPause();
@@ -1083,11 +1131,12 @@
       if (typeof syncPip === 'function') syncPip();
 
       // Re-render heatmap / tasks / video
-      if (!isTasks && !isVideo && typeof renderActivityHeatmap === 'function') renderActivityHeatmap();
+      if (!isTasks && !isVideo && !isMeditation && typeof renderActivityHeatmap === 'function') renderActivityHeatmap();
       if (isTasks && typeof TaskManager !== 'undefined') TaskManager.init();
       if (isTasks && typeof BrainDump !== 'undefined') BrainDump.init();
       if (isTasks && typeof WeekPlanner !== 'undefined') WeekPlanner.init();
       if (isVideo && typeof ScriptCopier !== 'undefined') ScriptCopier.init();
+      if (isMeditation && typeof MeditationTimer !== 'undefined') MeditationTimer.init();
     }
   </script>
 </body>
