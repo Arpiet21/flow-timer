@@ -1512,8 +1512,10 @@ kbd {
 .task-cancel-btn:hover { color: var(--text); }
 
 /* Task list */
-.task-group { margin-top: 14px; }
+.task-group { margin-top: 14px; border-radius: 10px; transition: background 0.15s, outline 0.15s; }
 .task-group:first-child { margin-top: 10px; }
+.task-group-drop-over { background: rgba(57,255,20,0.05); outline: 1px dashed rgba(57,255,20,0.35); }
+.task-dragging { opacity: 0.4; cursor: grabbing; }
 .task-group-label {
   font-size: 0.68rem;
   font-weight: 700;

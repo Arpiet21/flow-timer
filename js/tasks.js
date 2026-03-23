@@ -782,9 +782,38 @@ const TaskManager = {
         const reasons = (catData?.reasons || []).filter(Boolean);
         const g = document.createElement('div');
         g.className = 'task-group';
+        g.dataset.cat = cat;
         g.innerHTML = `<div class="task-group-label">${this._esc(cat)}</div>`
           + (reasons.length ? `<div class="task-group-reasons">${reasons.map(r => `<span class="task-group-reason-item">💡 ${this._esc(r)}</span>`).join('')}</div>` : '');
-        tasks.forEach(t => g.appendChild(this._taskEl(t)));
+        tasks.forEach(t => {
+          const el = this._taskEl(t);
+          el.draggable = true;
+          el.dataset.taskId = t.id;
+          el.addEventListener('dragstart', e => {
+            e.dataTransfer.setData('text/plain', t.id);
+            e.dataTransfer.effectAllowed = 'move';
+            el.classList.add('task-dragging');
+          });
+          el.addEventListener('dragend', () => el.classList.remove('task-dragging'));
+          g.appendChild(el);
+        });
+
+        // Drop zone: accept tasks dragged from other categories
+        g.addEventListener('dragover', e => { e.preventDefault(); g.classList.add('task-group-drop-over'); });
+        g.addEventListener('dragleave', e => { if (!g.contains(e.relatedTarget)) g.classList.remove('task-group-drop-over'); });
+        g.addEventListener('drop', e => {
+          e.preventDefault();
+          g.classList.remove('task-group-drop-over');
+          const taskId = e.dataTransfer.getData('text/plain');
+          if (!taskId) return;
+          const task = this._tasks.find(t => t.id === taskId);
+          if (!task || task.category === cat) return;
+          task.category = cat;
+          this._saveCache();
+          this._render();
+          this._sbUpdate(taskId, { category: cat });
+        });
+
         list.appendChild(g);
       });
 
