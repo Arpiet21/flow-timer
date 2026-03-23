@@ -1667,6 +1667,12 @@ kbd {
 .task-subtask-del { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 0.7rem; opacity: 0; transition: opacity 0.15s, color 0.15s; padding: 2px; }
 .task-subtask:hover .task-subtask-del { opacity: 0.6; }
 .task-subtask-del:hover { opacity: 1 !important; color: #ff453a; }
+.task-subtask-title { cursor: text; user-select: text; }
+.task-subtask-title-edit {
+  flex: 1; background: rgba(255,255,255,0.06); border: none;
+  border-bottom: 1px solid var(--accent); color: var(--text);
+  font-size: 0.8rem; padding: 1px 4px; outline: none; border-radius: 2px;
+}
 .task-subtask-add-row { margin-top: 4px; }
 .task-subtask-input { width: 100%; background: none; border: none; border-bottom: 1px dashed rgba(255,255,255,0.12); color: var(--text-muted); font-size: 0.78rem; padding: 2px 0; outline: none; }
 .task-subtask-input::placeholder { color: rgba(255,255,255,0.2); }

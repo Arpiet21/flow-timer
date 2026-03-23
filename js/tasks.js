@@ -923,7 +923,7 @@ const TaskManager = {
         <button class="task-subtask-check${s.completed ? ' checked' : ''}">
           ${s.completed ? `<svg viewBox="0 0 12 12" fill="none"><polyline points="1.5,6 5,9.5 10.5,2.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>` : ''}
         </button>
-        <span class="task-subtask-title">${this._esc(s.title)}</span>
+        <span class="task-subtask-title" title="Double-click to edit">${this._esc(s.title)}</span>
         <input class="task-subtask-mins" type="number" min="1" max="120" placeholder="min" value="${s.minutes || ''}" title="Time in minutes">
         <button class="task-subtask-del" title="Remove">✕</button>
       </div>`).join('');
@@ -990,6 +990,36 @@ const TaskManager = {
       input.addEventListener('change', save);
       input.addEventListener('blur', save);
       input.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); save(); input.blur(); } });
+    });
+    // Subtask: double-click title to edit inline
+    el.querySelectorAll('.task-subtask-title').forEach(span => {
+      span.addEventListener('dblclick', () => {
+        const row = span.closest('.task-subtask');
+        const sid = row?.dataset.sid;
+        if (!sid) return;
+        const task_ = this._tasks.find(t => t.id === task.id);
+        const sub = task_?.subtasks?.find(s => s.id === sid);
+        if (!sub) return;
+        const inp = document.createElement('input');
+        inp.className = 'task-subtask-title-edit';
+        inp.value = sub.title;
+        span.replaceWith(inp);
+        inp.focus(); inp.select();
+        const commit = () => {
+          const val = inp.value.trim();
+          if (val && val !== sub.title) {
+            sub.title = val;
+            this._saveCache();
+            this._sbUpdate(task.id, { subtasks: task_.subtasks });
+          }
+          this._render();
+        };
+        inp.addEventListener('blur', commit);
+        inp.addEventListener('keydown', e => {
+          if (e.key === 'Enter') { e.preventDefault(); inp.blur(); }
+          if (e.key === 'Escape') { inp.value = sub.title; inp.blur(); }
+        });
+      });
     });
 
     return el;
