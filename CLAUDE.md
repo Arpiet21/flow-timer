@@ -12,7 +12,7 @@
 10. **API routes** (Vercel serverless): Firebase Admin SDK. Shared init in `api/_firebase-admin.js`. Routes: `apply-coupon`, `apply-referral`, `verify-payment`, `stripe-webhook`, `weekly-report`, `generate-script`. Vercel env vars: `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`, `GROK_API_KEY`.
 11. **Activity Heatmap**: Focus timer and workout sessions stored in Firestore only (`users/{uid}/sessions`). `Auth.logSession(mode, minutes, task)` writes on each session complete. Heatmap reads via `Auth.getHeatmapData(mode)`. No localStorage fallback.
 12. **Session History**: `loadHistory()` reads from Firestore via `Auth.getSessions()`. Fields: `mode`, `duration_minutes`, `task`, `completed_at`.
-13. **Tabs**: 4 tabs — ⏱ Work Timer, 💪 Workout Timer, ✅ Tasks, 🎬 Video. `switchTimerType(mode)` handles show/hide of all sections.
+13. **Tabs**: 5 tabs across 2 rows — Row 1: ⏱ Work Timer, 💪 Workout Timer, ✅ Tasks, 🎬 Video. Row 2: 🧘 Meditation (separated by `.mode-tabs-divider`). Mobile: 2×2 grid at ≤640px. `switchTimerType(mode)` handles show/hide of all sections.
 14. **Video Creation Tab** (`#video-section`): New tab housing Script Copier. `ScriptCopier.init()` called when switching to Video tab.
 15. **Script Copier** (`scripts.js`): Scripts stored at `users/{uid}/scripts/{id}`. Each script has multiple clips (`clips[]` array). Features:
     - Scripts show as collapsed folders — click to expand clips inside
@@ -33,4 +33,8 @@
 18. **Firebase Storage (planned)**: Upgrade Firebase to Blaze plan (pay-as-you-go) for video storage. Free tier: 5GB storage + 1GB/day downloads. Cost after free: $0.026/GB/month. Needed for Phase 2+ video generation. Add credit card to Firebase Console → Usage and billing → Blaze.
 19. **Hosting strategy**: Stay on Vercel free (better bandwidth: 100GB/month vs Firebase's 360MB/day). Firebase for DB + Auth + Storage only.
 20. **Service Worker**: Removed — was caching old JS. Auto-unregisters any existing SW on load.
-21. **Blog**: `blog.html` / `blog-admin.html` exist but not yet wired to Firestore.
+21. **Meditation Timer** (`js/meditation.js`): 4-4-6-2 breathing cycle (inhale/hold/exhale/hold) with animated ring. Duration presets: 5/10/15/20/30 min. Ambient sounds: None/Rain/Singing Bowl/Om (selector exists, audio not yet wired). Logs to Firebase via `Auth.logSession('meditation', mins)` on complete.
+22. **WeekPlanner enhancements**: Each task shows estimated time badge (e.g. `60m`) next to title. Daily total shown at bottom of each day column. Edit button (✏) opens task edit form via `switchTimerType('tasks')` + `TaskManager.showEditForm(id)`. Tasks draggable between day columns.
+23. **Subtask enhancements**: Each subtask has a minutes input — sums to main task `estimated_minutes`. Double-click subtask title to edit inline (saves on Enter/blur, Escape cancels). Title text is selectable.
+24. **Landing page**: No fake stats or testimonials. Features: Timer, Tasks, HIIT, Meditation, Binaural Beats, Weekly Planner, Floating Widget. Supabase fully removed — all references updated to Firebase.
+25. **Blog**: `blog.html` / `blog-admin.html` exist. Firestore `blog_posts` collection. Admin-only at `arpietmalpani@gmail.com`. Not yet actively used.
