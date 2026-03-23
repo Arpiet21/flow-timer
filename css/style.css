@@ -2050,6 +2050,19 @@ kbd {
 .week-task-draggable:active { cursor: grabbing; }
 .week-task-draggable.dragging { opacity: 0.4; }
 .week-drop-over { background: rgba(57,255,20,0.06); border-radius: 8px; outline: 1px dashed rgba(57,255,20,0.3); }
+.week-item-text { flex: 1; }
+.week-task-time {
+  font-size: 0.72rem; font-weight: 600; flex-shrink: 0;
+  padding: 1px 6px; border-radius: 4px; white-space: nowrap;
+  color: var(--accent); background: rgba(57,255,20,0.08);
+}
+.week-day-total {
+  margin-top: 6px; padding: 5px 8px;
+  border-top: 1px solid var(--border);
+  font-size: 0.78rem; font-weight: 700;
+  color: var(--accent); text-align: right;
+  letter-spacing: 0.03em;
+}
 .week-task-text { flex: 1; }
 .week-task-item.done-task .week-task-text { text-decoration: line-through; opacity: 0.4; }
 .cat-edit-btn {

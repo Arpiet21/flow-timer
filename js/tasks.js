@@ -981,12 +981,15 @@ const TaskManager = {
     el.querySelectorAll('.task-subtask-del').forEach(btn => {
       btn.addEventListener('click', () => this.deleteSubtask(task.id, btn.closest('.task-subtask').dataset.sid));
     });
-    // Subtask: time input → save and recalculate total
+    // Subtask: time input → save and recalculate total on blur or Enter
     el.querySelectorAll('.task-subtask-mins').forEach(input => {
-      input.addEventListener('change', () => {
-        const sid = input.closest('.task-subtask').dataset.sid;
-        this.updateSubtaskMinutes(task.id, sid, parseInt(input.value) || 0);
-      });
+      const save = () => {
+        const sid = input.closest('.task-subtask')?.dataset.sid;
+        if (sid) this.updateSubtaskMinutes(task.id, sid, parseInt(input.value) || 0);
+      };
+      input.addEventListener('change', save);
+      input.addEventListener('blur', save);
+      input.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); save(); input.blur(); } });
     });
 
     return el;
@@ -1372,9 +1375,12 @@ const WeekPlanner = {
             });
             el.addEventListener('dragend', () => el.classList.remove('dragging'));
           }
+          const mins = t.estimated_minutes || 0;
+          const timeLabel = mins > 0 ? `${mins}m` : '—';
           el.innerHTML = `
             <div class="week-item-check${isDone ? ' done' : ''}"></div>
             <span class="week-item-text${isDone ? ' done' : ''}">${this._esc(t.title)}</span>
+            <span class="week-task-time">${timeLabel}</span>
             <div class="week-task-actions">
               <button class="week-task-edit-btn" title="Edit task">✏</button>
             </div>`;
@@ -1407,6 +1413,18 @@ const WeekPlanner = {
           tasksDiv.appendChild(el);
         });
         content.appendChild(tasksDiv);
+        // Daily total
+        const totalMins = dayTasks.reduce((sum, t) => sum + (t.estimated_minutes || 0), 0);
+        const totalEl = document.createElement('div');
+        totalEl.className = 'week-day-total';
+        if (totalMins > 0) {
+          const hrs = Math.floor(totalMins / 60);
+          const rem = totalMins % 60;
+          totalEl.textContent = `Total: ${hrs > 0 ? hrs + 'h ' : ''}${rem > 0 ? rem + 'm' : ''}`;
+        } else {
+          totalEl.textContent = `Total: —`;
+        }
+        content.appendChild(totalEl);
       }
 
       // Drop zone for dragged tasks
