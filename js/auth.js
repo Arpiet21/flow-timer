@@ -208,10 +208,12 @@ const Auth = {
     if (!this._user) return 0;
     try {
       const snap = await _db.collection('users').doc(this._user.id).collection('sessions')
-        .where('mode', '==', mode).orderBy('completed_at', 'desc').get();
+        .orderBy('completed_at', 'desc').get();
       if (snap.empty) return 0;
 
-      const days = new Set(snap.docs.map(d => d.data().completed_at.slice(0, 10)));
+      const days = new Set(
+        snap.docs.filter(d => d.data().mode === mode).map(d => d.data().completed_at.slice(0, 10))
+      );
       const cur = new Date(); cur.setHours(0, 0, 0, 0);
       const todayStr = cur.toISOString().slice(0, 10);
       if (!days.has(todayStr)) cur.setDate(cur.getDate() - 1);
@@ -318,9 +320,11 @@ const Auth = {
       const counts = {};
       await Promise.all(userIds.map(async uid => {
         const snap = await _db.collection('users').doc(uid).collection('sessions')
-          .where('mode', '==', mode).where('completed_at', '>=', since.toISOString()).get();
+          .where('completed_at', '>=', since.toISOString()).get();
         snap.forEach(d => {
-          const day = d.data().completed_at.slice(0, 10);
+          const data = d.data();
+          if (data.mode !== mode) return;
+          const day = data.completed_at.slice(0, 10);
           counts[day] = (counts[day] || 0) + 1;
         });
       }));
@@ -332,15 +336,18 @@ const Auth = {
     if (!this._user) return null;
     try {
       const since = new Date(); since.setDate(since.getDate() - weeks * 7);
+      // Single where clause avoids needing a composite Firestore index
       const snap = await _db.collection('users').doc(this._user.id).collection('sessions')
-        .where('mode', '==', mode).where('completed_at', '>=', since.toISOString()).get();
+        .where('completed_at', '>=', since.toISOString()).get();
       const counts = {};
       snap.forEach(d => {
-        const day = d.data().completed_at.slice(0, 10);
+        const data = d.data();
+        if (data.mode !== mode) return; // filter mode in JS
+        const day = data.completed_at.slice(0, 10);
         counts[day] = (counts[day] || 0) + 1;
       });
       return counts;
-    } catch (_) { return null; }
+    } catch (e) { console.error('[getHeatmapData]', e); return null; }
   },
 
   // ── Timezone ──────────────────────────────────────────────────────────────
