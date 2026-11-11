@@ -1,5 +1,5 @@
 import Stripe from 'stripe';
-import { upsertPlan } from './_firebase-admin.js';
+import { upsertPlan, incrementLifetimeCount } from './_firebase-admin.js';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
@@ -50,6 +50,7 @@ export default async function handler(req, res) {
         payment_id: session.payment_intent,
         valid_until: validUntil.toISOString(),
       });
+      if (plan === 'lifetime') await incrementLifetimeCount().catch(() => {});
     } catch (err) {
       console.error('[stripe-webhook] Firestore error:', err);
     }

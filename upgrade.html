@@ -98,12 +98,13 @@
     <div class="plan-toggle">
       <button class="plan-btn active" id="btn-monthly" onclick="switchPlan('monthly')">Monthly</button>
       <button class="plan-btn" id="btn-yearly" onclick="switchPlan('yearly')">
-        Yearly <span class="save-badge" style="pointer-events:none;">Save 16%</span>
+        Yearly <span class="save-badge" style="pointer-events:none;" id="yearly-save-badge">Save</span>
       </button>
       <button class="plan-btn" id="btn-lifetime" onclick="switchPlan('lifetime')" style="position:relative;">
-        Lifetime <span class="save-badge" style="pointer-events:none;background:#ff6b35;">🔥 Best</span>
+        Lifetime <span class="save-badge" style="pointer-events:none;background:#ff6b35;" id="lifetime-badge">🔥 Best</span>
       </button>
     </div>
+    <p id="lifetime-remaining-note" style="display:none;text-align:center;font-size:0.72rem;color:#ff6b35;margin:-14px 0 14px;"></p>
 
     <!-- Price -->
     <div class="price-box">
@@ -121,18 +122,35 @@
           : (_tz.includes('Calcutta') || _tz.includes('Kolkata') || navigator.language === 'en-IN');
         var _plan = new URLSearchParams(location.search).get('plan') === 'yearly' ? 'yearly' : 'monthly';
         var prices = {
-          monthly:  { amount: _india ? '₹499'    : '$4.99', period: '/month',    sub: 'Billed monthly • Cancel anytime' },
-          yearly:   { amount: _india ? '₹4,167'  : '$50',   period: '/year',     sub: _india ? 'Billed yearly — save ₹831' : 'Billed yearly — save $9.88' },
-          lifetime: { amount: _india ? '₹10,000' : '$100',  period: ' one-time', sub: 'Pay once, use forever — never billed again' }
+          monthly:  { amount: _india ? '₹499'    : '$7.99',  period: '/month',    sub: 'Billed monthly • Cancel anytime' },
+          yearly:   { amount: _india ? '₹3,999'  : '$79.99', period: '/year',     sub: _india ? 'Just ₹333/mo — billed yearly, save ₹1,989' : 'Just $6.67/mo — billed yearly, save $15.89' },
+          lifetime: { amount: _india ? '₹10,000' : '$100',   period: ' one-time', sub: 'Pay once, use forever — never billed again' }
         };
         document.getElementById('price-amount').textContent = prices[_plan].amount;
         document.getElementById('price-period').textContent = prices[_plan].period;
         document.getElementById('price-sub').textContent    = prices[_plan].sub;
+        document.getElementById('yearly-save-badge').textContent = _india ? 'Save 33%' : 'Save 17%';
+      })();
+    </script>
+
+    <!-- Anchor: what this replaces -->
+    <div style="background:rgba(57,255,20,0.08);border:1px solid rgba(57,255,20,0.25);border-radius:12px;padding:12px 14px;margin:16px 0;text-align:center;">
+      <p id="anchor-text" style="font-size:0.8rem;color:var(--text);margin:0;line-height:1.5;">
+        Replaces your <strong>timer app + task manager + weekly planner + goal tracker</strong> —
+        that's <span id="anchor-amount">₹800–1,000/mo</span> separately.
+      </p>
+    </div>
+    <script>
+      (function() {
+        var _tz = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+        var _india2 = (_tz.includes('Calcutta') || _tz.includes('Kolkata') || navigator.language === 'en-IN');
+        document.getElementById('anchor-amount').textContent = _india2 ? '₹800–1,000/mo' : '$15–20/mo';
       })();
     </script>
 
     <!-- Features -->
     <ul class="feature-list">
+      <li><span class="check" style="background:#ffd60a;">🎯</span> <strong>7-Level Goal Cascade + AI Suggestions</strong></li>
       <li><span class="check">✓</span> Focus sessions up to <strong>90 minutes</strong></li>
       <li><span class="check">✓</span> Up to <strong>8 sessions</strong> before long break</li>
       <li><span class="check">✓</span> <strong>Unlimited</strong> session history</li>
@@ -188,9 +206,9 @@
     const STRIPE_KEY = 'pk_test_51TBJuvECIoDrvWZBUZI0hsz19Hw2LGGmHVkl5tcZi1JGaIwy4CdiLtm0IBFKXlG8nNL2mlFg4ggjwQnUKySuCHcF00D0ABGu7v';
 
     const PRICE_PLANS = {
-      monthly:  { amount: 49900,    label: isIndia ? '₹499'    : '$4.99', period: '/month',    sub: 'Billed monthly • Cancel anytime' },
-      yearly:   { amount: 416700,   label: isIndia ? '₹4,167'  : '$50',   period: '/year',     sub: isIndia ? 'Billed yearly — save ₹831' : 'Billed yearly — save $9.88' },
-      lifetime: { amount: 1000000,  label: isIndia ? '₹10,000' : '$100',  period: ' one-time', sub: 'Pay once, use forever — never billed again' }
+      monthly:  { amount: 49900,    label: isIndia ? '₹499'    : '$7.99',  period: '/month',    sub: 'Billed monthly • Cancel anytime' },
+      yearly:   { amount: 399900,   label: isIndia ? '₹3,999'  : '$79.99', period: '/year',     sub: isIndia ? 'Just ₹333/mo — billed yearly, save ₹1,989' : 'Just $6.67/mo — billed yearly, save $15.89' },
+      lifetime: { amount: 1000000,  label: isIndia ? '₹10,000' : '$100',   period: ' one-time', sub: 'Pay once, use forever — never billed again' }
     };
 
     const _planParam = new URLSearchParams(location.search).get('plan');
@@ -207,6 +225,25 @@
       document.getElementById('btn-' + selectedPlan).classList.add('active');
       if (selectedPlan === 'lifetime') document.getElementById('pay-btn').textContent = 'Get Lifetime Access';
     }
+
+    // Lifetime plan is capped to the first 100 customers
+    let lifetimeAvailable = true;
+    fetch('/api/lifetime-status').then(r => r.json()).then(status => {
+      lifetimeAvailable = status.available;
+      const badge = document.getElementById('lifetime-badge');
+      const note  = document.getElementById('lifetime-remaining-note');
+      const btn   = document.getElementById('btn-lifetime');
+      if (!status.available) {
+        badge.textContent = 'Sold Out';
+        badge.style.background = 'var(--border)';
+        btn.style.opacity = '0.5';
+        btn.style.pointerEvents = 'none';
+        if (selectedPlan === 'lifetime') { selectedPlan = 'monthly'; switchPlan('monthly'); }
+      } else {
+        note.style.display = 'block';
+        note.textContent = `🔥 Only ${status.remaining} of ${status.limit} lifetime spots left`;
+      }
+    }).catch(() => {});
 
     // Load user
     Auth.init().then(user => {
@@ -227,6 +264,7 @@
 
     // Plan toggle
     function switchPlan(plan) {
+      if (plan === 'lifetime' && !lifetimeAvailable) return;
       selectedPlan = plan;
       document.getElementById('btn-monthly').classList.toggle('active', plan === 'monthly');
       document.getElementById('btn-yearly').classList.toggle('active', plan === 'yearly');
@@ -258,10 +296,10 @@
           if (data.url) {
             window.location.href = data.url;
           } else {
-            throw new Error('Session creation failed');
+            throw new Error(data.error || 'Session creation failed');
           }
         } catch (err) {
-          alert('Something went wrong. Please try again.');
+          alert(err.message || 'Something went wrong. Please try again.');
           btn.textContent = 'Upgrade Now';
           btn.disabled = false;
         }
@@ -280,7 +318,7 @@
         });
         const order = await res.json();
 
-        if (!order.id) throw new Error('Order creation failed');
+        if (!order.id) throw new Error(order.error || 'Order creation failed');
 
         // Open Razorpay checkout
         const rzp = new Razorpay({
@@ -328,7 +366,7 @@
         rzp.open();
 
       } catch (err) {
-        alert('Something went wrong. Please try again.');
+        alert(err.message || 'Something went wrong. Please try again.');
         btn.textContent = 'Upgrade Now';
         btn.disabled = false;
       }

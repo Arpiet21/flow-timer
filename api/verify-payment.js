@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import { upsertPlan } from './_firebase-admin.js';
+import { upsertPlan, incrementLifetimeCount } from './_firebase-admin.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
@@ -43,6 +43,7 @@ export default async function handler(req, res) {
       payment_id: razorpay_payment_id,
       valid_until: validUntil.toISOString(),
     });
+    if (plan === 'lifetime') await incrementLifetimeCount().catch(() => {});
     res.status(200).json({ ok: true });
   } catch (err) {
     console.error('[verify-payment] Firestore error:', err);

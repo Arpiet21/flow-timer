@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Hours — Flow Timer</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/auth.css">
+  <style>
+    .hours-page { max-width: 720px; margin: 0 auto; padding: 24px 16px 60px; }
+    .hours-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+    .hours-title { font-size: 1.3rem; font-weight: 800; }
+    .hours-sub { color: var(--text-muted); font-size: 0.85rem; margin-bottom: 20px; }
+    .hours-upgrade-note {
+      background: rgba(255,214,10,0.08); border: 1px solid #ffd60a; border-radius: 10px;
+      padding: 10px 14px; font-size: 0.78rem; margin-bottom: 18px; display: none;
+    }
+    .hours-upgrade-note a { color: #ffd60a; font-weight: 700; }
+    .hours-empty { text-align: center; color: var(--text-muted); font-size: 0.9rem; padding: 60px 0; }
+  </style>
+</head>
+<body>
+
+<div class="hours-page">
+  <div class="hours-header">
+    <span class="hours-title">🎴 My Hours</span>
+    <a href="index.html" style="font-size:0.82rem;color:var(--text-muted);text-decoration:none;">← Back to app</a>
+  </div>
+  <p class="hours-sub">Every hour that counted, saved as a card.</p>
+
+  <p id="hours-upgrade-note" class="hours-upgrade-note">
+    Free plan shows your last 5 hours. <a href="upgrade.html">Upgrade to Pro</a> to keep all 30.
+  </p>
+
+  <div id="hours-grid" class="hours-grid"></div>
+  <p id="hours-empty" class="hours-empty" style="display:none;">No certificates yet — complete a focus session to earn your first one.</p>
+</div>
+
+<!-- 🎴 Hour Certificate modal (shared with index.html) -->
+<div id="cert-modal" class="cert-modal" style="display:none;">
+  <div class="cert-modal-dialog">
+    <div class="cert-modal-title">This hour counted. 🎴</div>
+    <div id="cert-preview-wrap" class="cert-preview-wrap"><div class="cert-preview-loading">Rendering…</div></div>
+    <a id="cert-locked-note" class="cert-locked-note" href="upgrade.html" style="display:none;">✦ 2 more styles in Premium</a>
+    <div class="cert-modal-actions">
+      <button id="cert-share-btn" class="btn-primary">Share</button>
+      <button id="cert-story-btn" class="btn-secondary">Story size</button>
+    </div>
+    <button id="cert-skip-btn" class="cert-skip-link">Close</button>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+<script src="js/firebase-client.js"></script>
+<script src="js/auth.js"></script>
+<script src="https://unpkg.com/html-to-image@1.11.11/dist/html-to-image.js"></script>
+<script src="js/certificate.js"></script>
+<script>
+  Certificate.init();
+
+  Auth.init().then(async user => {
+    if (!user) { window.location.href = 'login.html'; return; }
+
+    const isPremium = Certificate.isPremium();
+    const limit = isPremium ? 30 : 5;
+    document.getElementById('hours-upgrade-note').style.display = isPremium ? 'none' : 'block';
+
+    const records = (await Auth.getCertificates(30)).slice(0, limit);
+    const grid = document.getElementById('hours-grid');
+
+    if (!records.length) {
+      document.getElementById('hours-empty').style.display = 'block';
+      return;
+    }
+
+    grid.innerHTML = records.map((r, i) => `
+      <div class="hours-card" data-idx="${i}"><span class="hours-card-loading">Loading…</span></div>
+    `).join('');
+
+    grid.querySelectorAll('.hours-card').forEach(card => {
+      card.addEventListener('click', () => Certificate.openFromRecord(records[parseInt(card.dataset.idx)]));
+    });
+
+    // Render thumbnails one at a time (avoids spiking CPU with 30 simultaneous captures)
+    for (let i = 0; i < records.length; i++) {
+      try {
+        const dataUrl = await Certificate.renderThumbnail(records[i]);
+        const card = grid.querySelector(`.hours-card[data-idx="${i}"]`);
+        if (card) card.innerHTML = `<img src="${dataUrl}" alt="Hour certificate">`;
+      } catch (_) {}
+    }
+  });
+</script>
+</body>
+</html>

@@ -1,8 +1,18 @@
+import { getLifetimeCount, LIFETIME_LIMIT } from './_firebase-admin.js';
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
 
   const { plan } = req.body;
-  const amount = plan === 'yearly' ? 416700 : plan === 'lifetime' ? 1000000 : 49900; // paise (INR)
+
+  if (plan === 'lifetime') {
+    const count = await getLifetimeCount();
+    if (count >= LIFETIME_LIMIT) {
+      return res.status(409).json({ error: 'Lifetime plan is sold out — only the first 100 customers get it.' });
+    }
+  }
+
+  const amount = plan === 'yearly' ? 399900 : plan === 'lifetime' ? 1000000 : 49900; // paise (INR)
 
   const auth = Buffer.from(
     `${process.env.RAZORPAY_KEY_ID}:${process.env.RAZORPAY_KEY_SECRET}`

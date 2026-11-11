@@ -1,10 +1,11 @@
 import Stripe from 'stripe';
+import { getLifetimeCount, LIFETIME_LIMIT } from './_firebase-admin.js';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 const PRICES = {
-  monthly:  { amount: 499,   label: '$4.99/month' },
-  yearly:   { amount: 5000,  label: '$50/year' },
+  monthly:  { amount: 799,   label: '$7.99/month' },
+  yearly:   { amount: 7999,  label: '$79.99/year' },
   lifetime: { amount: 10000, label: '$100 one-time' },
 };
 
@@ -16,6 +17,13 @@ export default async function handler(req, res) {
 
   const price = PRICES[plan];
   if (!price) return res.status(400).json({ ok: false, error: 'Invalid plan' });
+
+  if (plan === 'lifetime') {
+    const count = await getLifetimeCount();
+    if (count >= LIFETIME_LIMIT) {
+      return res.status(409).json({ ok: false, error: 'Lifetime plan is sold out — only the first 100 customers get it.' });
+    }
+  }
 
   const origin = req.headers.origin || 'https://flow-timer-rho.vercel.app';
 

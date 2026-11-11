@@ -10,7 +10,8 @@
       "Bash(do)",
       "Bash(sed -i 's|<script src=\"\"https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2\"\"></script>|<script src=\"\"https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js\"\"></script>\\\\n  <script src=\"\"https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js\"\"></script>\\\\n  <script src=\"\"https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js\"\"></script>|g' \"$f\")",
       "Bash(sed -i 's|<script src=\"\"supabase-client.js\"\"></script>|<script src=\"\"firebase-client.js\"\"></script>|g' \"$f\")",
-      "Bash(echo \"Updated $f\")"
+      "Bash(echo \"Updated $f\")",
+      "Bash(vercel --prod)"
     ]
   }
 }

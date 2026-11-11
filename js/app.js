@@ -9,7 +9,10 @@ const DEFAULT_SETTINGS = {
   notificationsEnabled: true,
   autoStart: false,
   clockType: 'analog',
-  accentColor: '#39ff14'
+  accentColor: '#39ff14',
+  certMode: 'always',      // 'always' | '60min' | 'never'
+  certTemplate: 'minimal', // 'minimal' | 'dark' | 'gradient'
+  syncTimerAcrossDevices: true // false = each device/tab runs its own independent timer
 };
 
 let state = {
@@ -25,6 +28,13 @@ let state = {
 
 let tickInterval = null;
 let pipWindow = null;
+let _lastHistoryEntries = []; // cached for manual-entry edit lookups
+let _manualEntryEditingId = null;
+
+// ─── Cross-device timer sync ───────────────────────────────────────────────────
+let _timerUnsub = null;          // unsubscribe fn for the Firestore timerState listener
+let _applyingRemoteTimer = false; // guard to stop remote-adopted changes echoing back
+let _currentEndsAt = null;        // ISO timestamp this device's running countdown expects to hit zero at
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
 function init() {
@@ -40,6 +50,8 @@ function init() {
   updatePresetUI();
   loadHistory();
   renderActivityHeatmap();
+  if (typeof LunarReminders !== 'undefined') LunarReminders.init();
+  if (typeof Certificate !== 'undefined') Certificate.init();
 }
 
 function todayStr() {
@@ -84,9 +96,11 @@ function resetTimer() {
   state.status = 'idle';
   state.totalTime = getDuration(state.mode);
   state.timeLeft = state.totalTime;
+  _currentEndsAt = null;
   renderTimer();
   updateStartBtn();
   if (typeof musicStop === 'function') musicStop();
+  _pushTimerState({ endsAt: null, remainingSeconds: state.timeLeft });
 }
 
 function setFocusAssist(on) {
@@ -95,22 +109,74 @@ function setFocusAssist(on) {
   }
 }
 
+// ── Push the local timer state to Firestore so other open devices/tabs on the
+// same account reflect it, instead of each one running its own fresh timer.
+// No-ops when sync is off, logged out, or while adopting someone else's update.
+function _pushTimerState(extra) {
+  if (_applyingRemoteTimer) return;
+  if (!state.settings.syncTimerAcrossDevices) return;
+  if (typeof Auth === 'undefined' || !Auth.isLoggedIn()) return;
+  Auth.saveTimerState({
+    mode: state.mode,
+    task: state.task,
+    session: state.session,
+    sessionsBeforeLong: state.settings.sessionsBeforeLong,
+    totalSeconds: state.totalTime,
+    status: state.status,
+    updatedBy: Auth._getDeviceId(),
+    ...extra,
+  });
+}
+
 function startTimer() {
   if (state.status === 'running') return;
   state.status = 'running';
   updateStartBtn();
+  _currentEndsAt = new Date(Date.now() + state.timeLeft * 1000).toISOString();
   tickInterval = setInterval(tick, 1000);
   setFocusAssist(true);
   if (typeof musicStart === 'function') musicStart();
+  _pushTimerState({ endsAt: _currentEndsAt, remainingSeconds: null });
 }
 
 function pauseTimer() {
   if (state.status !== 'running') return;
   clearInterval(tickInterval);
   state.status = 'paused';
+  _currentEndsAt = null;
   updateStartBtn();
   setFocusAssist(false);
   if (typeof musicPause === 'function') musicPause();
+  _pushTimerState({ endsAt: null, remainingSeconds: state.timeLeft });
+}
+
+// ─── Voice-controlled timer actions (js/voice-assistant.js) ────────────────────
+// "workout" starts/stops the existing HIIT config (js/workout.js) as-is — its
+// interval structure (rounds/work/rest secs) doesn't map to a single duration.
+function voiceStartTimer(mode, minutes, label) {
+  if (mode === 'workout') {
+    if (typeof switchTimerType === 'function') switchTimerType('workout');
+    if (typeof woStart === 'function') woStart();
+    return;
+  }
+  if (typeof switchTimerType === 'function') switchTimerType('work');
+  state.mode = (mode === 'short' || mode === 'long') ? mode : 'work';
+  if (label) state.task = label;
+  const durationSec = (minutes && minutes > 0) ? Math.round(minutes * 60) : getDuration(state.mode);
+  state.totalTime = durationSec;
+  state.timeLeft = durationSec;
+  document.querySelectorAll('#flow-section .mode-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.mode === state.mode)
+  );
+  renderTimer();
+  updatePresetUI();
+  saveToStorage();
+  startTimer();
+}
+
+function voiceStopTimer() {
+  if (state.status === 'running') { pauseTimer(); return; }
+  if (typeof wo !== 'undefined' && wo.status === 'running' && typeof woPause === 'function') woPause();
 }
 
 function tick() {
@@ -123,18 +189,50 @@ function tick() {
   }
 }
 
-function onTimerEnd() {
+// If synced with other devices, only one of them should log the session and
+// advance the cycle when a shared countdown reaches zero. We try to "claim"
+// the completion via a Firestore transaction first; if another device already
+// claimed it (it ticked to zero microseconds earlier), we just back off and
+// let that device's update arrive through the normal sync listener.
+async function onTimerEnd() {
+  if (state.settings.syncTimerAcrossDevices && typeof Auth !== 'undefined' && Auth.isLoggedIn() && _currentEndsAt) {
+    try {
+      const claimed = await Auth.claimTimerCompletion(_currentEndsAt, {
+        status: 'completing',
+        updatedBy: Auth._getDeviceId(),
+      });
+      if (!claimed) return; // another device already verifiably completed this run
+    } catch (_) {
+      // Couldn't reach Firestore (offline, etc.) — fall through and complete locally
+      // rather than silently losing a finished session.
+    }
+  }
+  _processTimerEnd();
+}
+
+function _processTimerEnd() {
   state.status = 'idle';
+  _currentEndsAt = null;
   playAlarm();
   sendNotification();
 
   if (state.mode === 'work') {
     // Log to Firebase Firestore
     if (typeof Auth !== 'undefined' && Auth.isLoggedIn()) {
-      Auth.logSession(state.mode, state.settings.work, state.task);
+      Auth.logSession(state.mode, state.settings.work, state.task).then(sessionId => {
+        // Hero Mode XP — only full completions earn XP, never the pagehide
+        // partial-credit path (see GAME_LAYER_NOTES.md).
+        if (sessionId && typeof GameLayer !== 'undefined') {
+          GameLayer.award('focus_session', { sourceId: sessionId, minutes: state.settings.work, task: state.task });
+        }
+      });
     }
     // Save to local history
     addLocalHistory(state.mode, state.settings.work, state.task);
+    // Hour Certificate — shareable session card
+    if (typeof Certificate !== 'undefined') {
+      Certificate.onSessionComplete({ durationMin: state.settings.work, taskTitle: state.task });
+    }
 
     state.session++;
     if (state.session > state.settings.sessionsBeforeLong) state.session = 1;
@@ -159,7 +257,114 @@ function switchMode(mode, auto = false) {
   resetTimer();
   updatePresetUI();
   if (auto) startTimer();
+  // Hero Mode: nudge a power-up during breaks
+  if ((mode === 'short' || mode === 'long') && typeof GameHUD !== 'undefined') GameHUD.onBreakStart();
 }
+
+// ─── Cross-device timer sync ───────────────────────────────────────────────────
+// Called once Auth has resolved (see index.html). Loads whatever timer state
+// exists for this account, then keeps listening for changes from other
+// devices/tabs so they all reflect one shared countdown instead of each
+// starting fresh. Skipped entirely when the "multiple timers" option is on.
+function startTimerSync() {
+  if (!state.settings.syncTimerAcrossDevices) return;
+  if (typeof Auth === 'undefined' || !Auth.isLoggedIn()) return;
+
+  Auth.getTimerState().then(remote => {
+    if (remote) _adoptRemoteTimerState(remote);
+  });
+
+  if (_timerUnsub) _timerUnsub();
+  _timerUnsub = Auth.subscribeTimerState(remote => {
+    if (!remote) return;
+    if (remote.updatedBy === Auth._getDeviceId()) return; // ignore our own echoed write
+    _adoptRemoteTimerState(remote);
+  });
+}
+
+function stopTimerSync() {
+  if (_timerUnsub) { _timerUnsub(); _timerUnsub = null; }
+}
+
+function _adoptRemoteTimerState(remote) {
+  _applyingRemoteTimer = true;
+  clearInterval(tickInterval);
+  tickInterval = null;
+
+  if (remote.mode) state.mode = remote.mode;
+  state.task = remote.task || '';
+  if (typeof remote.session === 'number') state.session = remote.session;
+  if (typeof remote.sessionsBeforeLong === 'number') state.settings.sessionsBeforeLong = remote.sessionsBeforeLong;
+  state.totalTime = remote.totalSeconds || getDuration(state.mode);
+
+  document.querySelectorAll('#flow-section .mode-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.mode === state.mode)
+  );
+  if (typeof updatePresetUI === 'function') updatePresetUI();
+  const taskInput = document.getElementById('task-input');
+  if (taskInput && document.activeElement !== taskInput) taskInput.value = state.task;
+
+  if (remote.status === 'running' && remote.endsAt) {
+    const remaining = Math.round((new Date(remote.endsAt) - Date.now()) / 1000);
+    if (remaining <= 0) {
+      // Finished while no device was actively watching — try to claim and process it.
+      _applyingRemoteTimer = false;
+      _currentEndsAt = remote.endsAt;
+      onTimerEnd();
+      return;
+    }
+    _currentEndsAt = remote.endsAt;
+    state.timeLeft = remaining;
+    state.status = 'running';
+    tickInterval = setInterval(tick, 1000);
+    setFocusAssist(true);
+  } else if (remote.status === 'paused') {
+    _currentEndsAt = null;
+    state.timeLeft = remote.remainingSeconds ?? state.totalTime;
+    state.status = 'paused';
+    setFocusAssist(false);
+  } else {
+    _currentEndsAt = null;
+    state.timeLeft = remote.remainingSeconds ?? state.totalTime;
+    state.status = 'idle';
+    setFocusAssist(false);
+  }
+
+  renderTimer();
+  updateStartBtn();
+  renderSessionDots();
+  syncPip();
+  _applyingRemoteTimer = false;
+}
+
+// ── Credit partial work time if the tab is actually closed/navigated away
+// mid-session, instead of silently losing it. Uses pagehide (not
+// visibilitychange) so merely switching tabs to check something doesn't
+// count as ending the session — only a real close/navigation does. Skips
+// bfcache pageviews (event.persisted) since those aren't really closing.
+// Best-effort: the browser can still terminate before this write completes.
+window.addEventListener('pagehide', e => {
+  if (e.persisted) return;
+  if (state.mode !== 'work' || state.status !== 'running') return;
+
+  const elapsedMinutes = Math.floor((state.totalTime - state.timeLeft) / 60);
+  if (elapsedMinutes >= 1 && typeof Auth !== 'undefined' && Auth.isLoggedIn()) {
+    Auth.logSession('work', elapsedMinutes, state.task, { partial: true });
+  }
+  if (state.settings.syncTimerAcrossDevices && typeof Auth !== 'undefined' && Auth.isLoggedIn()) {
+    Auth.saveTimerState({
+      mode: state.mode,
+      task: state.task,
+      session: state.session,
+      sessionsBeforeLong: state.settings.sessionsBeforeLong,
+      totalSeconds: state.totalTime,
+      status: 'idle',
+      endsAt: null,
+      remainingSeconds: state.totalTime,
+      updatedBy: Auth._getDeviceId(),
+    });
+  }
+});
 
 // ─── Clock Type ───────────────────────────────────────────────────────────────
 function applyClockType() {
@@ -373,6 +578,13 @@ function updateSettingsUI() {
   document.getElementById('sound-toggle').checked = s.soundEnabled;
   document.getElementById('notif-toggle').checked = s.notificationsEnabled;
   document.getElementById('autostart-toggle').checked = s.autoStart;
+  const syncToggleEl = document.getElementById('sync-timer-toggle');
+  if (syncToggleEl) syncToggleEl.checked = s.syncTimerAcrossDevices !== false;
+  const certModeEl = document.getElementById('cert-mode-select');
+  if (certModeEl) certModeEl.value = s.certMode || 'always';
+  document.querySelectorAll('.cert-template-pick').forEach(b =>
+    b.classList.toggle('active', b.dataset.template === (s.certTemplate || 'minimal'))
+  );
   document.querySelectorAll('.sound-opt').forEach(b =>
     b.classList.toggle('active', b.dataset.sound === s.soundType)
   );
@@ -404,6 +616,27 @@ function applyAccentColor() {
   }
   // Re-render heatmap so cell colors match the new accent
   renderActivityHeatmap();
+}
+
+// Pulls display prefs (accent color, etc.) saved from any device on this
+// account and applies them here, so the look follows the login, not the
+// browser's localStorage. Firestore wins over whatever this device had locally.
+async function syncUserPreferences() {
+  if (typeof Auth === 'undefined' || !Auth.isLoggedIn()) return;
+  const prefs = await Auth.getUserPreferences();
+  if (!prefs) return;
+  let changed = false;
+  if (prefs.accentColor && prefs.accentColor !== state.settings.accentColor) {
+    state.settings.accentColor = prefs.accentColor;
+    changed = true;
+  }
+  if (!changed) return;
+  applyAccentColor();
+  saveToStorage();
+  document.querySelectorAll('.color-swatch').forEach(b =>
+    b.classList.toggle('active', b.dataset.color === state.settings.accentColor)
+  );
+  renderTimer();
 }
 
 function applyTheme() {
@@ -441,11 +674,14 @@ async function loadHistory() {
 
   // Normalise field names (Firestore uses completed_at / duration_minutes)
   const history = sessions.map(s => ({
+    id:          s.id,
     mode:        s.mode,
     minutes:     s.duration_minutes,
     task:        s.task || '',
-    completedAt: s.completed_at
+    completedAt: s.completed_at,
+    manual:      !!s.manual
   }));
+  _lastHistoryEntries = history;
 
   // Group by date
   const grouped = {};
@@ -463,16 +699,152 @@ async function loadHistory() {
           <div class="history-item-left">
             <span class="history-mode-dot"></span>
             <span class="history-mode-label">${h.mode === 'work' ? 'Focus' : h.mode === 'short' ? 'Short Break' : h.mode === 'workout' ? 'Workout' : 'Long Break'}</span>
+            ${h.manual ? '<span class="history-manual-tag" title="Added manually">✍ Manual</span>' : ''}
             ${h.task ? `<span class="history-task">"${h.task}"</span>` : ''}
           </div>
           <div class="history-item-right">
             <span class="history-duration">${h.minutes}m</span>
             <span class="history-time">${new Date(h.completedAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span>
+            ${h.manual ? `
+              <button class="history-edit-btn" data-id="${h.id}" title="Edit">✏</button>
+              <button class="history-del-btn" data-id="${h.id}" title="Delete">🗑</button>
+            ` : ''}
           </div>
         </div>
       `).join('')}
     </div>
   `).join('');
+}
+
+// ─── Manual Session Entry ───────────────────────────────────────────────────
+// Lets a user log (and later fix or remove) hours worked when they forgot to
+// start the timer, instead of losing that time from history/heatmap/streak.
+function _localDateStr(d) {
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+function _localTimeStr(d) {
+  const pad = n => String(n).padStart(2, '0');
+  return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function _bindManualEntry() {
+  const btn        = document.getElementById('manual-entry-btn');
+  const form       = document.getElementById('manual-entry-form');
+  const dateInput  = document.getElementById('manual-date-input');
+  const timeInput  = document.getElementById('manual-time-input');
+  const hoursInput = document.getElementById('manual-hours-input');
+  const minsInput  = document.getElementById('manual-minutes-input');
+  const taskInput  = document.getElementById('manual-task-input');
+  const errorEl    = document.getElementById('manual-entry-error');
+  const saveBtn    = document.getElementById('manual-entry-save');
+  if (!btn || !form) return;
+
+  function showError(msg) {
+    errorEl.textContent = msg;
+    errorEl.style.display = 'block';
+  }
+
+  function closeForm() {
+    form.style.display = 'none';
+    btn.style.display = '';
+    hoursInput.value = '';
+    minsInput.value = '';
+    taskInput.value = '';
+    errorEl.style.display = 'none';
+    saveBtn.textContent = 'Save';
+    _manualEntryEditingId = null;
+  }
+
+  function openForNew() {
+    _manualEntryEditingId = null;
+    const now = new Date();
+    dateInput.value = _localDateStr(now);
+    dateInput.max = _localDateStr(now);
+    timeInput.value = _localTimeStr(now);
+    hoursInput.value = '';
+    minsInput.value = '';
+    taskInput.value = '';
+    errorEl.style.display = 'none';
+    saveBtn.textContent = 'Save';
+    form.style.display = 'flex';
+    btn.style.display = 'none';
+  }
+
+  function openForEdit(id) {
+    const entry = _lastHistoryEntries.find(h => h.id === id);
+    if (!entry) return;
+    _manualEntryEditingId = id;
+    const d = new Date(entry.completedAt);
+    dateInput.value = _localDateStr(d);
+    dateInput.max = _localDateStr(new Date());
+    timeInput.value = _localTimeStr(d);
+    hoursInput.value = Math.floor(entry.minutes / 60) || '';
+    minsInput.value = entry.minutes % 60 || '';
+    taskInput.value = entry.task || '';
+    errorEl.style.display = 'none';
+    saveBtn.textContent = 'Update';
+    form.style.display = 'flex';
+    btn.style.display = 'none';
+  }
+
+  btn.addEventListener('click', openForNew);
+  document.getElementById('manual-entry-cancel')?.addEventListener('click', closeForm);
+
+  saveBtn.addEventListener('click', async () => {
+    if (typeof Auth === 'undefined' || !Auth.isLoggedIn()) {
+      showError('Sign in to log a session.');
+      return;
+    }
+    const hours   = parseInt(hoursInput.value, 10) || 0;
+    const minutes = parseInt(minsInput.value, 10) || 0;
+    const totalMinutes = hours * 60 + minutes;
+    if (totalMinutes <= 0) { showError('Enter the hours or minutes you worked.'); return; }
+    if (!dateInput.value) { showError('Pick a date.'); return; }
+
+    const completedAt = new Date(`${dateInput.value}T${timeInput.value || '12:00'}:00`);
+    if (isNaN(completedAt.getTime())) { showError('That date/time looks invalid.'); return; }
+    if (completedAt.getTime() > Date.now()) { showError("Can't log a session in the future."); return; }
+
+    saveBtn.disabled = true;
+    try {
+      if (_manualEntryEditingId) {
+        await Auth.updateSession(_manualEntryEditingId, {
+          duration_minutes: totalMinutes,
+          task: taskInput.value.trim(),
+          completed_at: completedAt.toISOString(),
+        });
+      } else {
+        await Auth.logSession('work', totalMinutes, taskInput.value.trim(), {
+          manual: true,
+          completed_at: completedAt.toISOString(),
+        });
+      }
+      closeForm();
+      loadHistory();
+      renderActivityHeatmap();
+    } catch (_) {
+      showError('Could not save — try again.');
+    } finally {
+      saveBtn.disabled = false;
+    }
+  });
+
+  // Edit/delete buttons are re-rendered on every loadHistory() call, so bind
+  // once via delegation on the (stable) list container rather than per-item.
+  document.getElementById('history-list')?.addEventListener('click', async e => {
+    const editBtn = e.target.closest('.history-edit-btn');
+    const delBtn  = e.target.closest('.history-del-btn');
+    if (editBtn) {
+      openForEdit(editBtn.dataset.id);
+    } else if (delBtn) {
+      if (typeof Auth === 'undefined' || !Auth.isLoggedIn()) return;
+      delBtn.disabled = true;
+      await Auth.deleteSession(delBtn.dataset.id).catch(() => {});
+      loadHistory();
+      renderActivityHeatmap();
+    }
+  });
 }
 
 // ─── PiP Widget ───────────────────────────────────────────────────────────────
@@ -974,6 +1346,8 @@ function bindEvents() {
     _initCompleteStyleToggle();
   });
 
+  _bindManualEntry();
+
   // Task completion style toggle
   const _stylebtns = [...document.querySelectorAll('#complete-style-toggle .complete-style-btn')];
   function _setCompleteStyle(style) {
@@ -1061,9 +1435,18 @@ function bindEvents() {
   );
 
   // Task input
+  let _taskPushDebounce = null;
   document.getElementById('task-input').addEventListener('input', e => {
     state.task = e.target.value;
     saveToStorage();
+    if (state.status !== 'idle') {
+      clearTimeout(_taskPushDebounce);
+      _taskPushDebounce = setTimeout(() => {
+        _pushTimerState(state.status === 'running'
+          ? { endsAt: _currentEndsAt, remainingSeconds: null }
+          : { endsAt: null, remainingSeconds: state.timeLeft });
+      }, 800);
+    }
   });
 
   // Color swatches
@@ -1076,6 +1459,9 @@ function bindEvents() {
         b.classList.toggle('active', b === btn)
       );
       renderTimer(); // redraw clock with new color
+      if (typeof Auth !== 'undefined' && Auth.isLoggedIn()) {
+        Auth.saveUserPreferences({ accentColor: state.settings.accentColor });
+      }
     })
   );
 
@@ -1143,6 +1529,24 @@ function bindEvents() {
 
   document.getElementById('autostart-toggle').addEventListener('change', e => {
     state.settings.autoStart = e.target.checked;
+    saveToStorage();
+  });
+
+  document.getElementById('sync-timer-toggle')?.addEventListener('change', e => {
+    state.settings.syncTimerAcrossDevices = e.target.checked;
+    saveToStorage();
+    if (e.target.checked) {
+      startTimerSync();
+      _pushTimerState(state.status === 'running'
+        ? { endsAt: _currentEndsAt, remainingSeconds: null }
+        : { endsAt: null, remainingSeconds: state.timeLeft });
+    } else {
+      stopTimerSync();
+    }
+  });
+
+  document.getElementById('cert-mode-select')?.addEventListener('change', e => {
+    state.settings.certMode = e.target.value;
     saveToStorage();
   });
 
@@ -1299,6 +1703,14 @@ function _renderStreak(streak) {
 }
 
 
+function _formatDuration(mins) {
+  const h = Math.floor(mins / 60);
+  const m = Math.round(mins % 60);
+  if (h === 0) return `${m}m`;
+  if (m === 0) return `${h}h`;
+  return `${h}h ${m}m`;
+}
+
 function _drawHeatmap(counts, isWorkout) {
   const grid      = document.getElementById('heatmap-grid');
   const monthsEl  = document.getElementById('heatmap-months');
@@ -1335,7 +1747,12 @@ function _drawHeatmap(counts, isWorkout) {
   grid.innerHTML     = '';
   monthsEl.innerHTML = '';
 
-  const totalSessions = Object.values(counts).reduce((a, b) => a + b, 0);
+  // counts[day] is either a number (team view) or { count, minutes } (personal view)
+  const dayCount   = v => (typeof v === 'object' && v !== null) ? v.count   : (v || 0);
+  const dayMinutes = v => (typeof v === 'object' && v !== null) ? v.minutes : null;
+
+  const totalSessions = Object.values(counts).reduce((a, b) => a + dayCount(b), 0);
+  const totalMinutes  = Object.values(counts).reduce((a, b) => a + (dayMinutes(b) || 0), 0);
   const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
   // Walk day by day, group into week columns
@@ -1367,7 +1784,9 @@ function _drawHeatmap(counts, isWorkout) {
     if (!col) { cur.setDate(cur.getDate() + 1); continue; }
 
     const dateStr = cur.toISOString().slice(0, 10);
-    const count   = counts[dateStr] || 0;
+    const dayData = counts[dateStr];
+    const count   = dayCount(dayData);
+    const minutes = dayMinutes(dayData);
     const isFuture = cur > today;
 
     const cell = document.createElement('div');
@@ -1378,8 +1797,9 @@ function _drawHeatmap(counts, isWorkout) {
 
     const label = isWorkout ? (count === 1 ? '1 workout' : `${count} workouts`)
                             : (count === 1 ? '1 session' : `${count} sessions`);
+    const timeLabel = minutes ? ` · ${_formatDuration(minutes)}` : '';
     const dateLabel = cur.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    cell.setAttribute('data-tip', isFuture ? '' : count === 0 ? `${dateLabel} — no activity` : `${dateLabel} — ${label}`);
+    cell.setAttribute('data-tip', isFuture ? '' : count === 0 ? `${dateLabel} — no activity` : `${dateLabel} — ${label}${timeLabel}`);
 
     col.appendChild(cell);
     cur.setDate(cur.getDate() + 1);
@@ -1399,9 +1819,10 @@ function _drawHeatmap(counts, isWorkout) {
   if (titleEl) titleEl.textContent = isWorkout ? '💪 Workout Activity' : '🎯 Focus Activity';
   if (totalEl) {
     const period = `last ${WEEKS} weeks`;
+    const timeSuffix = totalMinutes ? ` · ${_formatDuration(totalMinutes)}` : '';
     totalEl.textContent = isWorkout
-      ? `${totalSessions} workout${totalSessions !== 1 ? 's' : ''} · ${period}`
-      : `${totalSessions} session${totalSessions !== 1 ? 's' : ''} · ${period}`;
+      ? `${totalSessions} workout${totalSessions !== 1 ? 's' : ''}${timeSuffix} · ${period}`
+      : `${totalSessions} session${totalSessions !== 1 ? 's' : ''}${timeSuffix} · ${period}`;
   }
 
   // ── Legend ───────────────────────────────────────────────────────────────

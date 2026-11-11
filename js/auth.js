@@ -184,14 +184,16 @@ const Auth = {
   },
 
   // ── Session history ──────────────────────────────────────────────────────
-  async logSession(mode, durationMinutes, task = '') {
-    if (!this._user) return;
-    await _db.collection('users').doc(this._user.id).collection('sessions').add({
+  async logSession(mode, durationMinutes, task = '', extra = {}) {
+    if (!this._user) return null;
+    const ref = await _db.collection('users').doc(this._user.id).collection('sessions').add({
       mode,
       duration_minutes: durationMinutes,
       task: task || '',
-      completed_at: new Date().toISOString()
+      completed_at: new Date().toISOString(),
+      ...extra
     });
+    return ref.id;
   },
 
   async getSessions() {
@@ -201,6 +203,16 @@ const Auth = {
         .orderBy('completed_at', 'desc').limit(50).get();
       return snap.docs.map(d => ({ id: d.id, ...d.data() }));
     } catch (_) { return []; }
+  },
+
+  async updateSession(id, data) {
+    if (!this._user) return;
+    await _db.collection('users').doc(this._user.id).collection('sessions').doc(id).update(data);
+  },
+
+  async deleteSession(id) {
+    if (!this._user) return;
+    await _db.collection('users').doc(this._user.id).collection('sessions').doc(id).delete();
   },
 
   // ── Focus streak ─────────────────────────────────────────────────────────
@@ -339,15 +351,207 @@ const Auth = {
       // Single where clause avoids needing a composite Firestore index
       const snap = await _db.collection('users').doc(this._user.id).collection('sessions')
         .where('completed_at', '>=', since.toISOString()).get();
-      const counts = {};
+      const data = {};
       snap.forEach(d => {
-        const data = d.data();
-        if (data.mode !== mode) return; // filter mode in JS
-        const day = data.completed_at.slice(0, 10);
-        counts[day] = (counts[day] || 0) + 1;
+        const s = d.data();
+        if (s.mode !== mode) return; // filter mode in JS
+        const day = s.completed_at.slice(0, 10);
+        if (!data[day]) data[day] = { count: 0, minutes: 0 };
+        data[day].count += 1;
+        data[day].minutes += s.duration_minutes || 0;
       });
-      return counts;
+      return data;
     } catch (e) { console.error('[getHeatmapData]', e); return null; }
+  },
+
+  // ── Hour Certificate ──────────────────────────────────────────────────────
+  async createCertificate(data) {
+    if (!this._user) return null;
+    const colRef = _db.collection('users').doc(this._user.id).collection('certificates');
+    const ref = await colRef.add({ ...data, created_at: new Date().toISOString() });
+
+    // Keep only the 30 most recent — batch-delete anything older
+    try {
+      const snap = await colRef.orderBy('created_at', 'desc').get();
+      const stale = snap.docs.slice(30);
+      if (stale.length) await Promise.all(stale.map(d => d.ref.delete()));
+    } catch (_) {}
+
+    return ref.id;
+  },
+
+  async getCertificates(limitCount = 30) {
+    if (!this._user) return [];
+    try {
+      const snap = await _db.collection('users').doc(this._user.id).collection('certificates')
+        .orderBy('created_at', 'desc').limit(limitCount).get();
+      return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    } catch (_) { return []; }
+  },
+
+  // ── AI Task Assistant history (photo scan + voice command) ────────────────
+  // No image/audio is stored — only the AI's extracted guess and (once the task
+  // is saved) what the user actually kept, so future scans/commands can learn the diff.
+  async createScanHistory(extracted, source = 'photo') {
+    if (!this._user) return null;
+    const colRef = _db.collection('users').doc(this._user.id).collection('scan_history');
+    const ref = await colRef.add({
+      extracted, final: null, corrections: null, task_id: null, source,
+      created_at: new Date().toISOString()
+    });
+    // Keep only the 50 most recent
+    try {
+      const snap = await colRef.orderBy('created_at', 'desc').get();
+      const stale = snap.docs.slice(50);
+      if (stale.length) await Promise.all(stale.map(d => d.ref.delete()));
+    } catch (_) {}
+    return ref.id;
+  },
+
+  async finalizeScanHistory(id, final, corrections, taskId) {
+    if (!this._user || !id) return;
+    await _db.collection('users').doc(this._user.id).collection('scan_history').doc(id)
+      .update({ final, corrections, task_id: taskId || null }).catch(() => {});
+  },
+
+  // Sample the most recent entries and keep only ones with actual corrections —
+  // avoids needing a composite index for an inequality/array query.
+  async getScanCorrections(sampleSize = 20, maxEntries = 8) {
+    if (!this._user) return [];
+    try {
+      const snap = await _db.collection('users').doc(this._user.id).collection('scan_history')
+        .orderBy('created_at', 'desc').limit(sampleSize).get();
+      return snap.docs
+        .map(d => d.data())
+        .filter(d => Array.isArray(d.corrections) && d.corrections.length > 0)
+        .slice(0, maxEntries);
+    } catch (_) { return []; }
+  },
+
+  // ── Cross-device display preferences (accent color, etc.) ───────────────────
+  // Separate from the localStorage-only settings blob so a chosen accent color
+  // (or other synced prefs added later) follows the account, not the browser.
+  async saveUserPreferences(prefs) {
+    if (!this._user) return;
+    await _db.collection('users').doc(this._user.id).collection('settings').doc('preferences')
+      .set({ ...prefs, updated_at: new Date().toISOString() }, { merge: true }).catch(() => {});
+  },
+
+  async getUserPreferences() {
+    if (!this._user) return null;
+    try {
+      const snap = await _db.collection('users').doc(this._user.id).collection('settings').doc('preferences').get();
+      return snap.exists ? snap.data() : null;
+    } catch (_) { return null; }
+  },
+
+  // ── Cross-device timer sync ───────────────────────────────────────────────
+  // Single doc holds the live Work Timer state so any device the same account
+  // is open on can reflect the same running countdown instead of starting fresh.
+  async saveTimerState(data) {
+    if (!this._user) return;
+    await _db.collection('users').doc(this._user.id).collection('timerState').doc('current')
+      .set({ ...data, updated_at: new Date().toISOString() }, { merge: true }).catch(() => {});
+  },
+
+  async getTimerState() {
+    if (!this._user) return null;
+    try {
+      const snap = await _db.collection('users').doc(this._user.id).collection('timerState').doc('current').get();
+      return snap.exists ? snap.data() : null;
+    } catch (_) { return null; }
+  },
+
+  // Returns an unsubscribe function. Fires on every remote change, including
+  // this device's own writes once confirmed — callers should ignore updates
+  // stamped with their own device id to avoid feedback loops.
+  subscribeTimerState(callback) {
+    if (!this._user) return () => {};
+    return _db.collection('users').doc(this._user.id).collection('timerState').doc('current')
+      .onSnapshot(snap => callback(snap.exists ? snap.data() : null), () => {});
+  },
+
+  // Atomically claims the right to process a timer that just reached zero.
+  // Only the device whose transaction still sees status:'running' with the
+  // expected endsAt wins — every other device (racing on the same countdown
+  // via sync) backs off, so a session never gets logged/advanced twice.
+  // Throws on transaction/network failure (e.g. offline) rather than swallowing
+  // to false — callers must treat "couldn't verify" differently from "verified
+  // and lost the race," so a lost connection never silently drops a completed session.
+  async claimTimerCompletion(expectedEndsAt, nextState) {
+    if (!this._user) return false;
+    const ref = _db.collection('users').doc(this._user.id).collection('timerState').doc('current');
+    return _db.runTransaction(async tx => {
+      const snap = await tx.get(ref);
+      const data = snap.exists ? snap.data() : null;
+      if (!data || data.status !== 'running' || data.endsAt !== expectedEndsAt) return false;
+      tx.set(ref, { ...nextState, updated_at: new Date().toISOString() }, { merge: true });
+      return true;
+    });
+  },
+
+  // ── Goal cascade ──────────────────────────────────────────────────────────
+  async createGoal(goal) {
+    if (!this._user) return null;
+    const ref = await _db.collection('users').doc(this._user.id).collection('goals').add({
+      ...goal,
+      completed: false,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    });
+    return ref.id;
+  },
+
+  async updateGoal(id, data) {
+    if (!this._user) return;
+    await _db.collection('users').doc(this._user.id).collection('goals').doc(id)
+      .update({ ...data, updated_at: new Date().toISOString() });
+  },
+
+  async deleteGoal(id) {
+    if (!this._user) return;
+    await _db.collection('users').doc(this._user.id).collection('goals').doc(id).delete();
+  },
+
+  async getGoals() {
+    if (!this._user) return [];
+    try {
+      const snap = await _db.collection('users').doc(this._user.id).collection('goals').get();
+      return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    } catch (_) { return []; }
+  },
+
+  // ── Strength score card ───────────────────────────────────────────────────
+  async saveStrengthEntry(entry) {
+    if (!this._user) return;
+    await _db.collection('users').doc(this._user.id).collection('strength').add({
+      ...entry,
+      logged_at: new Date().toISOString()
+    });
+  },
+
+  async getStrengthHistory(limitCount = 20) {
+    if (!this._user) return [];
+    try {
+      const snap = await _db.collection('users').doc(this._user.id).collection('strength')
+        .orderBy('logged_at', 'desc').limit(limitCount).get();
+      return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    } catch (_) { return []; }
+  },
+
+  // ── Agnihotra location ───────────────────────────────────────────────────
+  async saveAgnihotraLocation(lat, lon) {
+    if (!this._user) return;
+    await _db.collection('users').doc(this._user.id).collection('settings').doc('agnihotra')
+      .set({ lat, lon, updated_at: new Date().toISOString() }).catch(() => {});
+  },
+
+  async getAgnihotraLocation() {
+    if (!this._user) return null;
+    try {
+      const snap = await _db.collection('users').doc(this._user.id).collection('settings').doc('agnihotra').get();
+      return snap.exists ? snap.data() : null;
+    } catch (_) { return null; }
   },
 
   // ── Timezone ──────────────────────────────────────────────────────────────

@@ -125,11 +125,120 @@ const TaskCalendar = {
   }
 };
 
+// ─── Task Dashboard (Sr./Name/Given Date/Type/Days Elapsed/Progress/Details) ──
+// Shows only pending, non-recurring tasks — completed tasks are history, and
+// recurring tasks (habits you do some days, not others) don't fit a single
+// "pending since X days" framing, so they get their own board below instead.
+const TaskDashboard = {
+  _bound: false,
+
+  render(tasks) {
+    const tbody = document.getElementById('task-dashboard-tbody');
+    if (!tbody) return;
+    this._bindRowEvents();
+
+    const todayMs = new Date().setHours(0, 0, 0, 0);
+    const esc = s => (typeof TaskManager !== 'undefined' ? TaskManager._esc(s) : s);
+    const all = tasks || [];
+
+    const pending  = all.filter(t => !t.completed && !(t.recurring_days?.length > 0));
+    const recurring = all.filter(t => t.recurring_days?.length > 0);
+
+    const rows = pending.map(t => {
+      const givenDate = t.allocated_date || t.created_at?.slice(0, 10) || null;
+      const givenMs = givenDate ? new Date(givenDate + 'T00:00:00').setHours(0, 0, 0, 0) : todayMs;
+      const daysElapsed = Math.max(0, Math.round((todayMs - givenMs) / 86400000));
+      const subtasks = t.subtasks || [];
+      const subDone = subtasks.filter(s => s.completed).length;
+      const progressPct = subtasks.length ? Math.round((subDone / subtasks.length) * 100) : 0;
+      const progressLabel = subtasks.length ? `${subDone}/${subtasks.length}` : 'Pending';
+      return { id: t.id, title: t.title || '(untitled)', givenDate, category: t.category, details: t.details || '', daysElapsed, progressPct, progressLabel };
+    });
+
+    // Longest-open tasks first — surfaces what's been sitting the longest.
+    rows.sort((a, b) => b.daysElapsed - a.daysElapsed);
+
+    if (!rows.length) {
+      tbody.innerHTML = `<tr><td colspan="7" class="task-dashboard-empty">No pending tasks — you're all caught up. Completed tasks move to history.</td></tr>`;
+    } else {
+      tbody.innerHTML = rows.map((r, i) => `
+        <tr>
+          <td>${i + 1}</td>
+          <td class="task-dashboard-name">${esc(r.title)}</td>
+          <td class="task-dashboard-date-cell" data-id="${r.id}" data-date="${r.givenDate || ''}">
+            <span class="task-dashboard-date-text">${r.givenDate ? new Date(r.givenDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}</span>
+            <button class="task-dashboard-date-edit-btn" data-id="${r.id}" title="Change given date">✏</button>
+          </td>
+          <td>${esc(r.category || '—')}</td>
+          <td>${r.daysElapsed}d</td>
+          <td>
+            <div class="task-dashboard-progress-wrap">
+              <div class="task-dashboard-progress-bar"><div class="task-dashboard-progress-fill" style="width:${r.progressPct}%"></div></div>
+              <span class="task-dashboard-progress-label">${r.progressLabel}</span>
+            </div>
+          </td>
+          <td class="task-dashboard-details" title="${esc(r.details)}">${r.details ? esc(r.details) : '<span class="task-dashboard-empty-cell">—</span>'}</td>
+        </tr>
+      `).join('');
+    }
+
+    this._renderRecurring(recurring, esc);
+  },
+
+  _renderRecurring(recurring, esc) {
+    const tbody = document.getElementById('task-dashboard-recurring-tbody');
+    if (!tbody) return;
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+    if (!recurring.length) {
+      tbody.innerHTML = `<tr><td colspan="4" class="task-dashboard-empty">No recurring tasks yet.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = recurring.map((t, i) => `
+      <tr>
+        <td>${i + 1}</td>
+        <td class="task-dashboard-name">${esc(t.title || '(untitled)')}</td>
+        <td>${esc(t.category || '—')}</td>
+        <td>${t.recurring_days.slice().sort().map(d => dayNames[d]).join(' · ')}</td>
+      </tr>
+    `).join('');
+  },
+
+  // Delegated on the (stable) tbody so it survives re-renders without rebinding per row.
+  _bindRowEvents() {
+    if (this._bound) return;
+    this._bound = true;
+    document.getElementById('task-dashboard-tbody')?.addEventListener('click', e => {
+      const editBtn = e.target.closest('.task-dashboard-date-edit-btn');
+      if (!editBtn) return;
+      const cell = editBtn.closest('.task-dashboard-date-cell');
+      const id = editBtn.dataset.id;
+      const currentDate = cell.dataset.date;
+      cell.innerHTML = `<input type="date" class="task-dashboard-date-input">`;
+      const input = cell.querySelector('input');
+      input.value = currentDate;
+      input.focus();
+      let committed = false;
+      input.addEventListener('change', () => {
+        committed = true;
+        if (typeof TaskManager !== 'undefined') TaskManager.updateTaskDate(id, input.value || null);
+      });
+      input.addEventListener('blur', () => {
+        // Re-render to exit edit mode even if the user didn't change the value
+        if (!committed && typeof TaskManager !== 'undefined') TaskManager._render();
+      });
+    });
+  }
+};
+
 const TaskManager = {
   _tasks:      [],
   _categories: [],
   _recurDone:  {},  // { taskId: ['YYYY-MM-DD', ...] } — per-day completion for recurring
   _priority:   3,
+  _size:       'small',   // 'small'|'medium'|'large' — drives Hero Mode task XP
+  _linkedGoalId: null,    // goal under the pinned Current Challenge, if linked — drives the XP multiplier
   _showDone:   false,
   _bound:      false,
 
@@ -275,6 +384,10 @@ const TaskManager = {
   // ── Bind all interactive buttons once ─────────────────────────────────────
   _bindButtons() {
     document.getElementById('task-add-trigger')?.addEventListener('click', () => this.showAddForm());
+    document.getElementById('task-dashboard-add-btn')?.addEventListener('click', () => {
+      this.showAddForm();
+      document.getElementById('task-add-form')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
     // Recurring day toggles
     document.querySelectorAll('#task-recur-days .recur-day-btn').forEach(btn => {
       btn.addEventListener('click', () => btn.classList.toggle('active'));
@@ -282,20 +395,54 @@ const TaskManager = {
     document.getElementById('task-date-input')?.addEventListener('input', e => {
       const btn = document.getElementById('task-date-clear-btn');
       if (btn) btn.style.display = e.target.value ? '' : 'none';
+      // Show/hide time row based on whether a date is set
+      const timeRow = document.getElementById('task-time-row');
+      if (timeRow) timeRow.style.display = e.target.value ? '' : 'none';
     });
     document.getElementById('task-date-clear-btn')?.addEventListener('click', () => {
       const inp = document.getElementById('task-date-input');
       if (inp) inp.value = '';
       const btn = document.getElementById('task-date-clear-btn');
       if (btn) btn.style.display = 'none';
+      // Also hide/reset time row
+      const timeRow  = document.getElementById('task-time-row');
+      const timeInp  = document.getElementById('task-time-input');
+      const timeClear = document.getElementById('task-time-clear-btn');
+      if (timeRow)   timeRow.style.display = 'none';
+      if (timeInp)   timeInp.value = '';
+      if (timeClear) timeClear.style.display = 'none';
+    });
+    document.getElementById('task-time-input')?.addEventListener('input', e => {
+      const btn = document.getElementById('task-time-clear-btn');
+      if (btn) btn.style.display = e.target.value ? '' : 'none';
+    });
+    document.getElementById('task-time-clear-btn')?.addEventListener('click', () => {
+      const inp = document.getElementById('task-time-input');
+      if (inp) inp.value = '';
+      const btn = document.getElementById('task-time-clear-btn');
+      if (btn) btn.style.display = 'none';
     });
     document.getElementById('task-submit-btn')?.addEventListener('click', () => this.submitAdd());
     document.getElementById('task-cancel-btn')?.addEventListener('click', () => this.hideAddForm());
+    document.getElementById('task-scan-btn')?.addEventListener('click', () => {
+      document.getElementById('task-scan-input')?.click();
+    });
+    document.getElementById('task-scan-input')?.addEventListener('change', e => {
+      const file = e.target.files?.[0];
+      if (file) this._scanPhoto(file);
+      e.target.value = ''; // allow re-selecting the same file next time
+    });
     document.getElementById('task-title-input')?.addEventListener('keydown', e => {
       if (e.key === 'Enter') { e.preventDefault(); this.submitAdd(); }
     });
     document.querySelectorAll('#task-priority-pick .task-dot').forEach((el, i) => {
       el.addEventListener('click', () => this.setPriority(i + 1));
+    });
+    document.querySelectorAll('#task-size-pick .task-size-btn').forEach(btn => {
+      btn.addEventListener('click', () => this.setSize(btn.dataset.size));
+    });
+    document.getElementById('task-goal-link-select')?.addEventListener('change', e => {
+      this._linkedGoalId = e.target.value || null;
     });
 
     // Category select — show new-cat form or reason hint
@@ -452,10 +599,14 @@ const TaskManager = {
     document.getElementById('task-add-trigger').style.display = 'none';
     document.getElementById('task-add-form').style.display    = 'flex';
     document.getElementById('task-title-input')?.focus();
+    // Default Given date to today — showEditForm() overwrites this for edits
+    const givenInput = document.getElementById('task-given-date-input');
+    if (givenInput && !givenInput.value) givenInput.value = this._todayDs();
     // If no categories yet, auto-open the new category form
     if (this._categories.length === 0) {
       document.getElementById('new-cat-form').style.display = '';
     }
+    this._refreshGoalLinkRow();
   },
 
   hideAddForm() {
@@ -463,15 +614,30 @@ const TaskManager = {
     document.getElementById('task-add-trigger').style.display = '';
     if (document.getElementById('task-title-input'))
       document.getElementById('task-title-input').value = '';
+    if (document.getElementById('task-details-input'))
+      document.getElementById('task-details-input').value = '';
     if (document.getElementById('task-tags-input'))
       document.getElementById('task-tags-input').value = '';
+    const givenInp = document.getElementById('task-given-date-input');
+    if (givenInp) givenInp.value = '';
     const dateInp = document.getElementById('task-date-input');
     if (dateInp) dateInp.value = '';
     const dateClear = document.getElementById('task-date-clear-btn');
     if (dateClear) dateClear.style.display = 'none';
+    const timeInp = document.getElementById('task-time-input');
+    if (timeInp) timeInp.value = '';
+    const timeRow = document.getElementById('task-time-row');
+    if (timeRow) timeRow.style.display = 'none';
+    const timeClear = document.getElementById('task-time-clear-btn');
+    if (timeClear) timeClear.style.display = 'none';
     document.querySelectorAll('#task-recur-days .recur-day-btn').forEach(b => b.classList.remove('active'));
     this.setPriority(2);
+    this.setSize('small');
+    this._linkedGoalId = null;
+    const goalLinkRow = document.getElementById('task-goal-link-row');
+    if (goalLinkRow) goalLinkRow.style.display = 'none';
     this._editingId = null;
+    this._pendingScan = null;
     const submitBtn = document.getElementById('task-submit-btn');
     if (submitBtn) submitBtn.textContent = 'Add Task';
   },
@@ -483,24 +649,72 @@ const TaskManager = {
     });
   },
 
+  setSize(size) {
+    this._size = size;
+    document.querySelectorAll('#task-size-pick .task-size-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.size === size);
+    });
+  },
+
+  // Shows/populates the "Link to goal" row only when Hero Mode has a Current
+  // Challenge pinned — lists goals in that challenge's cascade for the ×1.5 XP multiplier.
+  async _refreshGoalLinkRow(preselectId) {
+    const row = document.getElementById('task-goal-link-row');
+    const sel = document.getElementById('task-goal-link-select');
+    if (!row || !sel || typeof GameLayer === 'undefined' || typeof Auth === 'undefined' || !Auth.isLoggedIn()) {
+      if (row) row.style.display = 'none';
+      return;
+    }
+    try {
+      const profile = await GameLayer.getProfile();
+      const challengeId = profile && profile.currentChallengeGoalId;
+      if (!challengeId) { row.style.display = 'none'; this._linkedGoalId = null; return; }
+
+      const goals = await Auth.getGoals();
+      const challenge = goals.find(g => g.id === challengeId);
+      if (!challenge) { row.style.display = 'none'; this._linkedGoalId = null; return; }
+      const cascadeId = challenge.cascade_id || challenge.id;
+      const inCascade = goals.filter(g => (g.cascade_id || g.id) === cascadeId);
+
+      sel.innerHTML = '<option value="">— none —</option>' +
+        inCascade.map(g => `<option value="${g.id}">${this._esc(g.title)}</option>`).join('');
+      sel.value = preselectId || '';
+      this._linkedGoalId = sel.value || null;
+      row.style.display = '';
+    } catch (_) { row.style.display = 'none'; }
+  },
+
   // ── Edit existing task ────────────────────────────────────────────────────
   showEditForm(id) {
     const task = this._tasks.find(t => t.id === id);
     if (!task) return;
     this._editingId = id;
+    this._pendingScan = null; // editing an existing task is unrelated to any scan in progress
 
     // Reuse the add form — pre-fill with task data
     this.showAddForm();
 
     document.getElementById('task-title-input').value      = task.title || '';
+    document.getElementById('task-details-input').value    = task.details || '';
+    document.getElementById('task-given-date-input').value = task.allocated_date || task.created_at?.slice(0, 10) || '';
     document.getElementById('task-est-select').value       = task.estimated_minutes || 25;
     document.getElementById('task-tags-input').value       = (task.tags || []).join(' ');
     document.getElementById('task-date-input').value       = task.scheduled_date || '';
     if (task.scheduled_date) {
       const btn = document.getElementById('task-date-clear-btn');
       if (btn) btn.style.display = '';
+      // Show time row
+      const timeRow = document.getElementById('task-time-row');
+      if (timeRow) timeRow.style.display = '';
     }
+    // Pre-fill time
+    const timeInput = document.getElementById('task-time-input');
+    const timeClearBtn = document.getElementById('task-time-clear-btn');
+    if (timeInput) timeInput.value = task.scheduled_time || '';
+    if (timeClearBtn) timeClearBtn.style.display = task.scheduled_time ? '' : 'none';
     this.setPriority(task.priority || 2);
+    this.setSize(task.size || 'small');
+    this._refreshGoalLinkRow(task.linked_goal_id || null);
 
     // Set category — defer so select options are rendered first
     setTimeout(() => {
@@ -535,19 +749,26 @@ const TaskManager = {
     if (!category || category === '__new__') category = task.category || '';
 
     const estMins  = parseInt(document.getElementById('task-est-select')?.value || '25');
+    const details  = document.getElementById('task-details-input')?.value.trim() || '';
     const tagsRaw  = document.getElementById('task-tags-input')?.value.trim() || '';
     const tags     = tagsRaw ? tagsRaw.split(/[\s,]+/).filter(Boolean).map(t => t.startsWith('#') ? t : '#' + t) : [];
+    const allocatedDate  = document.getElementById('task-given-date-input')?.value || task.allocated_date || this._todayDs();
     const scheduledDate  = document.getElementById('task-date-input')?.value || null;
+    const scheduledTime  = document.getElementById('task-time-input')?.value || null;
     const recurringDays  = [...document.querySelectorAll('#task-recur-days .recur-day-btn.active')]
       .map(b => parseInt(b.dataset.day));
 
     // Update in memory
     Object.assign(task, {
-      title, category,
+      title, category, details,
       estimated_minutes: estMins,
       priority: this._priority,
+      size: this._size,
+      linked_goal_id: this._linkedGoalId || null,
       tags,
+      allocated_date: allocatedDate,
       scheduled_date: scheduledDate,
+      scheduled_time: scheduledTime || null,
       recurring_days: recurringDays.length > 0 ? recurringDays : null
     });
 
@@ -556,14 +777,19 @@ const TaskManager = {
     this._editingId = null;
     this._render();
     if (typeof WeekPlanner !== 'undefined') WeekPlanner._render();
+    if (typeof DayScheduler !== 'undefined') DayScheduler.refresh();
 
     // Sync to Firestore
     this._sbUpdate(id, {
-      title, category,
+      title, category, details,
       estimated_minutes: estMins,
       priority: this._priority,
+      size: this._size,
+      linked_goal_id: this._linkedGoalId || null,
       tags,
+      allocated_date: allocatedDate,
       scheduled_date: scheduledDate,
+      scheduled_time: scheduledTime || null,
       recurring_days: recurringDays.length > 0 ? recurringDays : null
     }).then(ok => {
       if (!ok) this._toast('⚠️ Could not update in cloud', 3000);
@@ -587,12 +813,15 @@ const TaskManager = {
       return;
     }
     const estMins  = parseInt(document.getElementById('task-est-select')?.value || '25');
+    const details  = document.getElementById('task-details-input')?.value.trim() || '';
     const tagsRaw  = document.getElementById('task-tags-input')?.value.trim() || '';
     const tags = tagsRaw
       ? tagsRaw.split(/[\s,]+/).filter(Boolean).map(t => t.startsWith('#') ? t : '#' + t)
       : [];
 
+    const allocatedDate = document.getElementById('task-given-date-input')?.value || this._todayDs();
     const scheduledDate = document.getElementById('task-date-input')?.value || null;
+    const scheduledTime = document.getElementById('task-time-input')?.value || null;
     const recurringDays = [...document.querySelectorAll('#task-recur-days .recur-day-btn.active')]
       .map(b => parseInt(b.dataset.day)); // 0=Sun,1=Mon…6=Sat
     const uid = typeof Auth !== 'undefined' && Auth.isLoggedIn() ? Auth.getUser()?.id : null;
@@ -600,13 +829,31 @@ const TaskManager = {
 
     // Client generates the UUID — same ID used in UI and Supabase, always in sync
     const task = {
-      id: crypto.randomUUID(), title, category,
+      id: crypto.randomUUID(), title, category, details,
       estimated_minutes: estMins, priority: this._priority, tags,
+      size: this._size, linked_goal_id: this._linkedGoalId || null,
+      allocated_date: allocatedDate,
       scheduled_date: scheduledDate,
+      scheduled_time: scheduledTime || null,
       recurring_days: recurringDays.length > 0 ? recurringDays : null,
       completed: false, completed_at: null,
       created_at: new Date().toISOString()
     };
+
+    // If this task came from a photo scan, record what actually got kept vs. what
+    // the AI guessed — feeds the correction-learning hint on future scans
+    if (this._pendingScan) {
+      const pendingScan = this._pendingScan;
+      this._pendingScan = null;
+      if (pendingScan.historyId) {
+        const corrections = this._computeCorrections(pendingScan.extracted, task);
+        Auth.finalizeScanHistory(pendingScan.historyId, {
+          title: task.title, category: task.category, priority: task.priority,
+          estimated_minutes: task.estimated_minutes, scheduled_date: task.scheduled_date,
+          scheduled_time: task.scheduled_time, details: task.details
+        }, corrections, task.id).catch(() => {});
+      }
+    }
 
     // Show immediately — never block on network
     this._tasks.push(task);
@@ -614,6 +861,7 @@ const TaskManager = {
     this.hideAddForm();
     this._render();
     if (typeof WeekPlanner !== 'undefined') WeekPlanner._render();
+    if (typeof DayScheduler !== 'undefined') DayScheduler.refresh();
     if (task.scheduled_date && task.scheduled_date > this._todayDs()) {
       const [y, m, d] = task.scheduled_date.split('-');
       this._toast(`✅ Scheduled for ${d}/${m}/${y} — see Weekly Plan ↓`);
@@ -627,6 +875,146 @@ const TaskManager = {
         this._toast('⚠️ Cloud sync failed — task removed. Check connection.', 5000);
       }
     });
+  },
+
+  // ── AI assistant: create a task from a photo ──────────────────────────────
+  _pendingScan: null, // { historyId, extracted } — set after a scan, consumed by submitAdd()
+
+  async _scanPhoto(file) {
+    const btn = document.getElementById('task-scan-btn');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Scanning…'; }
+    try {
+      const { base64, mediaType } = await this._downscaleImage(file);
+      const corrections = await this._getCorrectionsHint();
+      const resp = await fetch('/api/extract-task-from-photo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: base64, mediaType, corrections })
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || 'Scan failed');
+
+      let historyId = null;
+      if (typeof Auth !== 'undefined' && Auth.isLoggedIn()) {
+        historyId = await Auth.createScanHistory(data.task).catch(() => null);
+      }
+      this._pendingScan = { historyId, extracted: data.task };
+      this._applyScannedTask(data.task);
+    } catch (e) {
+      this._toast(`⚠️ Photo scan failed: ${e.message}`, 4000);
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = '📷 Scan'; }
+    }
+  },
+
+  // Flatten the last few corrected scans into a compact hint for the next prompt —
+  // lightweight personalization; not real model training (Claude has no fine-tuning API).
+  async _getCorrectionsHint() {
+    if (typeof Auth === 'undefined' || !Auth.isLoggedIn()) return [];
+    try {
+      const entries = await Auth.getScanCorrections(20, 8);
+      const flat = [];
+      for (const entry of entries) {
+        for (const c of (entry.corrections || [])) {
+          flat.push(c);
+          if (flat.length >= 12) return flat;
+        }
+      }
+      return flat;
+    } catch (_) { return []; }
+  },
+
+  // Diff the AI's original guess against what actually got saved — only real edits count
+  _computeCorrections(extracted, task) {
+    if (!extracted) return null;
+    const norm = v => (v === null || v === undefined) ? '' : String(v);
+    const fields = ['title', 'category', 'priority', 'estimated_minutes', 'scheduled_date', 'scheduled_time', 'details'];
+    const corrections = fields
+      .map(f => ({ field: f, from: extracted[f], to: task[f] }))
+      .filter(c => norm(c.from) !== norm(c.to));
+    return corrections.length > 0 ? corrections : null;
+  },
+
+  // Downscale + JPEG-encode client-side so uploads stay small and fast
+  _downscaleImage(file) {
+    const MAX_EDGE = 1568;
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = () => reject(new Error('Could not read file'));
+      reader.onload = () => {
+        const img = new Image();
+        img.onerror = () => reject(new Error('Could not decode image'));
+        img.onload = () => {
+          let { width, height } = img;
+          if (width > MAX_EDGE || height > MAX_EDGE) {
+            const scale = MAX_EDGE / Math.max(width, height);
+            width = Math.round(width * scale);
+            height = Math.round(height * scale);
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width; canvas.height = height;
+          canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+          resolve({ base64: dataUrl.split(',')[1], mediaType: 'image/jpeg' });
+        };
+        img.src = reader.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  },
+
+  // Pre-fill the Add Task form with AI-extracted fields — user still reviews before saving
+  _applyScannedTask(task) {
+    if (!task) return;
+    this.showAddForm();
+
+    const titleInput = document.getElementById('task-title-input');
+    if (titleInput) titleInput.value = task.title || '';
+
+    const detailsInput = document.getElementById('task-details-input');
+    if (detailsInput) detailsInput.value = task.details || '';
+
+    const estSelect = document.getElementById('task-est-select');
+    if (estSelect && task.estimated_minutes) {
+      const options = [...estSelect.options].map(o => parseInt(o.value));
+      const closest = options.reduce((a, b) =>
+        Math.abs(b - task.estimated_minutes) < Math.abs(a - task.estimated_minutes) ? b : a);
+      estSelect.value = closest;
+    }
+
+    if (task.priority) this.setPriority(Math.min(5, Math.max(1, task.priority)));
+
+    // A date/time found in the photo is a deadline/plan — goes to Schedule, not Given
+    // (Given date defaults to today via showAddForm(), which is correct for "when I received this")
+    if (task.scheduled_date) {
+      const dateInput = document.getElementById('task-date-input');
+      if (dateInput) {
+        dateInput.value = task.scheduled_date;
+        dateInput.dispatchEvent(new Event('input'));
+      }
+      if (task.scheduled_time) {
+        const timeInput = document.getElementById('task-time-input');
+        if (timeInput) {
+          timeInput.value = task.scheduled_time;
+          timeInput.dispatchEvent(new Event('input'));
+        }
+      }
+    }
+
+    // Match extracted category to an existing one (case-insensitive) — never auto-create
+    if (task.category) {
+      const match = this._categories.find(c => c.name.toLowerCase() === task.category.toLowerCase());
+      if (match) {
+        setTimeout(() => {
+          const sel = document.getElementById('task-category-select');
+          if (sel) sel.value = match.name;
+        }, 0);
+      }
+    }
+
+    this._toast('📷 Task extracted — review and Add', 3000);
+    document.getElementById('task-add-form')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    titleInput?.focus();
   },
 
   _toast(msg, durationMs = 3000) {
@@ -654,6 +1042,29 @@ const TaskManager = {
     this._render();
     if (typeof WeekPlanner !== 'undefined') WeekPlanner._render();
     this._sbUpdate(id, { completed: task.completed, completed_at: task.completed_at });
+
+    // Hero Mode XP — award on complete, revoke on un-complete. Deterministic
+    // ledger id (task_{id}) makes this safe against double-taps/refreshes.
+    if (typeof GameLayer !== 'undefined' && typeof Auth !== 'undefined' && Auth.isLoggedIn()) {
+      if (task.completed) {
+        GameLayer.isTaskChallengeLinked(task.linked_goal_id).then(challengeLinked => {
+          GameLayer.award('task', { sourceId: task.id, task, challengeLinked });
+        });
+      } else {
+        GameLayer.revoke(`task_${task.id}`);
+      }
+    }
+  },
+
+  // ── Update Given/Allocated date (used by the Task Dashboard's inline editor) ──
+  // Distinct from scheduled_date (Schedule = planning; this = when the task was allocated).
+  updateTaskDate(id, newDate) {
+    const task = this._tasks.find(t => t.id === id);
+    if (!task) return;
+    task.allocated_date = newDate || this._todayDs();
+    this._saveCache();
+    this._render();
+    this._sbUpdate(id, { allocated_date: task.allocated_date });
   },
 
   // ── Delete ────────────────────────────────────────────────────────────────
@@ -711,6 +1122,7 @@ const TaskManager = {
     this._renderStats();
     this._renderList();
     TaskCalendar.init(this._tasks);
+    if (typeof TaskDashboard !== 'undefined') TaskDashboard.render(this._tasks);
   },
 
   // Returns true if a task belongs to today
@@ -886,6 +1298,14 @@ const TaskManager = {
     }
   },
 
+  _fmtTime12(hhmm) {
+    const [h, m] = (hhmm || '').split(':').map(Number);
+    if (isNaN(h) || isNaN(m)) return '';
+    const period = h >= 12 ? 'PM' : 'AM';
+    const h12 = h % 12 || 12;
+    return `${h12}:${String(m).padStart(2, '0')} ${period}`;
+  },
+
   _taskEl(task) {
     const el = document.createElement('div');
     el.className = 'task-item' + (task.completed ? ' task-item-done' : '');
@@ -894,8 +1314,9 @@ const TaskManager = {
       `<span class="task-dot${i <= task.priority ? ' task-dot-active' : ''}"></span>`
     ).join('');
     const tags = (task.tags || []).map(t => `<span class="task-tag">${this._esc(t)}</span>`).join('');
+    const sizeLabel = task.size && task.size !== 'small' ? `<span class="task-size-badge task-size-${task.size}">${task.size === 'large' ? 'L' : 'M'}</span>` : '';
     const dateLabel = task.scheduled_date
-      ? `<span class="task-scheduled-badge">📅 ${task.scheduled_date.slice(5).replace('-','/')}</span>`
+      ? `<span class="task-scheduled-badge">📅 ${new Date(task.scheduled_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}${task.scheduled_time ? ' · ' + this._fmtTime12(task.scheduled_time) : ''}</span>`
       : '';
     const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
     const recurLabel = (task.recurring_days?.length > 0)
@@ -935,6 +1356,7 @@ const TaskManager = {
         <div class="task-title">${this._esc(task.title)}</div>
         <div class="task-meta">
           <div class="task-dots">${dots}</div>
+          ${sizeLabel}
           ${tags}
           ${dateLabel}
           ${recurLabel}
@@ -1406,7 +1828,9 @@ const WeekPlanner = {
             el.addEventListener('dragend', () => el.classList.remove('dragging'));
           }
           const mins = t.estimated_minutes || 0;
-          const timeLabel = mins > 0 ? `${mins}m` : '—';
+          const timeLabel = t.scheduled_time
+            ? `${t.scheduled_time}${mins > 0 ? ' · ' + mins + 'm' : ''}`
+            : mins > 0 ? `${mins}m` : '—';
           el.innerHTML = `
             <div class="week-item-check${isDone ? ' done' : ''}"></div>
             <span class="week-item-text${isDone ? ' done' : ''}">${this._esc(t.title)}</span>

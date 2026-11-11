@@ -35,3 +35,27 @@ export async function upsertPlan(userId, fields) {
   const ref = db.collection('users').doc(userId).collection('plan').doc('current');
   await ref.set({ ...fields, updated_at: new Date().toISOString() }, { merge: true });
 }
+
+/** Lifetime plan is capped to the first LIFETIME_LIMIT customers */
+export const LIFETIME_LIMIT = 100;
+
+function lifetimeCounterRef() {
+  return getAdminDb().collection('meta').doc('lifetime_counter');
+}
+
+export async function getLifetimeCount() {
+  const snap = await lifetimeCounterRef().get();
+  return snap.exists ? (snap.data().count || 0) : 0;
+}
+
+/** Called once a lifetime payment is confirmed — always grants (payment already succeeded),
+ *  just keeps the counter accurate for the "first 100" display/gate on new checkouts. */
+export async function incrementLifetimeCount() {
+  const db = getAdminDb();
+  const ref = lifetimeCounterRef();
+  await db.runTransaction(async tx => {
+    const snap = await tx.get(ref);
+    const current = snap.exists ? (snap.data().count || 0) : 0;
+    tx.set(ref, { count: current + 1, updated_at: new Date().toISOString() }, { merge: true });
+  });
+}

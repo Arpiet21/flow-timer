@@ -55,7 +55,8 @@
 
       // Restrict presets for free users (?preview=free to test)
       const previewFree = new URLSearchParams(location.search).get('preview') === 'free';
-      const isPro = !previewFree && (user.plan === 'pro' || user.plan === 'trial');
+      const isAdminUser = user.email === 'arpietmalpani@gmail.com';
+      const isPro = !previewFree && (isAdminUser || user.plan === 'pro' || user.plan === 'trial');
       if (!isPro) {
         // Lock pro presets
         document.querySelectorAll('.pro-preset').forEach(btn => {
@@ -82,8 +83,7 @@
       }
 
       // Show banner (not for admin or paid users)
-      const isAdmin = user.email === 'arpietmalpani@gmail.com';
-      if (!isAdmin && user.plan !== 'pro') {
+      if (!isAdminUser && user.plan !== 'pro') {
         const banner = document.createElement('div');
         const isTrial = user.plan === 'trial' && user.trialDaysLeft > 0;
         banner.style.cssText = `
@@ -107,6 +107,18 @@
     }
     // Init team + referral cards after auth is confirmed
     if (typeof initTeamAndReferral === 'function') initTeamAndReferral();
+    // Re-render history + heatmap now that Auth._user is populated
+    // (app.js's init() runs on DOMContentLoaded, before this promise resolves)
+    if (typeof loadHistory === 'function') loadHistory();
+    if (typeof renderActivityHeatmap === 'function') renderActivityHeatmap();
+    // Adopt any timer already running on another device instead of starting fresh
+    if (typeof startTimerSync === 'function') startTimerSync();
+    // Apply accent color (etc.) saved from any device on this account
+    if (typeof syncUserPreferences === 'function') syncUserPreferences();
+    // Hero Mode — load profile, catch up on streak evaluation, mount HUD
+    if (typeof GameLayer !== 'undefined') {
+      GameLayer.init().then(() => { if (typeof GameHUD !== 'undefined') GameHUD.init(); });
+    }
   });
 
   // Show block-notifications toggle only in Electron (Windows)
@@ -124,6 +136,7 @@
   <header>
     <div class="logo">⏱ Flow Timer</div>
     <div class="header-actions">
+      <button class="icon-btn" id="hero-mode-btn" title="Hero Mode">🎮</button>
       <button class="icon-btn" id="theme-btn" title="Toggle theme (T)">☀</button>
       <button class="icon-btn" id="settings-btn" title="Settings (S)">⚙</button>
       <button class="icon-btn" id="history-btn" title="Session History (H)">📋</button>
@@ -133,6 +146,21 @@
     <!-- Mobile hamburger -->
     <button class="icon-btn" id="hamburger-btn" aria-label="Open menu" onclick="openNavDrawer()">☰</button>
   </header>
+
+  <!-- 🎮 Hero Mode HUD — always visible across every tab (outside <main>'s
+       switchTimerType() containers, same trick as the voice-assistant mic button) -->
+  <div id="hero-hud" class="hero-hud" style="display:none">
+    <div class="hero-hud-id">
+      <span id="hero-hud-name" class="hero-hud-name">Hero</span>
+      <span id="hero-hud-level" class="hero-hud-level">Lv 1 · Apprentice</span>
+    </div>
+    <div class="hero-hud-xp-wrap">
+      <div class="hero-hud-xp-bar"><div id="hero-hud-xp-fill" class="hero-hud-xp-fill"></div></div>
+      <span id="hero-hud-xp-label" class="hero-hud-xp-label">0 / 100</span>
+    </div>
+    <span id="hero-hud-streak" class="hero-hud-chip hero-hud-streak" title="SuperBetter Day streak">🔥 0</span>
+    <span id="hero-hud-coins" class="hero-hud-chip hero-hud-coins" title="Coins">🪙 0</span>
+  </div>
 
   <!-- Mobile nav drawer -->
   <div id="nav-drawer" aria-hidden="true">
@@ -175,9 +203,12 @@
       <button class="mode-btn active" id="btn-work-timer" onclick="switchTimerType('work')">⏱ Work Timer</button>
       <button class="mode-btn" id="btn-workout-timer" onclick="switchTimerType('workout')">💪 Workout Timer</button>
       <button class="mode-btn" id="btn-tasks" onclick="switchTimerType('tasks')">✅ Tasks</button>
-      <button class="mode-btn" id="btn-video" onclick="switchTimerType('video')">🎬 Video</button>
+      <button class="mode-btn" id="btn-goals" onclick="switchTimerType('goals')">🎯 Goals</button>
       <div class="mode-tabs-divider"></div>
-      <button class="mode-btn mode-btn-full" id="btn-meditation" onclick="switchTimerType('meditation')">🧘 Meditation</button>
+      <button class="mode-btn" id="btn-meditation" onclick="switchTimerType('meditation')">🧘 Meditation</button>
+      <button class="mode-btn" id="btn-manifestation" onclick="switchTimerType('manifestation')">✨ Manifestation</button>
+      <button class="mode-btn" id="btn-agnihotra" onclick="switchTimerType('agnihotra')">🔥 Agnihotra</button>
+      <button class="mode-btn" id="btn-strength" onclick="switchTimerType('strength')">🏆 Strength</button>
     </div>
 
     <!-- ── Work Timer Section ─────────────────────────────────────────────── -->
@@ -250,6 +281,12 @@
 
     </div>
 
+    <!-- Hero Mode: Current Challenge banner -->
+    <div id="hero-challenge-banner" class="hero-challenge-banner" style="display:none"></div>
+    <!-- Hero Mode: Quest Board -->
+    <div id="hero-quest-board" class="card hero-quest-board" style="display:none"></div>
+    <!-- Hero Mode: Power-up chips -->
+    <div id="hero-powerup-chips" class="hero-powerup-chips" style="display:none"></div>
 
     </div><!-- /#flow-section -->
 
@@ -257,6 +294,15 @@
     <div class="card hidden" id="settings-card">
       <div class="settings-panel open" id="settings-panel" style="max-height:none;overflow:visible;">
         <h3>Settings</h3>
+
+        <!-- Hero Mode toggle — on by default; turning off hides the HUD, keeps the data -->
+        <div class="setting-row">
+          <label>🎮 Hero Mode</label>
+          <label class="toggle-switch">
+            <input type="checkbox" id="hero-mode-toggle" checked>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
 
         <!-- Block Notifications (Electron only) -->
         <div class="setting-row" id="block-notif-row" style="display:none;">
@@ -401,6 +447,35 @@
           </label>
         </div>
 
+        <div class="toggle-row">
+          <span>Sync timer across devices</span>
+          <label class="toggle">
+            <input type="checkbox" id="sync-timer-toggle" checked>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <p style="font-size:0.72rem;color:var(--text-muted);margin:-8px 0 4px;">When on, starting/pausing on one device shows the same running timer everywhere you're signed in. Turn off to run independent timers per device.</p>
+
+        <!-- ── Hour Certificate ──────────────────────────────────────────── -->
+        <div class="settings-section-divider">🎴 Hour Certificate</div>
+        <div class="setting-row" style="flex-direction:column;align-items:flex-start;gap:8px;">
+          <span style="font-size:0.82rem;color:var(--text-muted);">Show certificate after sessions</span>
+          <select id="cert-mode-select" class="task-select" style="width:100%;max-width:100%;font-size:0.8rem;padding:6px 10px;">
+            <option value="always">Always</option>
+            <option value="60min">Only 60min+ sessions</option>
+            <option value="never">Never (still saved to My Hours)</option>
+          </select>
+        </div>
+        <div class="setting-row" style="flex-direction:column;align-items:flex-start;gap:8px;margin-top:10px;">
+          <span style="font-size:0.82rem;color:var(--text-muted);">Card style</span>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="cert-template-pick active" data-template="minimal">Minimal</button>
+            <button class="cert-template-pick" data-template="dark">Dark 🔒</button>
+            <button class="cert-template-pick" data-template="gradient">Gradient 🔒</button>
+          </div>
+          <a href="hours.html" style="font-size:0.78rem;color:var(--accent);text-decoration:underline;margin-top:4px;">🎴 View My Hours gallery →</a>
+        </div>
+
         <!-- ── Timezone ──────────────────────────────────────────────────── -->
         <div class="settings-section-divider">🌍 Timezone</div>
         <div class="setting-row" style="flex-direction:column;align-items:flex-start;gap:8px;">
@@ -534,7 +609,29 @@
     <!-- Session History Panel -->
     <div class="card hidden" id="history-card">
       <div class="history-panel">
-        <h3>Session History</h3>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+          <h3 style="margin:0;">Session History</h3>
+          <button id="manual-entry-btn" class="btn-secondary" style="font-size:0.78rem;padding:6px 12px;">+ Add Manual Entry</button>
+        </div>
+
+        <!-- Manually log time worked when the timer wasn't running -->
+        <div id="manual-entry-form" style="display:none;flex-direction:column;gap:8px;margin:12px 0;padding:14px;background:var(--card-bg-2, rgba(255,255,255,0.04));border:1px solid var(--border);border-radius:10px;">
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <input type="date" id="manual-date-input" class="task-field" style="flex:1;min-width:130px;">
+            <input type="time" id="manual-time-input" class="task-field" style="flex:1;min-width:110px;">
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <input type="number" id="manual-hours-input" placeholder="Hours" min="0" max="23" class="task-field" style="flex:1;min-width:80px;">
+            <input type="number" id="manual-minutes-input" placeholder="Minutes" min="0" max="59" class="task-field" style="flex:1;min-width:80px;">
+          </div>
+          <input type="text" id="manual-task-input" placeholder="What did you work on? (optional)" class="task-field" maxlength="60">
+          <p id="manual-entry-error" style="color:#e92845;font-size:0.75rem;display:none;margin:0;"></p>
+          <div class="task-form-actions">
+            <button id="manual-entry-save" class="btn-accent-sm">Save</button>
+            <button id="manual-entry-cancel" class="task-cancel-btn">Cancel</button>
+          </div>
+        </div>
+
         <div id="history-list"><p class="history-empty">No sessions yet. Start your first session!</p></div>
       </div>
     </div>
@@ -685,6 +782,47 @@
     <!-- ── Task Manager Section ──────────────────────────────────────────── -->
     <div id="task-section" class="hidden">
 
+      <!-- Task Dashboard -->
+      <div class="card task-dashboard-card" id="task-dashboard-card">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px;">
+          <span class="task-section-title" style="margin:0;">📊 Task Dashboard</span>
+          <button id="task-dashboard-add-btn" class="btn-secondary" style="font-size:0.78rem;padding:6px 12px;">+ Add Task</button>
+        </div>
+        <div class="task-dashboard-scroll">
+          <table class="task-dashboard-table">
+            <thead>
+              <tr>
+                <th>Sr.</th>
+                <th>Task Name</th>
+                <th>Given Date</th>
+                <th>Task Type</th>
+                <th>Days Elapsed</th>
+                <th>Progress</th>
+                <th>Details</th>
+              </tr>
+            </thead>
+            <tbody id="task-dashboard-tbody"></tbody>
+          </table>
+        </div>
+
+        <!-- Recurring tasks get their own board — "pending since N days" doesn't
+             fit a habit you do some days and not others -->
+        <div class="task-section-title" style="margin:18px 0 10px;font-size:0.85rem;">🔁 Recurring Tasks</div>
+        <div class="task-dashboard-scroll">
+          <table class="task-dashboard-table">
+            <thead>
+              <tr>
+                <th>Sr.</th>
+                <th>Task Name</th>
+                <th>Task Type</th>
+                <th>Repeats On</th>
+              </tr>
+            </thead>
+            <tbody id="task-dashboard-recurring-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
       <!-- Activity Calendar -->
       <div class="card task-calendar-card" id="task-calendar-card">
         <div class="tcal-header">
@@ -724,14 +862,28 @@
       <!-- Task card -->
       <div class="card task-main-card">
 
+        <!-- View toggle: List / Day -->
+        <div class="task-view-toggle">
+          <button class="task-view-btn active" id="list-view-btn">📋 List</button>
+          <button class="task-view-btn" id="day-view-btn">📅 Day</button>
+        </div>
+
+        <!-- LIST VIEW wrapper -->
+        <div id="list-view">
+
         <!-- Add trigger -->
-        <button class="task-add-trigger" id="task-add-trigger">
-          <span class="task-add-plus">+</span> Add a task…
-        </button>
+        <div class="task-add-trigger-row">
+          <button class="task-add-trigger" id="task-add-trigger">
+            <span class="task-add-plus">+</span> Add a task…
+          </button>
+          <button class="task-scan-btn" id="task-scan-btn" title="Create a task from a photo (AI assistant)">📷 Scan</button>
+          <input type="file" id="task-scan-input" accept="image/*" capture="environment" style="display:none">
+        </div>
 
         <!-- Add form (hidden) -->
         <div class="task-add-form" id="task-add-form" style="display:none">
           <input type="text" id="task-title-input" class="task-field" placeholder="Task name…" maxlength="120">
+          <textarea id="task-details-input" class="task-field" placeholder="Details (optional)…" rows="2" maxlength="1000" style="resize:vertical;"></textarea>
           <div class="task-form-row">
             <select id="task-category-select" class="task-select">
               <!-- populated by TaskManager._populateCategorySelect() -->
@@ -756,6 +908,18 @@
               <span class="task-dot"></span>
               <span class="task-dot"></span>
             </div>
+            <div class="task-size-pick" id="task-size-pick">
+              <button type="button" class="task-size-btn active" data-size="small" title="Small (10 XP)">S</button>
+              <button type="button" class="task-size-btn" data-size="medium" title="Medium (25 XP)">M</button>
+              <button type="button" class="task-size-btn" data-size="large" title="Large (50 XP)">L</button>
+            </div>
+          </div>
+          <!-- Link to a Current Challenge goal — only shown when Hero Mode has a challenge pinned -->
+          <div class="task-form-row" id="task-goal-link-row" style="display:none">
+            <span class="task-date-label">🎯 Link to goal</span>
+            <select id="task-goal-link-select" class="task-select">
+              <option value="">— none —</option>
+            </select>
           </div>
           <!-- Category manager (delete categories) -->
           <div id="cat-manager" class="cat-manager" style="display:none">
@@ -777,11 +941,22 @@
           <!-- Category reason hint (shown when category has a reason) -->
           <div id="cat-reason-hint" class="cat-reason-hint" style="display:none"></div>
 
-          <!-- Schedule date row -->
+          <!-- Given/Allocated date row — when the task was handed to you, separate from when you plan to do it -->
+          <div class="task-date-row">
+            <span class="task-date-label">📌 Given</span>
+            <input type="date" id="task-given-date-input" class="task-date-input">
+          </div>
+          <!-- Schedule date row — for planning: when you intend to work on it -->
           <div class="task-date-row">
             <span class="task-date-label">📅 Schedule</span>
             <input type="date" id="task-date-input" class="task-date-input">
             <button type="button" class="task-date-clear-btn" id="task-date-clear-btn" style="display:none" title="Clear date">✕</button>
+          </div>
+          <!-- Time row (shown when date is set) -->
+          <div class="task-date-row task-time-row" id="task-time-row" style="display:none">
+            <span class="task-date-label">🕐 Time</span>
+            <input type="time" id="task-time-input" class="task-date-input">
+            <button type="button" class="task-date-clear-btn" id="task-time-clear-btn" style="display:none" title="Clear time">✕</button>
           </div>
           <!-- Recurring days (shown when no one-off date is set, OR always) -->
           <div class="task-recur-row" id="task-recur-row">
@@ -805,6 +980,25 @@
 
         <!-- Task list -->
         <div id="task-list"></div>
+
+        </div><!-- /#list-view -->
+
+        <!-- DAY SCHEDULER VIEW -->
+        <div id="day-scheduler" style="display:none">
+          <div class="day-sched-nav">
+            <button class="day-nav-btn" id="day-prev-btn">‹</button>
+            <span id="day-label"></span>
+            <button class="day-nav-btn" id="day-next-btn">›</button>
+            <button class="day-today-btn" id="day-today-btn">Today</button>
+          </div>
+          <!-- Unscheduled tasks for this day -->
+          <div id="day-unscheduled" style="display:none"></div>
+          <!-- Scrollable hour grid -->
+          <div class="day-sched-scroll">
+            <div class="day-sched-grid" id="day-sched-grid"></div>
+          </div>
+        </div>
+
       </div>
 
       <!-- Brain Dump Card -->
@@ -832,64 +1026,30 @@
 
     </div><!-- /#task-section -->
 
-    <!-- ── Video Creation Section ────────────────────────────────────────── -->
-    <div id="video-section" class="hidden">
+    <!-- 🎯 7-Level Goal Cascade Section -->
+    <div id="goals-section" class="hidden">
+      <div class="card">
+        <h2 style="font-size:1.2rem;margin-bottom:4px;">🎯 Goal Cascade</h2>
+        <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:20px;">Break your someday goal down through 7 levels, all the way to what you'll do right now — with AI suggestions at every step.</p>
 
-      <!-- Script Copier Card -->
-      <div class="card script-copier-card">
-        <div class="script-copier-header">
-          <div>
-            <span class="task-section-title">🎬 Script Copier</span>
-            <span class="task-section-hint">Save &amp; copy scripts for any video AI model</span>
-          </div>
-          <button class="script-float-toggle" id="script-float-btn" title="Open floating panel">⧉ Float</button>
-        </div>
-
-        <!-- Add trigger row -->
-        <div class="script-trigger-row">
-          <button class="task-add-trigger" id="script-add-trigger" style="flex:1">
-            <span class="task-add-plus">+</span> Add a script…
-          </button>
-          <button class="script-import-btn" id="script-import-btn" title="Import from ChatGPT">⬇ Import from ChatGPT</button>
-        </div>
-
-        <!-- Add / Edit form -->
-        <div class="script-add-form" id="script-add-form" style="display:none">
-          <input type="text" id="script-title-input" class="task-field" placeholder="Script title…" maxlength="100">
-          <div class="script-form-row">
-            <select id="script-model-select" class="task-select">
-              <option value="Sora">Sora</option>
-              <option value="Runway">Runway</option>
-              <option value="Kling">Kling</option>
-              <option value="Pika">Pika</option>
-              <option value="Luma">Luma</option>
-              <option value="Hailuo">Hailuo</option>
-              <option value="Vidu">Vidu</option>
-              <option value="Other" selected>Other / General</option>
-            </select>
-          </div>
-          <textarea id="script-content-input" class="task-field script-textarea" placeholder="Paste or type your first clip / prompt here…" rows="5"></textarea>
-          <div class="task-form-actions">
-            <button class="btn-accent-sm" id="script-submit-btn">Save Script</button>
-            <button class="task-cancel-btn" id="script-cancel-btn">Cancel</button>
+        <!-- Cascade picker -->
+        <div id="goals-cascade-picker">
+          <div id="goals-cascade-list" style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px;"></div>
+          <button id="goals-new-vision-btn" class="btn-secondary">+ New Someday Goal</button>
+          <div id="goals-new-vision-form" style="display:none;gap:8px;margin-top:12px;flex-wrap:wrap;">
+            <input type="text" id="goals-new-vision-input" class="task-field" placeholder="Your someday goal…" style="flex:1;min-width:220px;">
+            <button id="goals-new-vision-save" class="btn-accent-sm">Save</button>
+            <button id="goals-new-vision-cancel" class="task-cancel-btn">Cancel</button>
           </div>
         </div>
 
-        <!-- Script list -->
-        <div id="script-list" class="script-list"></div>
-
-        <!-- Add clip inline form (moved into list by JS) -->
-        <div id="script-clip-add-form" class="script-clip-add-form" style="display:none">
-          <input type="text" id="script-clip-name-input" class="task-field" placeholder="Clip name (e.g. Scene 2, Clip 3)…" maxlength="60">
-          <textarea id="script-clip-content-input" class="task-field script-textarea" placeholder="Paste clip / prompt here…" rows="4"></textarea>
-          <div class="task-form-actions">
-            <button class="btn-accent-sm" id="script-clip-add-save">Save Clip</button>
-            <button class="task-cancel-btn" id="script-clip-add-cancel">Cancel</button>
-          </div>
+        <!-- Cascade detail -->
+        <div id="goals-cascade-detail" style="display:none;">
+          <button id="goals-back-btn" style="background:none;border:none;color:var(--text-muted);font-size:0.82rem;cursor:pointer;text-decoration:underline;margin-bottom:14px;padding:0;">← All Cascades</button>
+          <div id="goals-levels-list"></div>
         </div>
       </div>
-
-    </div><!-- /#video-section -->
+    </div><!-- /#goals-section -->
 
     <!-- ── Meditation Timer Section ──────────────────────────────────────── -->
     <div id="meditation-section" class="hidden">
@@ -934,34 +1094,163 @@
       </div>
     </div><!-- /#meditation-section -->
 
-    <!-- Import from ChatGPT Modal -->
-    <div id="script-import-modal" class="script-import-modal" style="display:none">
-      <div class="script-import-dialog">
-        <div class="script-import-dialog-header">
-          <span>⬇ Import from ChatGPT</span>
-          <button class="float-script-close" id="script-import-cancel">✕</button>
+    <!-- ✨ Manifestation Alarm Section -->
+    <div id="manifest-section" class="hidden">
+      <div class="card">
+
+        <!-- Header -->
+        <div style="text-align:center;padding-bottom:18px;border-bottom:1px solid var(--border);margin-bottom:22px;">
+          <div style="font-size:2.4rem;margin-bottom:8px;">✨</div>
+          <h2 style="font-size:1.2rem;margin-bottom:4px;">Manifestation Alarm</h2>
+          <p style="color:var(--text-muted);font-size:0.82rem;">Hourly bells · breathe · visualize · attract</p>
         </div>
-        <p class="script-import-hint">Paste your full ChatGPT script below. If it has sections (Scene 1, Clip 1, Part 1…) they will be auto-split into separate clips.</p>
-        <input type="text" id="script-import-title" class="task-field" placeholder="Script title…" maxlength="100">
-        <div class="script-form-row" style="margin-top:6px">
-          <select id="script-import-model" class="task-select">
-            <option value="Sora">Sora</option>
-            <option value="Runway">Runway</option>
-            <option value="Kling">Kling</option>
-            <option value="Pika">Pika</option>
-            <option value="Luma">Luma</option>
-            <option value="Hailuo">Hailuo</option>
-            <option value="Vidu">Vidu</option>
-            <option value="Other" selected>Other / General</option>
-          </select>
+
+        <!-- Status bar -->
+        <div class="manifest-status-bar" id="manifest-status-bar">Not running</div>
+
+        <!-- Interval -->
+        <div class="manifest-group-label">Ring every</div>
+        <div class="manifest-pills" style="margin-bottom:18px;">
+          <button class="mpill active" data-group="interval" data-val="1" onclick="manifestSetOpt('interval',1,this)">1 hr</button>
+          <button class="mpill" data-group="interval" data-val="2" onclick="manifestSetOpt('interval',2,this)">2 hrs</button>
+          <button class="mpill" data-group="interval" data-val="3" onclick="manifestSetOpt('interval',3,this)">3 hrs</button>
+          <button class="mpill" data-group="interval" data-val="4" onclick="manifestSetOpt('interval',4,this)">4 hrs</button>
         </div>
-        <textarea id="script-import-text" class="task-field script-textarea" placeholder="Paste full ChatGPT output here…" rows="10" style="margin-top:8px"></textarea>
-        <div class="task-form-actions" style="margin-top:10px">
-          <button class="btn-accent-sm" id="script-import-submit">Import &amp; Split</button>
-          <button class="task-cancel-btn" id="script-import-cancel2">Cancel</button>
+
+        <!-- Total duration -->
+        <div class="manifest-group-label">Run for</div>
+        <div class="manifest-pills" style="margin-bottom:18px;">
+          <button class="mpill" data-group="total" data-val="4" onclick="manifestSetOpt('total',4,this)">4 hrs</button>
+          <button class="mpill" data-group="total" data-val="5" onclick="manifestSetOpt('total',5,this)">5 hrs</button>
+          <button class="mpill active" data-group="total" data-val="6" onclick="manifestSetOpt('total',6,this)">6 hrs</button>
+          <button class="mpill" data-group="total" data-val="7" onclick="manifestSetOpt('total',7,this)">7 hrs</button>
+          <button class="mpill" data-group="total" data-val="8" onclick="manifestSetOpt('total',8,this)">8 hrs</button>
+          <button class="mpill" data-group="total" data-val="0" onclick="manifestSetOpt('total',0,this)">∞ Until stopped</button>
+        </div>
+
+        <!-- Music type -->
+        <div class="manifest-group-label">Music</div>
+        <div class="manifest-pills" style="margin-bottom:18px;">
+          <button class="mpill active" data-group="music" data-val="528hz" onclick="manifestSetOpt('music','528hz',this)">528 Hz <span class="mpill-play" onclick="event.stopPropagation();manifestPlaySound('528hz',this)" title="Preview">▶</span></button>
+          <button class="mpill" data-group="music" data-val="432hz" onclick="manifestSetOpt('music','432hz',this)">432 Hz <span class="mpill-play" onclick="event.stopPropagation();manifestPlaySound('432hz',this)" title="Preview">▶</span></button>
+          <button class="mpill" data-group="music" data-val="binaural" onclick="manifestSetOpt('music','binaural',this)">Binaural θ <span class="mpill-play" onclick="event.stopPropagation();manifestPlaySound('binaural',this)" title="Preview">▶</span></button>
+          <button class="mpill" data-group="music" data-val="bowl" onclick="manifestSetOpt('music','bowl',this)">Tibetan Bowl <span class="mpill-play" onclick="event.stopPropagation();manifestPlaySound('bowl',this)" title="Preview">▶</span></button>
+          <button class="mpill" data-group="music" data-val="om" onclick="manifestSetOpt('music','om',this)">Om <span class="mpill-play" onclick="event.stopPropagation();manifestPlaySound('om',this)" title="Preview">▶</span></button>
+          <button class="mpill" data-group="music" data-val="rain528" onclick="manifestSetOpt('music','rain528',this)">Rain + 528 <span class="mpill-play" onclick="event.stopPropagation();manifestPlaySound('rain528',this)" title="Preview">▶</span></button>
+        </div>
+
+        <!-- Alarm play duration -->
+        <div class="manifest-group-label">Each alarm plays for</div>
+        <div class="manifest-pills" style="margin-bottom:24px;">
+          <button class="mpill" data-group="dur" data-val="60" onclick="manifestSetOpt('dur',60,this)">1 min</button>
+          <button class="mpill active" data-group="dur" data-val="90" onclick="manifestSetOpt('dur',90,this)">90 sec</button>
+          <button class="mpill" data-group="dur" data-val="120" onclick="manifestSetOpt('dur',120,this)">2 min</button>
+        </div>
+
+        <!-- Controls -->
+        <div style="display:flex;gap:12px;justify-content:center;margin-bottom:12px;">
+          <button id="manifest-start-btn" class="btn-primary" onclick="manifestAlarmStart()" style="min-width:140px;">▶ Start Alarms</button>
+          <button id="manifest-stop-btn" class="btn-secondary" onclick="manifestAlarmStop()" style="min-width:140px;display:none;">■ Stop</button>
+        </div>
+        <div style="text-align:center;">
+          <button onclick="manifestAlarmPreview()" style="background:none;border:none;color:var(--text-muted);font-size:0.78rem;cursor:pointer;text-decoration:underline;">Preview this alarm (15s)</button>
+        </div>
+
+      </div>
+    </div><!-- /#manifest-section -->
+
+    <!-- 🔥 Agnihotra Timer Section -->
+    <div id="agnihotra-section" class="hidden">
+      <div class="card" style="text-align:center;">
+        <h2 style="font-size:1.2rem;margin-bottom:4px;">🔥 Agnihotra Timer</h2>
+        <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:6px;">Morning &amp; evening Agnihotra timed to sunrise/sunset at your location.</p>
+        <p style="margin-bottom:18px;">
+          <span id="agni-status" style="color:var(--text-muted);font-size:0.78rem;">Detecting your location…</span>
+          <a href="#" id="agni-change-location-link" style="font-size:0.78rem;color:var(--accent);text-decoration:underline;margin-left:8px;white-space:nowrap;">✏ Change</a>
+        </p>
+
+        <!-- Sunrise / Sunset Cards -->
+        <div style="display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-bottom:20px;">
+          <div style="background:var(--card-bg-2, rgba(255,255,255,0.04));border:1px solid var(--border);border-radius:14px;padding:16px 22px;min-width:140px;">
+            <div style="font-size:1.6rem;">🌅</div>
+            <div style="font-size:0.75rem;color:var(--text-muted);margin:4px 0;">Morning (Sunrise)</div>
+            <div id="agni-sunrise-time" style="font-size:1.3rem;font-weight:700;">—</div>
+          </div>
+          <div style="background:var(--card-bg-2, rgba(255,255,255,0.04));border:1px solid var(--border);border-radius:14px;padding:16px 22px;min-width:140px;">
+            <div style="font-size:1.6rem;">🌇</div>
+            <div style="font-size:0.75rem;color:var(--text-muted);margin:4px 0;">Evening (Sunset)</div>
+            <div id="agni-sunset-time" style="font-size:1.3rem;font-weight:700;">—</div>
+          </div>
+        </div>
+
+        <!-- Countdown -->
+        <div id="agni-next-label" style="font-size:0.85rem;color:var(--text-muted);margin-bottom:6px;">Next Agnihotra</div>
+        <div id="agni-countdown" style="font-size:2.4rem;font-weight:700;letter-spacing:2px;margin-bottom:16px;">—</div>
+
+        <!-- Mantra -->
+        <div id="agni-mantra" style="background:var(--card-bg-2, rgba(255,255,255,0.04));border:1px solid var(--border);border-radius:14px;padding:14px 18px;margin:0 auto 20px;max-width:360px;font-size:0.92rem;line-height:1.7;color:var(--accent);white-space:pre-line;"></div>
+
+        <button id="agni-done-btn" class="btn-primary" style="min-width:160px;margin-bottom:18px;">✓ Mark as Done</button>
+
+        <!-- Location controls -->
+        <div id="agni-location-controls" style="border-top:1px solid var(--border);padding-top:14px;">
+          <button id="agni-use-location-btn" class="btn-secondary" style="font-size:0.78rem;">📍 Use My Location</button>
+          <a href="#" id="agni-show-manual-link" style="display:block;margin-top:8px;font-size:0.78rem;color:var(--text-muted);text-decoration:underline;">Enter location manually</a>
+          <div id="agni-manual-form" style="display:none;flex-direction:column;gap:10px;align-items:center;margin-top:12px;">
+            <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;max-width:360px;">
+              <input type="text" id="agni-maps-link-input" placeholder="Paste Google Maps link or coordinates" class="task-field" style="flex:1;min-width:220px;">
+              <button id="agni-maps-link-btn" class="btn-secondary" style="font-size:0.78rem;">Use This</button>
+            </div>
+            <p style="font-size:0.7rem;color:var(--text-muted);max-width:340px;line-height:1.4;margin:0;">
+              On mobile: in the Google Maps app, long-press your location to drop a pin, then tap the coordinates (or Share) to copy — paste it above.
+            </p>
+            <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
+              <input type="number" step="0.0001" id="agni-lat-input" placeholder="Latitude" class="task-field" style="max-width:140px;">
+              <input type="number" step="0.0001" id="agni-lon-input" placeholder="Longitude" class="task-field" style="max-width:140px;">
+              <button id="agni-manual-btn" class="btn-secondary" style="font-size:0.78rem;">Save Location</button>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
+    </div><!-- /#agnihotra-section -->
+
+    <!-- 🏆 Strength Score Card Section -->
+    <div id="strength-section" class="hidden">
+      <div class="card" style="text-align:center;">
+        <h2 style="font-size:1.2rem;margin-bottom:4px;">🏆 Strength Score Card</h2>
+        <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:6px;">Log your lifts, track your relative strength over time.</p>
+        <p style="color:var(--text-muted);font-size:0.72rem;margin-bottom:18px;">Score = total lifted ÷ bodyweight — a rough placeholder metric, refined later.</p>
+
+        <!-- Current Score -->
+        <div style="display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-bottom:20px;align-items:center;">
+          <div style="background:var(--card-bg-2, rgba(255,255,255,0.04));border:1px solid var(--border);border-radius:14px;padding:16px 26px;min-width:150px;">
+            <div style="font-size:0.75rem;color:var(--text-muted);margin-bottom:4px;">Strength Score</div>
+            <div id="str-score" style="font-size:2rem;font-weight:700;">—</div>
+            <div id="str-total" style="font-size:0.72rem;color:var(--text-muted);margin-top:4px;"></div>
+          </div>
+          <div style="border:1.5px solid var(--border);border-radius:20px;padding:6px 18px;font-weight:700;font-size:0.9rem;" id="str-level">—</div>
+        </div>
+
+        <!-- Input form -->
+        <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:10px;">
+          <input type="number" step="0.1" id="str-bodyweight" placeholder="Bodyweight (kg)" class="task-field" style="max-width:150px;">
+        </div>
+        <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:14px;">
+          <input type="number" step="0.5" id="str-squat" placeholder="Squat 1RM (kg)" class="task-field" style="max-width:150px;">
+          <input type="number" step="0.5" id="str-bench" placeholder="Bench 1RM (kg)" class="task-field" style="max-width:150px;">
+          <input type="number" step="0.5" id="str-deadlift" placeholder="Deadlift 1RM (kg)" class="task-field" style="max-width:150px;">
+          <input type="number" step="0.5" id="str-ohp" placeholder="Overhead Press 1RM (kg)" class="task-field" style="max-width:150px;">
+        </div>
+        <button id="str-save-btn" class="btn-primary" style="min-width:160px;">✓ Save Score</button>
+        <p id="str-status" style="color:var(--text-muted);font-size:0.78rem;margin-top:10px;"></p>
+
+        <!-- History -->
+        <div style="border-top:1px solid var(--border);margin-top:22px;padding-top:14px;text-align:left;">
+          <p style="font-size:0.8rem;color:var(--text-muted);margin-bottom:10px;text-align:center;">History</p>
+          <div id="str-history-list"></div>
+        </div>
+      </div>
+    </div><!-- /#strength-section -->
 
     <!-- ── Activity Heatmap ──────────────────────────────────────────────── -->
     <div class="card heatmap-card" id="heatmap-card">
@@ -1035,6 +1324,8 @@
             <button class="plan-btn" data-binaural="deepfocus" style="flex-direction:column;gap:2px;">Deep Focus<small style="font-weight:400;opacity:0.8;font-size:0.65rem;">40Hz Gamma</small></button>
             <button class="plan-btn" data-binaural="flow" style="flex-direction:column;gap:2px;">Flow<small style="font-weight:400;opacity:0.8;font-size:0.65rem;">8Hz Alpha</small></button>
             <button class="plan-btn" data-binaural="sleep" style="flex-direction:column;gap:2px;">Sleep<small style="font-weight:400;opacity:0.8;font-size:0.65rem;">2Hz Delta</small></button>
+            <button class="plan-btn" data-binaural="solfeggio528" style="flex-direction:column;gap:2px;">Manifestation<small style="font-weight:400;opacity:0.8;font-size:0.65rem;">528 Hz</small></button>
+            <button class="plan-btn" data-binaural="yognidra" style="flex-direction:column;gap:2px;">Yog Nidra<small style="font-weight:400;opacity:0.8;font-size:0.65rem;">1.5Hz Delta</small></button>
           </div>
         </div>
 
@@ -1049,6 +1340,10 @@
 
         <!-- YouTube -->
         <div id="music-youtube-section" class="hidden">
+          <!-- Quick presets -->
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;">
+            <button onclick="musicYtAddPreset('HJ5wN5PtwTw','Yog Nidra – Art of Living')" class="plan-btn" style="font-size:0.75rem;padding:5px 10px;">🧘 Yog Nidra</button>
+          </div>
           <div style="display:flex;gap:6px;margin-bottom:10px;">
             <input id="music-yt-input" type="text" placeholder="Paste YouTube URL…"
               style="flex:1;padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:0.8rem;">
@@ -1078,6 +1373,70 @@
 
   </main>
 
+  <!-- 🎤 Voice Assistant — floating, visible across all tabs -->
+  <button id="voice-assistant-btn" class="voice-assistant-btn" title="Voice command">🎤</button>
+
+  <!-- 🎮 Hero Mode panel — Power-ups & Bad Guys / Shop / Stats / Identity -->
+  <div id="hero-panel-modal" class="cert-modal" style="display:none;">
+    <div class="cert-modal-dialog hero-panel-dialog">
+      <div class="hero-panel-tabs" id="hero-panel-tabs">
+        <button class="hero-panel-tab active" data-tab="powerups">⚡ Power-ups</button>
+        <button class="hero-panel-tab" data-tab="badguys">👾 Bad Guys</button>
+        <button class="hero-panel-tab" data-tab="shop">🛍 Shop</button>
+        <button class="hero-panel-tab" data-tab="stats">📊 Stats</button>
+        <button class="hero-panel-tab" data-tab="identity">🦸 Identity</button>
+      </div>
+      <div class="hero-panel-body" id="hero-panel-body"></div>
+      <button class="task-cancel-btn hero-panel-close-btn" id="hero-panel-close-btn">Close</button>
+    </div>
+  </div>
+
+  <!-- 🎉 Hero Mode level-up modal -->
+  <div id="hero-levelup-modal" class="cert-modal" style="display:none;">
+    <div class="cert-modal-dialog hero-celebrate-dialog">
+      <div class="hero-celebrate-emoji">🎉</div>
+      <div class="cert-modal-title">Level Up!</div>
+      <div id="hero-levelup-body" class="hero-celebrate-body"></div>
+      <button class="btn-accent-sm" id="hero-levelup-close-btn">Keep going</button>
+    </div>
+  </div>
+
+  <!-- 🏆 Hero Mode Epic Win modal (Monthly / One-Year / Five-Year goal completion) -->
+  <div id="hero-epicwin-modal" class="cert-modal" style="display:none;">
+    <div class="cert-modal-dialog hero-celebrate-dialog">
+      <div class="hero-celebrate-emoji">🏆</div>
+      <div class="cert-modal-title">Epic Win!</div>
+      <div id="hero-epicwin-body" class="hero-celebrate-body"></div>
+      <button class="btn-accent-sm" id="hero-epicwin-close-btn">Celebrate</button>
+    </div>
+  </div>
+
+  <!-- 🦸 Hero Mode onboarding wizard (3 steps: identity, power-ups, bad guy) -->
+  <div id="hero-wizard-modal" class="cert-modal" style="display:none;">
+    <div class="cert-modal-dialog hero-wizard-dialog">
+      <div class="cert-modal-title">🎮 Hero Mode</div>
+      <div id="hero-wizard-body"></div>
+      <div class="hero-wizard-actions">
+        <button class="task-cancel-btn" id="hero-wizard-skip-btn">Skip</button>
+        <button class="btn-accent-sm" id="hero-wizard-next-btn">Next</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 🎴 Hour Certificate modal -->
+  <div id="cert-modal" class="cert-modal" style="display:none;">
+    <div class="cert-modal-dialog">
+      <div class="cert-modal-title">This hour counted. 🎴</div>
+      <div id="cert-preview-wrap" class="cert-preview-wrap"><div class="cert-preview-loading">Rendering…</div></div>
+      <a id="cert-locked-note" class="cert-locked-note" href="upgrade.html" style="display:none;">✦ 2 more styles in Premium</a>
+      <div class="cert-modal-actions">
+        <button id="cert-share-btn" class="btn-primary">Share</button>
+        <button id="cert-story-btn" class="btn-secondary">Story size</button>
+      </div>
+      <button id="cert-skip-btn" class="cert-skip-link">Skip</button>
+    </div>
+  </div>
+
   <p class="kbd-hint">
     <kbd>Space</kbd> start/pause &nbsp;
     <kbd>R</kbd> reset &nbsp;
@@ -1086,12 +1445,21 @@
     <kbd>H</kbd> history
   </p>
 
+  <script src="https://unpkg.com/html-to-image@1.11.11/dist/html-to-image.js"></script>
   <script src="js/music.js"></script>
+  <script src="js/lunar-reminders.js"></script>
+  <script src="js/certificate.js"></script>
+  <script src="js/game.js"></script>
+  <script src="js/game-ui.js"></script>
   <script src="js/app.js"></script>
   <script src="js/workout.js"></script>
+  <script src="js/day-scheduler.js"></script>
   <script src="js/tasks.js"></script>
-  <script src="js/scripts.js"></script>
+  <script src="js/goals.js"></script>
+  <script src="js/agnihotra.js"></script>
+  <script src="js/strength.js"></script>
   <script src="js/meditation.js"></script>
+  <script src="js/voice-assistant.js"></script>
   <script>
     document.getElementById('signout-btn').addEventListener('click', () => Auth.signOut());
 
@@ -1099,31 +1467,36 @@
 
     function switchTimerType(mode) {
       window.activeTimerMode = mode;
-      const isWork      = mode === 'work';
-      const isWorkout   = mode === 'workout';
-      const isTasks     = mode === 'tasks';
-      const isVideo     = mode === 'video';
-      const isMeditation = mode === 'meditation';
+      const isWork          = mode === 'work';
+      const isWorkout       = mode === 'workout';
+      const isTasks         = mode === 'tasks';
+      const isGoals         = mode === 'goals';
+      const isMeditation    = mode === 'meditation';
+      const isManifest      = mode === 'manifestation';
+      const isAgnihotra     = mode === 'agnihotra';
+      const isStrength      = mode === 'strength';
 
       document.getElementById('flow-section').classList.toggle('hidden', !isWork);
       document.getElementById('workout-section').classList.toggle('hidden', !isWorkout);
       document.getElementById('task-section').classList.toggle('hidden', !isTasks);
-      document.getElementById('video-section').classList.toggle('hidden', !isVideo);
+      document.getElementById('goals-section').classList.toggle('hidden', !isGoals);
       document.getElementById('meditation-section').classList.toggle('hidden', !isMeditation);
+      document.getElementById('manifest-section').classList.toggle('hidden', !isManifest);
+      document.getElementById('agnihotra-section').classList.toggle('hidden', !isAgnihotra);
+      document.getElementById('strength-section').classList.toggle('hidden', !isStrength);
 
-      // Hide heatmap card in Tasks, Video or Meditation tab
+      // Hide heatmap card in Tasks, Goals, Meditation, Manifestation, Agnihotra or Strength tab
       const heatmapEl = document.getElementById('heatmap-card');
-      if (heatmapEl) heatmapEl.style.display = (isTasks || isVideo || isMeditation) ? 'none' : '';
+      if (heatmapEl) heatmapEl.style.display = (isTasks || isGoals || isMeditation || isManifest || isAgnihotra || isStrength) ? 'none' : '';
 
       document.getElementById('btn-work-timer').classList.toggle('active', isWork);
       document.getElementById('btn-workout-timer').classList.toggle('active', isWorkout);
       document.getElementById('btn-tasks').classList.toggle('active', isTasks);
-      document.getElementById('btn-video').classList.toggle('active', isVideo);
+      document.getElementById('btn-goals').classList.toggle('active', isGoals);
       document.getElementById('btn-meditation').classList.toggle('active', isMeditation);
-
-      // Auto-pause running timers when switching away
-      if (!isWorkout && typeof wo !== 'undefined' && wo.status === 'running') woPause();
-      if (!isWork && typeof state !== 'undefined' && state.status === 'running') pauseTimer();
+      document.getElementById('btn-manifestation').classList.toggle('active', isManifest);
+      document.getElementById('btn-agnihotra').classList.toggle('active', isAgnihotra);
+      document.getElementById('btn-strength').classList.toggle('active', isStrength);
 
       // Restore titles
       if (isWorkout && typeof renderWo !== 'undefined') renderWo();
@@ -1132,13 +1505,25 @@
       // Sync floating widget
       if (typeof syncPip === 'function') syncPip();
 
-      // Re-render heatmap / tasks / video
-      if (!isTasks && !isVideo && !isMeditation && typeof renderActivityHeatmap === 'function') renderActivityHeatmap();
+      // Re-render heatmap / tasks
+      if (!isTasks && !isGoals && !isMeditation && !isAgnihotra && !isStrength && typeof renderActivityHeatmap === 'function') renderActivityHeatmap();
       if (isTasks && typeof TaskManager !== 'undefined') TaskManager.init();
       if (isTasks && typeof BrainDump !== 'undefined') BrainDump.init();
       if (isTasks && typeof WeekPlanner !== 'undefined') WeekPlanner.init();
-      if (isVideo && typeof ScriptCopier !== 'undefined') ScriptCopier.init();
+      if (isTasks && typeof DayScheduler !== 'undefined' && !DayScheduler._bound) DayScheduler._bindViewToggle();
+      if (isGoals && typeof GoalCascade !== 'undefined') {
+        if (!GoalCascade._inited) { GoalCascade.init(); GoalCascade._inited = true; }
+        else GoalCascade.refresh();
+      }
       if (isMeditation && typeof MeditationTimer !== 'undefined') MeditationTimer.init();
+      if (isAgnihotra && typeof AgnihotraTimer !== 'undefined') {
+        if (!AgnihotraTimer._inited) { AgnihotraTimer.init(); AgnihotraTimer._inited = true; }
+        else AgnihotraTimer.refresh();
+      }
+      if (isStrength && typeof StrengthScoreCard !== 'undefined') {
+        if (!StrengthScoreCard._inited) { StrengthScoreCard.init(); StrengthScoreCard._inited = true; }
+        else StrengthScoreCard.refresh();
+      }
     }
   </script>
 </body>

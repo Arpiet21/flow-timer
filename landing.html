@@ -1,638 +1,556 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Flow Timer — focus timer, task manager, HIIT workouts, weekly planner, and binaural beats in one app.">
-  <title>Flow Timer — Focus, Plan, Do</title>
-  <link rel="icon" type="image/svg+xml" href="favicon.svg">
-  <link rel="stylesheet" href="css/auth.css">
-  <style>
-    /* Animated gradient bg */
-    .hero-bg {
-      position: fixed; inset: 0; z-index: -1;
-      background: radial-gradient(ellipse at 20% 50%, rgba(233,69,96,0.06) 0%, transparent 60%),
-                  radial-gradient(ellipse at 80% 20%, rgba(74,144,217,0.06) 0%, transparent 60%),
-                  #1a1a2e;
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Flow Timer — hours that count</title>
+<meta name="description" content="Your calendar is full. Your goals aren't moving. Flow Timer is the focus system for freelancers who end every week busy but behind on their own goals.">
+<meta property="og:title" content="Flow Timer — hours that count">
+<meta property="og:description" content="Your calendar is full. Your goals aren't moving. Flow Timer is the focus system for freelancers who end every week busy but behind on their own goals.">
+<meta property="og:image" content="https://flow-timer-rho.vercel.app/og-image.png">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://flow-timer-rho.vercel.app/landing.html">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,400&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" crossorigin="anonymous">
+<style>
+  :root{
+    --ink:  #12100E;
+    --card: #1C1915;
+    --line: #2A251E;
+    --sand: #EDE6DA;
+    --muted:#8A8072;
+    --amber:#E8A33D;
+    --amber-soft: rgba(232,163,61,.14);
+  }
+  *{ margin:0; padding:0; box-sizing:border-box; }
+  html{ scroll-behavior:smooth; -webkit-text-size-adjust:100%; }
+  body{
+    background:var(--ink); color:var(--sand);
+    font-family:'Inter',system-ui,sans-serif; line-height:1.6;
+    overflow-x:hidden;
+  }
+  ::selection{ background:var(--amber); color:var(--ink); }
+  a{ color:inherit; }
+  img{ max-width:100%; display:block; }
+  .num{ font-variant-numeric:tabular-nums; }
+  .container{ max-width:1040px; margin:0 auto; padding:0 24px; }
+  .section{ padding:96px 0; }
+  .section-line{ border-top:1px solid var(--line); }
+  @media (max-width:640px){ .section{ padding:64px 0; } }
+
+  h1,h2,h3{ font-family:'Fraunces',serif; font-weight:400; letter-spacing:-0.01em; }
+  em{ font-style:italic; }
+
+  /* Skip link */
+  .skip-link{
+    position:absolute; left:-9999px; top:0; background:var(--amber); color:var(--ink);
+    padding:12px 20px; border-radius:0 0 10px 0; font-weight:600; z-index:2000; text-decoration:none;
+  }
+  .skip-link:focus{ left:0; }
+
+  a:focus-visible, button:focus-visible, input:focus-visible{
+    outline:2px solid var(--amber); outline-offset:3px; border-radius:6px;
+  }
+
+  /* Nav */
+  nav{ position:sticky; top:0; z-index:100; background:rgba(18,16,14,0.88); backdrop-filter:blur(8px); border-bottom:1px solid var(--line); }
+  .nav-inner{ max-width:1040px; margin:0 auto; padding:16px 24px; display:flex; align-items:center; justify-content:space-between; }
+  .nav-logo{ font-family:'Fraunces',serif; font-size:1.15rem; text-decoration:none; color:var(--sand); }
+  .nav-links{ display:flex; align-items:center; gap:28px; }
+  .nav-link{ font-size:0.9rem; color:var(--muted); text-decoration:none; }
+  .nav-link:hover{ color:var(--sand); }
+  .nav-ham{ display:none; background:none; border:none; color:var(--sand); font-size:0.85rem; font-weight:600; cursor:pointer; line-height:1; }
+  @media (max-width:720px){
+    .nav-links-desktop{ display:none; }
+    .nav-ham{ display:block; }
+  }
+  .nav-mobile{ display:none; flex-direction:column; gap:16px; padding:4px 24px 22px; border-bottom:1px solid var(--line); }
+  .nav-mobile.open{ display:flex; }
+
+  .btn{
+    display:inline-flex; align-items:center; justify-content:center; padding:13px 26px; border-radius:12px;
+    font-size:0.92rem; font-weight:600; text-decoration:none; cursor:pointer; border:none; font-family:'Inter',sans-serif;
+    transition:transform 0.12s ease, opacity 0.15s ease;
+  }
+  .btn:active{ transform:scale(0.98); }
+  .btn-amber{ background:var(--amber); color:var(--ink); }
+  .btn-amber:hover{ opacity:0.9; }
+  .btn-outline{ background:transparent; color:var(--sand); border:1px solid var(--line); }
+  .btn-outline:hover{ border-color:var(--muted); }
+  .btn-sm{ padding:9px 18px; font-size:0.85rem; }
+
+  /* Hero */
+  .hero{ padding:72px 0 60px; text-align:center; }
+  .hero h1{ font-size:clamp(2.3rem, 7.2vw, 4.1rem); line-height:1.08; margin-bottom:22px; }
+  .hero-sub{ color:var(--muted); font-size:1.05rem; max-width:46ch; margin:0 auto 44px; }
+  .hero-ctas{ display:flex; flex-direction:column; align-items:center; gap:18px; margin-bottom:72px; }
+  .hero-secondary{ color:var(--muted); font-size:0.85rem; text-decoration:none; }
+  .hero-secondary:hover{ color:var(--sand); }
+
+  /* Day-as-blocks animation */
+  .day-strip{ position:relative; max-width:680px; width:100%; height:44px; margin:0 auto; }
+  .day-busy, .day-counted{ position:absolute; inset:0; display:flex; align-items:center; }
+  .day-busy{ gap:4px; }
+  .day-busy span{ height:32px; border-radius:6px; background:var(--muted); opacity:0.32; flex:1 1 0; min-width:0; }
+  .day-busy span:nth-child(odd){ transform:translateY(-2px); }
+  .day-busy span:nth-child(even){ transform:translateY(2px); }
+  .day-counted{ gap:10px; opacity:0; }
+  .day-counted span{ height:40px; border-radius:10px; background:var(--amber); flex:1 1 0; min-width:0; }
+  @media (prefers-reduced-motion:no-preference){
+    .day-busy{ animation:day-busy-out 1.8s ease forwards; }
+    .day-counted{ animation:day-counted-in 1.8s ease forwards; }
+  }
+  @keyframes day-busy-out{ 0%,42%{ opacity:1; } 100%{ opacity:0; } }
+  @keyframes day-counted-in{ 0%,42%{ opacity:0; transform:scale(0.96); } 100%{ opacity:1; transform:scale(1); } }
+  @media (prefers-reduced-motion:reduce){
+    .day-busy{ display:none; }
+    .day-counted{ opacity:1; }
+  }
+
+  /* Problem section */
+  .problem-lines{ max-width:640px; margin:0 auto; display:flex; flex-direction:column; gap:28px; text-align:center; }
+  .problem-lines p{ color:var(--muted); font-size:clamp(1.15rem,3.4vw,1.5rem); font-family:'Fraunces',serif; font-weight:400; line-height:1.4; }
+  .problem-lines .amber{ color:var(--amber); font-style:italic; }
+
+  /* Product pillars */
+  .pillars{ display:flex; flex-direction:column; gap:64px; }
+  .pillar-head{ text-align:center; margin-bottom:28px; }
+  .pillar-title{ font-size:1.5rem; margin-bottom:8px; }
+  .pillar-caption{ color:var(--muted); font-size:0.92rem; max-width:44ch; margin:0 auto; }
+  .frame{
+    background:var(--card); border:1px solid var(--line); border-radius:16px; overflow:hidden;
+    max-width:640px; margin:0 auto;
+  }
+  .frame-bar{ border-bottom:1px solid var(--line); padding:10px 16px; font-size:0.72rem; color:var(--muted); letter-spacing:0.06em; text-transform:uppercase; }
+  .frame-body{ padding:32px 28px; display:flex; flex-direction:column; gap:12px; }
+  .frame-line{ height:12px; border-radius:6px; background:var(--line); }
+  .pillar-cascade .frame-body{ align-items:center; }
+
+  .ladder{ display:flex; flex-direction:column; gap:9px; max-width:440px; margin:0 auto; width:100%; }
+  .ladder-rung{
+    background:var(--ink); border:1px solid var(--line); border-left:4px solid var(--amber);
+    border-radius:10px; padding:13px 18px; font-size:0.9rem; font-weight:500; color:var(--muted);
+  }
+  .ladder-rung:last-child{ color:var(--amber); font-weight:700; border-left-width:8px; background:var(--amber-soft); }
+  .ladder-rung[data-i="0"]{ opacity:0.55; } .ladder-rung[data-i="1"]{ opacity:0.62; }
+  .ladder-rung[data-i="2"]{ opacity:0.7; }  .ladder-rung[data-i="3"]{ opacity:0.78; }
+  .ladder-rung[data-i="4"]{ opacity:0.86; } .ladder-rung[data-i="5"]{ opacity:0.93; }
+  .ladder-rung[data-i="6"]{ opacity:1; }
+
+  /* Certificate artifact */
+  .cert-artifact{ text-align:center; }
+  .cert-frame{
+    max-width:280px; margin:0 auto 24px; border-radius:16px; overflow:hidden;
+    transform:rotate(-2deg); box-shadow:0 34px 64px -24px rgba(0,0,0,0.65);
+    background:var(--card); min-height:120px;
+  }
+  .cert-frame img{ width:100%; }
+  .cert-caption{ font-family:'Fraunces',serif; font-style:italic; color:var(--muted); font-size:1.05rem; }
+
+  /* ROI section (ported from flow-timer-roi-calculator.html) */
+  .roi-hook{ text-align:center; margin-bottom:44px; }
+  .roi-hook h2{ font-size:clamp(1.5rem,4vw,2.1rem); }
+  .roi-calc{ max-width:520px; margin:0 auto; background:var(--card); border:1px solid var(--line); border-radius:18px; padding:32px 28px; position:relative; overflow:hidden; }
+  .roi-calc::before{ content:""; position:absolute; inset:0 0 auto 0; height:2px; background:linear-gradient(90deg,transparent,var(--amber),transparent); }
+  .roi-calc .field{ margin-bottom:26px; }
+  .roi-calc .field-head{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:10px; gap:12px; }
+  .roi-calc .field-label{ font-size:0.88rem; font-weight:500; }
+  .roi-calc .field-value{ font-variant-numeric:tabular-nums; font-weight:600; font-size:0.92rem; color:var(--amber); white-space:nowrap; }
+  .roi-calc input[type=range]{ -webkit-appearance:none; appearance:none; width:100%; height:32px; background:transparent; cursor:pointer; }
+  .roi-calc input[type=range]::-webkit-slider-runnable-track{ height:3px; background:var(--line); border-radius:2px; }
+  .roi-calc input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none; appearance:none; width:20px; height:20px; border-radius:50%;
+    background:var(--amber); border:4px solid var(--ink); box-shadow:0 0 0 1px var(--amber); margin-top:-8.5px;
+  }
+  .roi-calc input[type=range]::-moz-range-track{ height:3px; background:var(--line); border-radius:2px; }
+  .roi-calc input[type=range]::-moz-range-thumb{ width:12px; height:12px; border-radius:50%; background:var(--amber); border:4px solid var(--ink); box-shadow:0 0 0 1px var(--amber); }
+  .roi-calc .field-hint{ font-size:0.76rem; color:var(--muted); margin-top:6px; }
+  .roi-calc .payback{ margin:6px 0 22px; padding:22px 20px; background:var(--ink); border:1px solid var(--line); border-radius:14px; }
+  .roi-calc .payback-label{ font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--muted); font-weight:600; }
+  .roi-calc .payback-line{ font-family:'Fraunces',serif; font-size:clamp(1.1rem,3.6vw,1.35rem); line-height:1.35; margin-top:8px; }
+  .roi-calc .payback-line strong{ color:var(--amber); font-weight:600; font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .roi-calc .payback-sub{ font-size:0.78rem; color:var(--muted); margin-top:8px; }
+  .roi-calc .ledger{ border-top:1px solid var(--line); }
+  .roi-calc .row{ display:flex; justify-content:space-between; align-items:baseline; gap:16px; padding:12px 2px; border-bottom:1px solid var(--line); }
+  .roi-calc .row dt{ font-size:0.82rem; color:var(--muted); }
+  .roi-calc .row dd{ font-variant-numeric:tabular-nums; font-weight:600; font-size:0.92rem; white-space:nowrap; }
+  .roi-calc .row.net dd{ color:var(--amber); font-size:1.05rem; }
+  .roi-calc .row.roi{ background:var(--amber-soft); border-radius:10px; border-bottom:none; padding:12px 14px; margin-top:8px; }
+  .roi-calc .row.roi dt{ color:var(--sand); }
+  .roi-calc .row.roi dd{ color:var(--amber); font-family:'Fraunces',serif; font-size:1.4rem; font-weight:600; }
+  .roi-calc .assume{ font-size:0.72rem; color:var(--muted); margin-top:20px; }
+  .roi-calc .roi-cta{ display:block; width:100%; margin-top:24px; text-align:center; }
+
+  /* Pricing */
+  .pricing-grid{ display:grid; grid-template-columns:1fr 1fr; gap:20px; max-width:760px; margin:0 auto; }
+  @media (max-width:640px){ .pricing-grid{ grid-template-columns:1fr; } }
+  .price-card{ background:var(--card); border:1px solid var(--line); border-radius:16px; padding:28px 24px; }
+  .price-card.premium{ border-color:var(--amber); }
+  .price-plan{ font-size:0.85rem; color:var(--muted); font-weight:600; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:10px; }
+  .price-amount{ font-family:'Fraunces',serif; font-size:2.1rem; margin-bottom:4px; }
+  .price-period{ color:var(--muted); font-size:0.82rem; margin-bottom:20px; }
+  .price-annual{ background:var(--amber-soft); border:1px solid var(--amber); border-radius:10px; padding:9px 12px; font-size:0.78rem; margin-bottom:20px; }
+  .price-annual strong{ color:var(--amber); }
+  .price-rows{ list-style:none; display:flex; flex-direction:column; gap:11px; margin-bottom:24px; }
+  .price-rows li{ display:flex; justify-content:space-between; font-size:0.85rem; color:var(--sand); gap:12px; }
+  .price-rows li span:last-child{ color:var(--muted); }
+  .price-rows li span.yes{ color:var(--amber); font-weight:700; }
+  .price-card .btn{ width:100%; }
+
+  /* Founder note */
+  .founder{ max-width:600px; margin:0 auto; display:flex; gap:22px; align-items:flex-start; }
+  .founder-photo{
+    width:64px; height:64px; border-radius:50%; background:var(--card); border:1px solid var(--line);
+    display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-size:1.2rem;
+    color:var(--muted); flex-shrink:0;
+  }
+  .founder-text p{ font-size:0.95rem; color:var(--sand); margin-bottom:14px; }
+  .founder-text a{ color:var(--amber); text-decoration:underline; }
+
+  /* Footer */
+  footer{ padding:64px 24px 40px; text-align:center; border-top:1px solid var(--line); }
+  .philosophy{ font-family:'Fraunces',serif; font-style:italic; color:var(--muted); font-size:1.05rem; max-width:52ch; margin:0 auto 28px; line-height:1.5; }
+  .footer-line{ font-size:0.85rem; color:var(--muted); margin-bottom:16px; }
+  .footer-links{ display:flex; gap:20px; justify-content:center; font-size:0.82rem; }
+  .footer-links a{ color:var(--muted); text-decoration:none; }
+  .footer-links a:hover{ color:var(--sand); }
+</style>
 </head>
 <body>
 
-<div class="hero-bg"></div>
+<a href="#main" class="skip-link">Skip to content</a>
 
-<!-- ── Nav ── -->
 <nav>
   <div class="nav-inner">
-    <a href="landing.html" class="nav-logo">⏱ Flow Timer</a>
-    <div class="nav-links" id="nav-links-desktop">
-      <a href="#features" class="nav-link">Features</a>
+    <a href="landing.html" class="nav-logo">Flow Timer</a>
+    <div class="nav-links nav-links-desktop">
       <a href="#pricing" class="nav-link">Pricing</a>
-      <a href="login.html" class="btn btn-outline" style="padding:8px 18px;font-size:0.85rem;">Log in</a>
-      <a href="signup.html" class="btn btn-primary" style="padding:8px 18px;font-size:0.85rem;">Start Free Trial</a>
+      <a href="login.html?utm_source=landing&amp;utm_content=nav_signin" class="nav-link">Sign in</a>
+      <a href="signup.html?utm_source=landing&amp;utm_content=nav_cta" class="btn btn-amber btn-sm" data-track="landing_cta_click" data-section="nav">Start your first hour — free</a>
     </div>
-    <!-- Mobile hamburger -->
-    <button id="landing-ham-btn" class="landing-ham-btn" onclick="toggleLandingMenu()" aria-label="Open menu">☰</button>
+    <button class="nav-ham" id="nav-ham" aria-label="Open menu" aria-expanded="false">Menu</button>
   </div>
-  <!-- Mobile dropdown menu -->
-  <div id="landing-mobile-menu" class="landing-mobile-menu">
-    <div id="landing-mobile-menu-inner">
-      <a href="#features" class="landing-nav-item" onclick="closeLandingMenu()">
-        <span>🔍</span> Features
-      </a>
-      <a href="#pricing" class="landing-nav-item" onclick="closeLandingMenu()">
-        <span>💳</span> Pricing
-      </a>
-      <div class="landing-nav-divider"></div>
-      <a href="login.html" class="landing-nav-item">
-        <span>👤</span> Log in
-      </a>
-      <a href="signup.html" class="landing-nav-cta">Start Free Trial →</a>
-    </div>
+  <div class="nav-mobile" id="nav-mobile">
+    <a href="#pricing" class="nav-link">Pricing</a>
+    <a href="login.html?utm_source=landing&amp;utm_content=nav_signin" class="nav-link">Sign in</a>
+    <a href="signup.html?utm_source=landing&amp;utm_content=nav_cta" class="btn btn-amber btn-sm" data-track="landing_cta_click" data-section="nav">Start your first hour — free</a>
   </div>
 </nav>
 
-<script>
-function toggleLandingMenu() {
-  const menu = document.getElementById('landing-mobile-menu');
-  const btn  = document.getElementById('landing-ham-btn');
-  const open = menu.classList.toggle('open');
-  btn.textContent = open ? '✕' : '☰';
-  btn.setAttribute('aria-expanded', open);
-}
-function closeLandingMenu() {
-  document.getElementById('landing-mobile-menu')?.classList.remove('open');
-  const btn = document.getElementById('landing-ham-btn');
-  if (btn) { btn.textContent = '☰'; btn.setAttribute('aria-expanded', false); }
-}
-// Close on outside click
-document.addEventListener('click', e => {
-  if (!e.target.closest('nav')) closeLandingMenu();
-});
-</script>
+<main id="main">
 
-<!-- ── Hero ── -->
-<section class="hero">
-  <div class="hero-content">
-    <div class="hero-badge">Timer · Tasks · HIIT · Meditation · Binaural Beats · Weekly Planner</div>
-    <h1>Focus deeper.<br><span>Plan smarter.</span></h1>
-    <p>A clean, all-in-one focus app — Pomodoro timer, task manager, HIIT workouts, binaural beats, weekly planner, and a floating analog widget.</p>
+  <!-- 1. Hero -->
+  <section class="hero container">
+    <h1>This hour counted.</h1>
+    <p class="hero-sub">The focus system for freelancers who end every week busy but behind on their own goals.</p>
+
+    <div class="day-strip" aria-hidden="true">
+      <div class="day-busy">
+        <span style="flex-grow:30"></span><span style="flex-grow:55"></span><span style="flex-grow:25"></span>
+        <span style="flex-grow:60"></span><span style="flex-grow:40"></span><span style="flex-grow:20"></span>
+        <span style="flex-grow:50"></span><span style="flex-grow:35"></span><span style="flex-grow:65"></span>
+        <span style="flex-grow:28"></span><span style="flex-grow:45"></span><span style="flex-grow:22"></span>
+        <span style="flex-grow:58"></span><span style="flex-grow:38"></span>
+      </div>
+      <div class="day-counted">
+        <span style="flex-grow:110"></span><span style="flex-grow:150"></span><span style="flex-grow:90"></span>
+        <span style="flex-grow:130"></span><span style="flex-grow:100"></span>
+      </div>
+    </div>
+
     <div class="hero-ctas">
-      <a href="signup.html" class="btn btn-primary btn-lg">Start 7-Day Free Trial</a>
-      <a href="index.html" class="btn btn-outline btn-lg">Try without account</a>
+      <a href="signup.html?utm_source=landing&amp;utm_content=hero_cta" class="btn btn-amber" data-track="landing_cta_click" data-section="hero">Start your first hour — free</a>
+      <a href="#product" class="hero-secondary">See how it works ↓</a>
     </div>
-  </div>
+  </section>
 
-  <!-- Mock app preview -->
-  <div class="hero-visual">
-    <div class="mock-app">
-      <div class="mock-tabs" style="margin-bottom:6px;">
-        <div class="mock-tab active">⏱ Work Timer</div>
-        <div class="mock-tab">💪 Workout</div>
-      </div>
-      <div class="mock-tabs" style="background:rgba(255,255,255,0.05);margin-bottom:8px;">
-        <div class="mock-tab active">Focus</div>
-        <div class="mock-tab">Short</div>
-        <div class="mock-tab">Long</div>
-      </div>
-      <div class="mock-clock-wrap">
-        <svg width="190" height="190" viewBox="0 0 190 190">
-          <defs>
-            <!-- Metallic ring gradient -->
-            <linearGradient id="ring-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%"   stop-color="#d0d0d0"/>
-              <stop offset="30%"  stop-color="#f8f8f8"/>
-              <stop offset="60%"  stop-color="#a0a0a0"/>
-              <stop offset="100%" stop-color="#c8c8c8"/>
-            </linearGradient>
-            <!-- Knob gradient -->
-            <radialGradient id="knob-grad" cx="38%" cy="35%">
-              <stop offset="0%"   stop-color="#ffffff"/>
-              <stop offset="40%"  stop-color="#888888"/>
-              <stop offset="100%" stop-color="#333333"/>
-            </radialGradient>
-          </defs>
+  <!-- 2. Problem -->
+  <section class="section container section-line">
+    <div class="problem-lines">
+      <p>Your calendar is full. Your goals aren't <span class="amber">moving</span>.</p>
+      <p>You bill by the hour — and lose hours you never <span class="amber">billed</span>.</p>
+      <p>Another timer won't fix it. A <span class="amber">system</span> will.</p>
+    </div>
+  </section>
 
-          <!-- Outer metallic ring -->
-          <circle cx="95" cy="95" r="92" fill="url(#ring-grad)"/>
+  <!-- 3. Product — three pillars -->
+  <section id="product" class="section container section-line">
+    <div class="pillars">
 
-          <!-- White clock face -->
-          <circle cx="95" cy="95" r="78" fill="#ffffff"/>
-
-          <!-- Filled sector ~70% remaining (neon green pie wedge, starting from top) -->
-          <!-- 70% of 360 = 252 degrees. Start at -90deg (top), sweep 252deg clockwise -->
-          <!-- Path: M cx,cy L cx,cy-r A r,r 0 1,1 ex,ey Z -->
-          <path d="M95,95 L95,17 A78,78 0 1,1 16.2,120.5 Z" fill="#39ff14" opacity="0.85"/>
-
-          <!-- Tick marks (12 major at 5-min intervals) -->
-          <g stroke="#555" stroke-linecap="round">
-            <line x1="95" y1="19" x2="95" y2="30" stroke-width="2.5"/>
-            <line x1="134" y1="28.6" x2="128.5" y2="38.2" stroke-width="1.5"/>
-            <line x1="161.4" x2="152.3" y1="56" y2="61" stroke-width="1.5"/>
-            <line x1="173" y1="95" x2="162" y2="95" stroke-width="2.5"/>
-            <line x1="161.4" y1="134" x2="152.3" y2="129" stroke-width="1.5"/>
-            <line x1="134" y1="161.4" x2="128.5" y2="151.8" stroke-width="1.5"/>
-            <line x1="95" y1="173" x2="95" y2="162" stroke-width="2.5"/>
-            <line x1="56" y1="161.4" x2="61.5" y2="151.8" stroke-width="1.5"/>
-            <line x1="28.6" y1="134" x2="37.7" y2="129" stroke-width="1.5"/>
-            <line x1="17" y1="95" x2="28" y2="95" stroke-width="2.5"/>
-            <line x1="28.6" y1="56" x2="37.7" y2="61" stroke-width="1.5"/>
-            <line x1="56" y1="28.6" x2="61.5" y2="38.2" stroke-width="1.5"/>
-          </g>
-
-          <!-- Number labels -->
-          <g font-family="Arial,sans-serif" font-size="9" fill="#333" text-anchor="middle" dominant-baseline="middle">
-            <text x="95"  y="11">0</text>
-            <text x="137" y="22">5</text>
-            <text x="168" y="52">10</text>
-            <text x="179" y="95">15</text>
-            <text x="168" y="140">20</text>
-            <text x="137" y="170">25</text>
-            <text x="95"  y="181">30</text>
-            <text x="52"  y="170">35</text>
-            <text x="22"  y="140">40</text>
-            <text x="11"  y="95">45</text>
-            <text x="22"  y="52">50</text>
-            <text x="52"  y="22">55</text>
-          </g>
-
-          <!-- Inner white circle (face center) -->
-          <circle cx="95" cy="95" r="28" fill="#ffffff"/>
-
-          <!-- 3D Knob -->
-          <circle cx="95" cy="95" r="14" fill="url(#knob-grad)"/>
-          <!-- Knob highlight -->
-          <circle cx="90" cy="90" r="4" fill="white" opacity="0.5"/>
-        </svg>
-      </div>
-      <button class="mock-btn">Pause</button>
-      <div class="mock-dots">
-        <div class="mock-dot on"></div>
-        <div class="mock-dot on"></div>
-        <div class="mock-dot on"></div>
-        <div class="mock-dot"></div>
-      </div>
-    </div>
-
-    <!-- Workout Timer Mock -->
-    <div class="mock-app" style="margin-top:16px;background:rgba(15,52,96,0.7);border:1px solid rgba(57,255,20,0.15);">
-      <!-- Timer type tabs — Workout active -->
-      <div class="mock-tabs" style="margin-bottom:8px;">
-        <div class="mock-tab">⏱ Work Timer</div>
-        <div class="mock-tab active">💪 Workout</div>
-      </div>
-      <!-- Preset pills -->
-      <div style="display:flex;gap:5px;justify-content:center;margin-bottom:10px;">
-        <span style="background:#39ff14;color:#000;font-size:0.65rem;font-weight:700;padding:3px 10px;border-radius:20px;">Tabata</span>
-        <span style="background:rgba(255,255,255,0.08);color:#aaa;font-size:0.65rem;font-weight:600;padding:3px 10px;border-radius:20px;">Sprint</span>
-        <span style="background:rgba(255,255,255,0.08);color:#aaa;font-size:0.65rem;font-weight:600;padding:3px 10px;border-radius:20px;">Endurance</span>
-        <span style="background:rgba(255,255,255,0.08);color:#aaa;font-size:0.65rem;font-weight:600;padding:3px 10px;border-radius:20px;">Custom</span>
-      </div>
-      <!-- Badges -->
-      <div style="display:flex;gap:6px;justify-content:center;margin-bottom:4px;">
-        <span style="background:rgba(57,255,20,0.15);color:#39ff14;font-size:0.6rem;font-weight:700;padding:2px 8px;border-radius:12px;">💪 20s work</span>
-        <span style="background:rgba(48,209,88,0.15);color:#30d158;font-size:0.6rem;font-weight:700;padding:2px 8px;border-radius:12px;">😮‍💨 10s rest</span>
-      </div>
-      <!-- Phase label -->
-      <div style="text-align:center;font-size:0.7rem;font-weight:800;letter-spacing:2px;color:#39ff14;margin-bottom:6px;">WORK</div>
-      <!-- Ring SVG -->
-      <div style="display:flex;justify-content:center;margin-bottom:6px;">
-        <svg width="110" height="110" viewBox="0 0 110 110">
-          <!-- Track ring -->
-          <circle cx="55" cy="55" r="44" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="8"/>
-          <!-- Progress arc ~60% (green glow) -->
-          <circle cx="55" cy="55" r="44" fill="none" stroke="#39ff14" stroke-width="8"
-            stroke-linecap="round"
-            stroke-dasharray="276.46" stroke-dashoffset="110"
-            transform="rotate(-90 55 55)"
-            style="filter:drop-shadow(0 0 6px #39ff14);"/>
-          <!-- Time text -->
-          <text x="55" y="50" text-anchor="middle" font-family="Arial,sans-serif" font-size="18" font-weight="800" fill="#fff">0:14</text>
-          <text x="55" y="66" text-anchor="middle" font-family="Arial,sans-serif" font-size="8" fill="#aaa">of 20s</text>
-        </svg>
-      </div>
-      <!-- Round counter -->
-      <div style="text-align:center;font-size:0.65rem;color:#aaa;margin-bottom:8px;">Round <span style="color:#fff;font-weight:700;">3</span> / 8</div>
-      <!-- Controls -->
-      <button class="mock-btn" style="background:#39ff14;color:#000;">Pause</button>
-    </div>
-  </div>
-</section>
-
-<!-- ── Features ── -->
-<section class="section" id="features">
-  <p class="section-label">Why Flow Timer</p>
-  <h2 class="section-title">Everything you need to stay on track</h2>
-  <p class="section-sub">Built for deep work and intentional planning. No clutter, no distractions.</p>
-
-  <div class="features-grid">
-    <div class="feature-card">
-      <span class="feature-icon">✅</span>
-      <h3>Smart Task Manager</h3>
-      <p>Add tasks with categories, priorities, estimated time, and scheduled dates. Tasks are split by Today / Tomorrow / Upcoming — always know what's next.</p>
-    </div>
-    <div class="feature-card">
-      <span class="feature-icon">📅</span>
-      <h3>Weekly Planner</h3>
-      <p>See all your tasks laid out across the week. Recurring tasks show on their scheduled days automatically. Plan your week at a glance.</p>
-    </div>
-    <div class="feature-card">
-      <span class="feature-icon">🗓</span>
-      <h3>Activity Calendar</h3>
-      <p>Visual month calendar showing your task completion history. Filter by category to spot patterns and track consistency over time.</p>
-    </div>
-    <div class="feature-card">
-      <span class="feature-icon">🧠</span>
-      <h3>Brain Dump</h3>
-      <p>Capture ideas and tasks instantly without needing a category. Quick capture, then convert to a proper task anytime — get it out of your head fast.</p>
-    </div>
-    <div class="feature-card">
-      <span class="feature-icon">☁️</span>
-      <h3>Cloud Sync — Your Data Everywhere</h3>
-      <p>Tasks saved to Firebase in real-time. Log in from any device, your tasks are always there. Instant optimistic updates — never waits on the network.</p>
-    </div>
-    <div class="feature-card">
-      <span class="feature-icon">🔁</span>
-      <h3>Recurring Tasks</h3>
-      <p>Set tasks to repeat on specific days of the week. Mark done per-day without affecting other days. Perfect for habits and routines.</p>
-    </div>
-    <div class="feature-card">
-      <span class="feature-icon">💪</span>
-      <h3>HIIT Workout Timer</h3>
-      <p>Tabata, Sprint, Endurance, and Custom presets. Voice countdown "3, 2, 1, Change". Save your own custom workouts and reload them anytime.</p>
-    </div>
-    <div class="feature-card">
-      <span class="feature-icon">🧘</span>
-      <h3>Meditation Timer</h3>
-      <p>Guided 4-4-6-2 breathing cycle with an animated ring. Pick 5, 10, 15, 20, or 30-minute sessions. Ambient sounds — Rain, Singing Bowl, Om, or silence.</p>
-    </div>
-    <div class="feature-card">
-      <span class="feature-icon">🕐</span>
-      <h3>Floating Widget</h3>
-      <p>Analog floating clock works for both the Pomodoro and Workout timer. Float it over any app — never lose track of your session.</p>
-    </div>
-    <div class="feature-card">
-      <span class="feature-icon">🎵</span>
-      <h3>Built-in Music Player</h3>
-      <p>Rhythmic beat mode, audio files with playlist queue, or YouTube — paste URLs to build a saved playlist with auto-advance.</p>
-    </div>
-    <div class="feature-card">
-      <span class="feature-icon">🧬</span>
-      <h3>6 Binaural Beat Presets</h3>
-      <p>Focus (Alpha 10Hz), Energy (Beta 20Hz), Flow (Alpha 8Hz), Deep Focus (Gamma 40Hz), Calm (Theta 6Hz), Sleep (Delta 2Hz). Science-backed.</p>
-    </div>
-    <div class="feature-card">
-      <span class="feature-icon">🔔</span>
-      <h3>Smart Notifications</h3>
-      <p>Desktop notifications and a gentle alarm when your session ends. Never lose track of time again.</p>
-    </div>
-    <div class="feature-card">
-      <span class="feature-icon">🌙</span>
-      <h3>Dark & Light Mode</h3>
-      <p>Sleek dark theme by default. Switch to light mode any time — your preference is saved automatically.</p>
-    </div>
-  </div>
-</section>
-
-<!-- ── Task Manager Showcase ── -->
-<section class="section" style="padding-top:0;">
-  <p class="section-label">Task Manager</p>
-  <h2 class="section-title">Plan your day, not just your timer</h2>
-  <p class="section-sub">A full task system built right into your flow — categories, priorities, schedules, and cloud sync.</p>
-
-  <div style="display:flex;gap:40px;align-items:flex-start;flex-wrap:wrap;justify-content:center;margin-top:40px;">
-
-    <!-- Feature list -->
-    <div style="max-width:340px;">
-      <div style="display:flex;flex-direction:column;gap:22px;">
-        <div style="display:flex;gap:14px;align-items:flex-start;">
-          <span style="font-size:1.6rem;">🗂</span>
-          <div><strong style="color:var(--text,#fff);">Categories with reasons</strong><br><span style="color:#888;font-size:0.85rem;">Organise tasks by category. Add up to 3 "why" reasons to stay motivated when you open the app.</span></div>
+      <div class="pillar">
+        <div class="pillar-head">
+          <h2 class="pillar-title">Focus sessions</h2>
+          <p class="pillar-caption">25 to 90 minutes. One task. Nothing else fighting for your attention.</p>
         </div>
-        <div style="display:flex;gap:14px;align-items:flex-start;">
-          <span style="font-size:1.6rem;">📆</span>
-          <div><strong style="color:var(--text,#fff);">Today / Tomorrow / Upcoming</strong><br><span style="color:#888;font-size:0.85rem;">Tasks are automatically grouped by date so you always see what matters right now.</span></div>
-        </div>
-        <div style="display:flex;gap:14px;align-items:flex-start;">
-          <span style="font-size:1.6rem;">🔁</span>
-          <div><strong style="color:var(--text,#fff);">Recurring tasks</strong><br><span style="color:#888;font-size:0.85rem;">Pick days of the week and set a start date. The task appears automatically on the right days, forever.</span></div>
-        </div>
-        <div style="display:flex;gap:14px;align-items:flex-start;">
-          <span style="font-size:1.6rem;">▶️</span>
-          <div><strong style="color:var(--text,#fff);">Focus mode link</strong><br><span style="color:#888;font-size:0.85rem;">Hit play on any task to start a timer session with that task pre-loaded. Your estimated time sets the timer automatically.</span></div>
-        </div>
-        <div style="display:flex;gap:14px;align-items:flex-start;">
-          <span style="font-size:1.6rem;">☁️</span>
-          <div><strong style="color:var(--text,#fff);">Real-time cloud storage</strong><br><span style="color:#888;font-size:0.85rem;">Every task saved to Firebase instantly. Delete, complete, or reschedule — always in sync across devices.</span></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Task UI Mock -->
-    <div style="background:rgba(16,24,40,0.9);border:1px solid rgba(57,255,20,0.2);border-radius:20px;padding:20px;min-width:270px;max-width:310px;font-family:system-ui,sans-serif;">
-      <!-- Stats bar -->
-      <div style="display:flex;justify-content:space-around;background:rgba(255,255,255,0.04);border-radius:12px;padding:10px;margin-bottom:16px;">
-        <div style="text-align:center;"><div style="font-size:1.2rem;font-weight:800;color:#39ff14;">50:00</div><div style="font-size:0.55rem;color:#666;text-transform:uppercase;letter-spacing:1px;">Estimated</div></div>
-        <div style="text-align:center;"><div style="font-size:1.2rem;font-weight:800;color:#39ff14;">3</div><div style="font-size:0.55rem;color:#666;text-transform:uppercase;letter-spacing:1px;">To Do</div></div>
-        <div style="text-align:center;"><div style="font-size:1.2rem;font-weight:800;color:#39ff14;">1</div><div style="font-size:0.55rem;color:#666;text-transform:uppercase;letter-spacing:1px;">Done Today</div></div>
-      </div>
-      <!-- Add task bar -->
-      <div style="border:1px dashed rgba(57,255,20,0.25);border-radius:10px;padding:8px 12px;color:#555;font-size:0.75rem;margin-bottom:14px;">+ Add a task…</div>
-      <!-- Category group -->
-      <div style="font-size:0.6rem;font-weight:700;letter-spacing:2px;color:#39ff14;margin-bottom:4px;">SOCIAL MASTERY</div>
-      <div style="font-size:0.62rem;color:#666;margin-bottom:8px;">💡 To grow my online presence</div>
-      <!-- Task items -->
-      <div style="background:rgba(255,255,255,0.05);border-radius:10px;padding:10px 12px;margin-bottom:6px;display:flex;align-items:center;gap:10px;">
-        <div style="width:16px;height:16px;border-radius:50%;border:2px solid rgba(57,255,20,0.4);flex-shrink:0;"></div>
-        <div style="flex:1;">
-          <div style="font-size:0.78rem;font-weight:600;color:#fff;">50 X replies</div>
-          <div style="display:flex;gap:6px;margin-top:3px;align-items:center;">
-            <span style="font-size:0.58rem;background:rgba(57,255,20,0.12);color:#39ff14;padding:1px 6px;border-radius:6px;">🔁 Mon–Sun</span>
-            <span style="font-size:0.58rem;color:#555;">25m</span>
+        <!-- TODO: replace with a real screenshot at /screens/focus.png -->
+        <div class="frame">
+          <div class="frame-bar">Focus Timer</div>
+          <div class="frame-body">
+            <div class="frame-line" style="width:40%"></div>
+            <div class="frame-line" style="width:70%"></div>
+            <div class="frame-line" style="width:55%"></div>
           </div>
         </div>
-        <span style="color:#39ff14;font-size:0.7rem;opacity:0.6;">▶</span>
       </div>
-      <div style="background:rgba(255,255,255,0.05);border-radius:10px;padding:10px 12px;margin-bottom:14px;display:flex;align-items:center;gap:10px;">
-        <div style="width:16px;height:16px;border-radius:50%;border:2px solid rgba(57,255,20,0.4);flex-shrink:0;"></div>
-        <div style="flex:1;">
-          <div style="font-size:0.78rem;font-weight:600;color:#fff;">Reddit Marketing</div>
-          <div style="display:flex;gap:6px;margin-top:3px;align-items:center;">
-            <span style="font-size:0.58rem;background:rgba(57,255,20,0.12);color:#39ff14;padding:1px 6px;border-radius:6px;">📅 Sat Sun</span>
-            <span style="font-size:0.58rem;color:#555;">25m</span>
+
+      <div class="pillar">
+        <div class="pillar-head">
+          <h2 class="pillar-title">Weekly planner</h2>
+          <p class="pillar-caption">See the week before it happens to you, not after.</p>
+        </div>
+        <!-- TODO: replace with a real screenshot at /screens/planner.png -->
+        <div class="frame">
+          <div class="frame-bar">Weekly Planner</div>
+          <div class="frame-body">
+            <div class="frame-line" style="width:60%"></div>
+            <div class="frame-line" style="width:35%"></div>
+            <div class="frame-line" style="width:75%"></div>
+            <div class="frame-line" style="width:45%"></div>
           </div>
         </div>
-        <span style="color:#39ff14;font-size:0.7rem;opacity:0.6;">▶</span>
       </div>
-      <!-- Tomorrow section -->
-      <div style="font-size:0.6rem;font-weight:700;letter-spacing:1px;color:#39ff14;border-top:1px solid rgba(255,255,255,0.07);padding-top:8px;margin-bottom:8px;">TOMORROW — FRI 20 MAR</div>
-      <div style="background:rgba(255,255,255,0.04);border-radius:10px;padding:10px 12px;display:flex;align-items:center;gap:10px;">
-        <div style="width:16px;height:16px;border-radius:50%;border:2px solid rgba(57,255,20,0.4);flex-shrink:0;"></div>
-        <div style="flex:1;">
-          <div style="font-size:0.78rem;font-weight:600;color:#fff;">Buy Clothes</div>
-          <div style="display:flex;gap:6px;margin-top:3px;"><span style="font-size:0.58rem;color:#555;">📅 03/20 · 25m</span></div>
+
+      <div class="pillar pillar-cascade">
+        <div class="pillar-head">
+          <h2 class="pillar-title">The goal cascade</h2>
+          <p class="pillar-caption">Seven levels connect your biggest ambitions to this week's actual work — no gap between someday and now.</p>
         </div>
-        <span style="color:#39ff14;font-size:0.7rem;opacity:0.6;">▶</span>
-      </div>
-    </div>
-
-  </div>
-</section>
-
-<!-- ── Workout Showcase ── -->
-<section class="section" style="padding-top:0;">
-  <p class="section-label">Workout Timer</p>
-  <h2 class="section-title">Train smarter with built-in HIIT</h2>
-  <p class="section-sub">Switch from focus mode to full interval training in one tap. No separate app needed.</p>
-
-  <div style="display:flex;gap:32px;align-items:center;flex-wrap:wrap;justify-content:center;margin-top:40px;">
-
-    <!-- Left: feature list -->
-    <div style="max-width:340px;">
-      <div style="display:flex;flex-direction:column;gap:20px;">
-        <div style="display:flex;gap:14px;align-items:flex-start;">
-          <span style="font-size:1.6rem;">⚡</span>
-          <div><strong style="color:var(--text,#fff);">4 ready-to-go presets</strong><br><span style="color:#888;font-size:0.85rem;">Tabata (20/10), Sprint (40/20), Endurance (45/15), or fully Custom.</span></div>
-        </div>
-        <div style="display:flex;gap:14px;align-items:flex-start;">
-          <span style="font-size:1.6rem;">🗣</span>
-          <div><strong style="color:var(--text,#fff);">Voice countdown</strong><br><span style="color:#888;font-size:0.85rem;">Hear "3, 2, 1, Change" so you never have to glance at the screen mid-rep.</span></div>
-        </div>
-        <div style="display:flex;gap:14px;align-items:flex-start;">
-          <span style="font-size:1.6rem;">🔢</span>
-          <div><strong style="color:var(--text,#fff);">Adjustable rounds</strong><br><span style="color:#888;font-size:0.85rem;">Tap +/− to set rounds right on the timer screen. Total time updates instantly.</span></div>
-        </div>
-        <div style="display:flex;gap:14px;align-items:flex-start;">
-          <span style="font-size:1.6rem;">🎯</span>
-          <div><strong style="color:var(--text,#fff);">Phase-aware ring</strong><br><span style="color:#888;font-size:0.85rem;">Green ring for work, teal for rest, yellow for prep — know your phase at a glance.</span></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Right: large workout mock -->
-    <div style="background:rgba(15,52,96,0.5);border:1px solid rgba(57,255,20,0.2);border-radius:20px;padding:24px;min-width:260px;max-width:300px;">
-      <!-- Tab switcher -->
-      <div style="display:flex;background:rgba(255,255,255,0.06);border-radius:12px;padding:4px;margin-bottom:14px;gap:4px;">
-        <div style="flex:1;text-align:center;padding:7px 4px;border-radius:9px;font-size:0.75rem;color:#888;font-weight:600;">⏱ Work Timer</div>
-        <div style="flex:1;text-align:center;padding:7px 4px;border-radius:9px;font-size:0.75rem;font-weight:700;background:#39ff14;color:#000;">💪 Workout</div>
-      </div>
-      <!-- Preset pills -->
-      <div style="display:flex;gap:5px;justify-content:center;margin-bottom:12px;flex-wrap:wrap;">
-        <span style="background:#39ff14;color:#000;font-size:0.65rem;font-weight:700;padding:4px 12px;border-radius:20px;">Tabata</span>
-        <span style="background:rgba(255,255,255,0.08);color:#aaa;font-size:0.65rem;font-weight:600;padding:4px 12px;border-radius:20px;">Sprint</span>
-        <span style="background:rgba(255,255,255,0.08);color:#aaa;font-size:0.65rem;font-weight:600;padding:4px 12px;border-radius:20px;">Endurance</span>
-        <span style="background:rgba(255,255,255,0.08);color:#aaa;font-size:0.65rem;font-weight:600;padding:4px 12px;border-radius:20px;">Custom</span>
-      </div>
-      <!-- Badges -->
-      <div style="display:flex;gap:8px;justify-content:center;margin-bottom:6px;">
-        <span style="background:rgba(57,255,20,0.15);color:#39ff14;font-size:0.65rem;font-weight:700;padding:3px 10px;border-radius:12px;">💪 20s work</span>
-        <span style="background:rgba(48,209,88,0.15);color:#30d158;font-size:0.65rem;font-weight:700;padding:3px 10px;border-radius:12px;">😮‍💨 10s rest</span>
-      </div>
-      <!-- Rounds + Total -->
-      <div style="display:flex;justify-content:space-between;align-items:center;font-size:0.65rem;color:#888;margin-bottom:10px;padding:0 4px;">
-        <div>Rounds <span style="background:rgba(255,255,255,0.1);padding:1px 8px;border-radius:10px;margin:0 4px;color:#fff;font-weight:700;">8</span></div>
-        <div>Total: <span style="color:#39ff14;font-weight:700;">04:00</span></div>
-      </div>
-      <!-- Phase label -->
-      <div style="text-align:center;font-size:0.75rem;font-weight:800;letter-spacing:3px;color:#39ff14;margin-bottom:8px;text-shadow:0 0 8px rgba(57,255,20,0.6);">WORK</div>
-      <!-- Ring SVG -->
-      <div style="display:flex;justify-content:center;margin-bottom:10px;">
-        <svg width="140" height="140" viewBox="0 0 140 140">
-          <defs>
-            <filter id="glow"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
-          </defs>
-          <circle cx="70" cy="70" r="56" fill="none" stroke="rgba(255,255,255,0.07)" stroke-width="10"/>
-          <circle cx="70" cy="70" r="56" fill="none" stroke="#39ff14" stroke-width="10"
-            stroke-linecap="round" stroke-dasharray="351.86" stroke-dashoffset="105"
-            transform="rotate(-90 70 70)" filter="url(#glow)"/>
-          <text x="70" y="64" text-anchor="middle" font-family="Arial,sans-serif" font-size="26" font-weight="800" fill="#fff">0:14</text>
-          <text x="70" y="82" text-anchor="middle" font-family="Arial,sans-serif" font-size="10" fill="#888">of 20s</text>
-        </svg>
-      </div>
-      <!-- Round counter + dots -->
-      <div style="text-align:center;font-size:0.7rem;color:#888;margin-bottom:10px;">Round <strong style="color:#fff;">3</strong> / 8 &nbsp;·&nbsp; <span style="color:#39ff14;">●</span><span style="color:#39ff14;">●</span><span style="color:#888;">●</span><span style="color:#888;">●</span><span style="color:#888;">●</span><span style="color:#888;">●</span><span style="color:#888;">●</span><span style="color:#888;">●</span></div>
-      <!-- Controls -->
-      <div style="display:flex;gap:8px;justify-content:center;">
-        <button style="flex:1;padding:9px;border:none;border-radius:10px;background:#39ff14;color:#000;font-weight:700;font-size:0.8rem;cursor:pointer;">Pause</button>
-        <button style="padding:9px 14px;border:none;border-radius:10px;background:rgba(255,255,255,0.08);color:#fff;font-size:0.9rem;cursor:pointer;">⏭</button>
-        <button style="padding:9px 14px;border:none;border-radius:10px;background:rgba(255,255,255,0.08);color:#fff;font-size:0.9rem;cursor:pointer;">↺</button>
-      </div>
-    </div>
-
-  </div>
-</section>
-
-<!-- ── Pricing ── -->
-<section class="section" id="pricing" style="padding-top:0;">
-  <p class="section-label">Pricing</p>
-  <h2 class="section-title">Simple, transparent pricing</h2>
-  <p class="section-sub">Start free forever. Upgrade when you need more.</p>
-
-  <!-- Billing toggle -->
-  <div style="display:flex;justify-content:center;margin-bottom:32px;">
-    <div style="display:flex;background:var(--surface2,#16213e);border-radius:12px;padding:4px;gap:0;">
-      <button id="toggle-monthly" onclick="setBilling('monthly')"
-        style="padding:9px 24px;border:none;border-radius:9px;font-size:0.9rem;font-weight:600;cursor:pointer;transition:all 0.2s;background:#39ff14;color:#000;">
-        Monthly
-      </button>
-      <button id="toggle-yearly" onclick="setBilling('yearly')"
-        style="padding:9px 24px;border:none;border-radius:9px;font-size:0.9rem;font-weight:600;cursor:pointer;transition:all 0.2s;background:transparent;color:#888;">
-        Yearly &nbsp;<span style="background:#ffd60a;color:#000;font-size:0.65rem;font-weight:700;padding:2px 7px;border-radius:20px;">Save 30%</span>
-      </button>
-      <button id="toggle-lifetime" onclick="setBilling('lifetime')"
-        style="padding:9px 24px;border:none;border-radius:9px;font-size:0.9rem;font-weight:600;cursor:pointer;transition:all 0.2s;background:transparent;color:#888;">
-        Lifetime &nbsp;<span style="background:#ff6b35;color:#fff;font-size:0.65rem;font-weight:700;padding:2px 7px;border-radius:20px;">🔥 Best</span>
-      </button>
-    </div>
-  </div>
-
-  <div class="pricing-grid">
-
-    <div class="pricing-card">
-      <p class="plan-name">Free</p>
-      <div class="plan-price" id="free-price">₹0</div>
-      <p class="plan-period">forever</p>
-      <ul class="plan-features">
-        <li>25 min max focus session</li>
-        <li>Short & long breaks</li>
-        <li>Up to 4 sessions/cycle</li>
-        <li>Task manager (up to 10 tasks)</li>
-        <li>Dark & light mode</li>
-        <li>Sound & notifications</li>
-        <li class="no">HIIT Workout Timer</li>
-        <li class="no">Music, Binaural Beats & YouTube</li>
-        <li class="no">Floating analog widget</li>
-        <li class="no">Unlimited tasks + cloud sync</li>
-        <li class="no">Weekly Planner & Calendar</li>
-        <li class="no">Recurring tasks</li>
-        <li class="no">Up to 90 min sessions</li>
-      </ul>
-      <a href="signup.html" class="btn btn-outline btn-full">Start Free Trial</a>
-    </div>
-
-    <div class="pricing-card popular">
-      <div class="popular-badge">Most Popular</div>
-      <p class="plan-name">Pro</p>
-      <div class="plan-price" id="pro-price"><sup>₹</sup>499</div>
-      <p class="plan-period" id="pro-period">per month</p>
-      <p id="pro-sub" style="font-size:0.75rem;color:#888;margin:-8px 0 16px;text-align:center;">Billed monthly</p>
-      <ul class="plan-features">
-        <li>Up to 90 min focus sessions</li>
-        <li>Short & long breaks</li>
-        <li>Up to 8 sessions/cycle</li>
-        <li>Unlimited tasks + cloud sync</li>
-        <li>Weekly Planner & Activity Calendar</li>
-        <li>Recurring tasks (any days)</li>
-        <li>Brain Dump quick capture</li>
-        <li>HIIT Workout Timer (all presets)</li>
-        <li>Meditation Timer with breathing guide</li>
-        <li>Music — Beat, Binaural & YouTube</li>
-        <li>6 Binaural Beat presets</li>
-        <li>Save custom workouts & playlists</li>
-        <li>Floating widget — Work & Workout</li>
-        <li>Session history & stats</li>
-        <li>Priority support</li>
-      </ul>
-      <a href="upgrade.html" class="btn btn-primary btn-full" id="pro-cta">Upgrade to Pro</a>
-    </div>
-
-  </div>
-</section>
-
-<script>
-  // Detect India by timezone
-  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
-  const isIndia = tz.includes('Calcutta') || tz.includes('Kolkata') || navigator.language === 'en-IN';
-
-  const PRICES = isIndia
-    ? {
-        monthly:  { price: '<sup>₹</sup>499',    period: 'per month',  sub: 'Billed monthly', ctaParam: '' },
-        yearly:   { price: '<sup>₹</sup>4,167',  period: 'per year',   sub: 'Billed yearly — save ₹831', ctaParam: '?plan=yearly' },
-        lifetime: { price: '<sup>₹</sup>10,000', period: 'one-time',   sub: 'Pay once, use forever', ctaParam: '?plan=lifetime' },
-      }
-    : {
-        monthly:  { price: '<sup>$</sup>4.99', period: 'per month',  sub: 'Billed monthly', ctaParam: '' },
-        yearly:   { price: '<sup>$</sup>50',   period: 'per year',   sub: 'Billed yearly — save $9.88', ctaParam: '?plan=yearly' },
-        lifetime: { price: '<sup>$</sup>100',  period: 'one-time',   sub: 'Pay once, use forever', ctaParam: '?plan=lifetime' },
-      };
-
-  // Set free plan label
-  document.getElementById('free-price').innerHTML = isIndia ? '₹0' : '$0';
-
-  let currentBilling = 'monthly';
-
-  function setBilling(type) {
-    currentBilling = type;
-    const p = PRICES[type] || PRICES.monthly;
-    document.getElementById('pro-price').innerHTML = p.price;
-    document.getElementById('pro-period').textContent = p.period;
-    document.getElementById('pro-sub').textContent = p.sub;
-    document.getElementById('pro-cta').href = 'upgrade.html' + p.ctaParam;
-
-    ['monthly','yearly','lifetime'].forEach(t => {
-      const btn = document.getElementById('toggle-' + t);
-      btn.style.background = t === type ? '#39ff14' : 'transparent';
-      btn.style.color = t === type ? '#000' : '#888';
-    });
-  }
-
-  // Init with monthly prices
-  setBilling('monthly');
-</script>
-
-<!-- ── CTA Banner ── -->
-<div class="cta-banner">
-  <h2>Ready to get focused?</h2>
-  <p>Try it free for 7 days. No credit card required.</p>
-  <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
-    <a href="signup.html" class="btn btn-primary btn-lg">Start 7-Day Free Trial</a>
-    <a href="index.html" class="btn btn-outline btn-lg">Try without account</a>
-  </div>
-</div>
-
-<footer>
-  <p>© 2026 Flow Timer · <a href="#">Privacy</a> · <a href="#">Terms</a></p>
-</footer>
-
-<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-<script src="js/firebase-client.js"></script>
-<script src="js/auth.js"></script>
-<script>
-  Auth.init().then(user => {
-    if (user) {
-      // Desktop nav
-      const links = document.querySelector('#nav-links-desktop');
-      links.innerHTML = `
-        ${user.avatar ? `<img src="${user.avatar}" style="width:28px;height:28px;border-radius:50%;object-fit:cover;">` : ''}
-        <span style="font-size:0.85rem;color:var(--text-muted)">Hi, ${user.name.split(' ')[0]}</span>
-        <a href="index.html" class="btn btn-primary" style="padding:8px 18px;font-size:0.85rem;">Open App</a>
-        <button onclick="Auth.signOut()" class="btn btn-outline" style="padding:8px 18px;font-size:0.85rem;">Sign Out</button>
-      `;
-      // Mobile menu
-      const mobileInner = document.getElementById('landing-mobile-menu-inner');
-      if (mobileInner) {
-        mobileInner.innerHTML = `
-          <div class="landing-user-row">
-            ${user.avatar
-              ? `<img src="${user.avatar}" class="landing-user-avatar">`
-              : `<div class="landing-user-avatar landing-user-initial">${user.name[0].toUpperCase()}</div>`}
-            <div>
-              <div class="landing-user-name">${user.name}</div>
-              <div class="landing-user-email">${user.email}</div>
+        <div class="frame">
+          <div class="frame-bar">Goal Cascade</div>
+          <div class="frame-body">
+            <div class="ladder" role="img" aria-label="Seven-level goal cascade, from Someday down to Right Now, intensifying in color toward the bottom">
+              <div class="ladder-rung" data-i="0">Someday</div>
+              <div class="ladder-rung" data-i="1">Five-Year</div>
+              <div class="ladder-rung" data-i="2">One-Year</div>
+              <div class="ladder-rung" data-i="3">Monthly</div>
+              <div class="ladder-rung" data-i="4">Weekly</div>
+              <div class="ladder-rung" data-i="5">Daily</div>
+              <div class="ladder-rung" data-i="6">Right Now</div>
             </div>
           </div>
-          <div class="landing-nav-divider"></div>
-          <a href="#features" class="landing-nav-item" onclick="closeLandingMenu()"><span>🔍</span> Features</a>
-          <a href="#pricing"  class="landing-nav-item" onclick="closeLandingMenu()"><span>💳</span> Pricing</a>
-          <div class="landing-nav-divider"></div>
-          <a href="index.html" class="landing-nav-cta">Open App →</a>
-          <button onclick="Auth.signOut()" class="landing-nav-item landing-nav-signout"><span>↗</span> Sign Out</button>
-        `;
-      }
-    }
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- 4. Certificate artifact -->
+  <section class="section container section-line cert-artifact">
+    <div class="cert-frame">
+      <img id="cert-artifact-img" alt="A sample Flow Timer hour certificate: 52 minutes on a client proposal, day 12 streak, flowtimer.app watermark">
+    </div>
+    <p class="cert-caption">Every session ends with proof.</p>
+  </section>
+
+  <!-- 5. ROI strip -->
+  <section id="roi" class="section container section-line">
+    <div class="roi-hook">
+      <h2>Your ₹499 pays for itself in minutes of recovered work.</h2>
+    </div>
+    <div class="roi-calc">
+      <div class="field">
+        <div class="field-head">
+          <label class="field-label" for="rate">Your hourly rate</label>
+          <span class="field-value num" id="rateOut">₹1,500/hr</span>
+        </div>
+        <input type="range" id="rate" min="500" max="5000" step="100" value="1500" aria-describedby="rateHint">
+        <p class="field-hint" id="rateHint">What a client pays for one hour of your work.</p>
+      </div>
+      <div class="field">
+        <div class="field-head">
+          <label class="field-label" for="lost">Hours lost to distraction each week</label>
+          <span class="field-value num" id="lostOut">6 hrs</span>
+        </div>
+        <input type="range" id="lost" min="1" max="15" step="1" value="6" aria-describedby="lostHint">
+        <p class="field-hint" id="lostHint">Context-switching, doomscrolling, "just checking" — be honest.</p>
+      </div>
+      <div class="field">
+        <div class="field-head">
+          <label class="field-label" for="rec">Share of that Flow Timer recovers</label>
+          <span class="field-value num" id="recOut">25%</span>
+        </div>
+        <input type="range" id="rec" min="10" max="50" step="5" value="25" aria-describedby="recHint">
+        <p class="field-hint" id="recHint">We default to a conservative quarter. Move it where you believe.</p>
+      </div>
+
+      <div class="payback" role="status" aria-live="polite">
+        <p class="payback-label">Payback</p>
+        <p class="payback-line">Your ₹499 pays for itself in <strong class="num" id="payback">20 minutes</strong> of recovered work.</p>
+        <p class="payback-sub" id="paybackSub">Everything after that is yours.</p>
+      </div>
+
+      <dl class="ledger">
+        <div class="row"><dt>Hours recovered per month</dt><dd class="num" id="hrsOut">6.5 hrs</dd></div>
+        <div class="row"><dt>Recovered billable value</dt><dd class="num" id="revOut">₹9,750</dd></div>
+        <div class="row"><dt>Flow Timer Premium</dt><dd class="num">− ₹499</dd></div>
+        <div class="row net"><dt>Net gain per month</dt><dd class="num" id="netOut">₹9,251</dd></div>
+        <div class="row roi"><dt>Return on ₹499</dt><dd class="num" id="roiOut">18.5×</dd></div>
+      </dl>
+
+      <p class="assume">Assumes a 4.33-week month and that recovered hours are billable or move your own projects forward. No compounding, no fine print — change any slider and the math follows.</p>
+
+      <a class="btn btn-amber roi-cta" href="signup.html?utm_source=landing&amp;utm_content=roi_calculator" data-track="landing_cta_click" data-section="roi">Start recovering hours — free</a>
+    </div>
+  </section>
+
+  <!-- 6. Pricing -->
+  <section id="pricing" class="section container section-line">
+    <div class="pricing-grid">
+      <div class="price-card">
+        <div class="price-plan">Free</div>
+        <div class="price-amount">₹0</div>
+        <div class="price-period">forever</div>
+        <ul class="price-rows">
+          <li><span>Focus sessions</span><span class="yes">✔</span></li>
+          <li><span>Task manager</span><span class="yes">✔</span></li>
+          <li><span>Weekly planner</span><span class="yes">✔</span></li>
+          <li><span>Goal cascade</span><span>—</span></li>
+          <li><span>AI goal suggestions</span><span>—</span></li>
+          <li><span>Certificate templates</span><span>1</span></li>
+        </ul>
+        <a href="signup.html?utm_source=landing&amp;utm_content=pricing_free" class="btn btn-outline">Start free</a>
+      </div>
+
+      <div class="price-card premium">
+        <div class="price-plan">Premium</div>
+        <div class="price-amount">₹499<span style="font-size:1rem;color:var(--muted);">/mo</span></div>
+        <div class="price-period">or annual, billed once a year</div>
+        <div class="price-annual"><strong>₹3,999/yr</strong> — effective ₹333/mo</div>
+        <ul class="price-rows">
+          <li><span>Focus sessions</span><span class="yes">✔</span></li>
+          <li><span>Task manager</span><span class="yes">✔</span></li>
+          <li><span>Weekly planner</span><span class="yes">✔</span></li>
+          <li><span>Goal cascade</span><span class="yes">✔</span></li>
+          <li><span>AI goal suggestions</span><span class="yes">✔</span></li>
+          <li><span>Certificate templates</span><span class="yes">3</span></li>
+        </ul>
+        <a href="signup.html?utm_source=landing&amp;utm_content=pricing_premium" class="btn btn-amber" data-track="landing_cta_click" data-section="pricing">Start your first hour — free</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- 7. Founder note -->
+  <section class="section container section-line">
+    <div class="founder">
+      <div class="founder-photo" aria-hidden="true">AM</div>
+      <div class="founder-text">
+        <p>I built Flow Timer after one too many weeks that felt full and produced nothing I actually cared about. I bill by the hour — I know exactly what an unrecovered hour costs. The goal cascade exists because a timer alone never once moved my own goals forward; it just measured the busywork.</p>
+        <p>Building this in public, one honest release at a time. Say hello — <a href="https://x.com/Arpietkmalpani" target="_blank" rel="noopener">@Arpietkmalpani</a> on X.</p>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <p class="philosophy">"If you think it's about a timer, you've missed the point. It's about the day you'll have today — and whether its hours counted."</p>
+  <p class="footer-line">flowtimer.app · every hour that counts</p>
+  <div class="footer-links">
+    <a href="https://x.com/Arpietkmalpani" target="_blank" rel="noopener">X</a>
+    <a href="#pricing">Pricing</a>
+    <a href="login.html?utm_source=landing&amp;utm_content=footer_signin">Sign in</a>
+  </div>
+</footer>
+
+<script>
+  // ── Analytics: safe no-op stubs until a provider is wired in ──────────────
+  function trackEvent(name, props) {
+    try {
+      if (typeof gtag === 'function') gtag('event', name, props || {});
+      else if (typeof plausible === 'function') plausible(name, { props: props || {} });
+    } catch (_) {}
+  }
+  document.querySelectorAll('[data-track]').forEach(el => {
+    el.addEventListener('click', () => trackEvent(el.dataset.track, { section: el.dataset.section || '' }));
   });
+
+  // ── Mobile nav ─────────────────────────────────────────────────────────
+  const hamBtn = document.getElementById('nav-ham');
+  const mobileMenu = document.getElementById('nav-mobile');
+  hamBtn.addEventListener('click', () => {
+    const open = mobileMenu.classList.toggle('open');
+    hamBtn.setAttribute('aria-expanded', String(open));
+    hamBtn.textContent = open ? 'Close' : 'Menu';
+  });
+
+  // ── ROI calculator (ported from flow-timer-roi-calculator.html) ─────────
+  (function () {
+    const $ = id => document.getElementById(id);
+    const rate = $('rate'), lost = $('lost'), rec = $('rec');
+    const PRICE = 499, WEEKS = 4.33;
+    const inr = n => '₹' + Math.round(n).toLocaleString('en-IN');
+
+    function fmtPayback(mins) {
+      if (mins < 60) return Math.max(1, Math.round(mins)) + ' minutes';
+      const h = mins / 60;
+      return (h < 10 ? h.toFixed(1) : Math.round(h)) + ' hours';
+    }
+
+    function update() {
+      const r = +rate.value, l = +lost.value, p = +rec.value / 100;
+      const hrs = l * WEEKS * p;
+      const rev = hrs * r;
+      const net = rev - PRICE;
+      const roi = rev / PRICE;
+      const paybackMin = PRICE / r * 60;
+
+      $('rateOut').textContent = inr(r) + '/hr';
+      $('lostOut').textContent = l + (l === 1 ? ' hr' : ' hrs');
+      $('recOut').textContent = (p * 100) + '%';
+      $('hrsOut').textContent = hrs.toFixed(1) + ' hrs';
+      $('revOut').textContent = inr(rev);
+      $('netOut').textContent = (net < 0 ? '− ' : '') + inr(Math.abs(net));
+      $('roiOut').textContent = (roi >= 10 ? Math.round(roi) : roi.toFixed(1)) + '×';
+      $('payback').textContent = fmtPayback(paybackMin);
+      $('paybackSub').textContent = net >= 0
+        ? 'Everything after that is yours.'
+        : 'At these numbers it does not pay back — and this calculator will say so.';
+    }
+
+    let tracked = false;
+    [rate, lost, rec].forEach(el => el.addEventListener('input', () => {
+      update();
+      if (!tracked) { trackEvent('calculator_interact', {}); tracked = true; }
+    }));
+    update();
+  })();
+
+  // ── Pricing view analytics ────────────────────────────────────────────
+  const pricingEl = document.getElementById('pricing');
+  if ('IntersectionObserver' in window && pricingEl) {
+    const io = new IntersectionObserver((entries, obs) => {
+      entries.forEach(e => {
+        if (e.isIntersecting) { trackEvent('pricing_view', {}); obs.disconnect(); }
+      });
+    }, { threshold: 0.4 });
+    io.observe(pricingEl);
+  }
+</script>
+
+<!-- Renders a real sample Hour Certificate for the artifact section, using the
+     same renderer the in-app feature uses (js/certificate.js) — no fake mockup. -->
+<script src="https://unpkg.com/html-to-image@1.11.11/dist/html-to-image.js"></script>
+<script src="js/certificate.js"></script>
+<script>
+  (async () => {
+    try {
+      const sample = {
+        durationMin: 52,
+        taskTitle: 'Client proposal — final pass',
+        streakDay: 12,
+        goalTitle: null,
+        userLine: null,
+        timestamp: new Date(),
+      };
+      const dataUrl = await Certificate.renderPng(sample, 'dark', 'feed');
+      document.getElementById('cert-artifact-img').src = dataUrl;
+    } catch (e) {
+      console.warn('[landing] certificate preview failed to render', e);
+    }
+  })();
 </script>
 </body>
 </html>
