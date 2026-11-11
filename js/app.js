@@ -12,7 +12,8 @@ const DEFAULT_SETTINGS = {
   accentColor: '#39ff14',
   certMode: 'always',      // 'always' | '60min' | 'never'
   certTemplate: 'minimal', // 'minimal' | 'dark' | 'gradient'
-  syncTimerAcrossDevices: true // false = each device/tab runs its own independent timer
+  syncTimerAcrossDevices: true, // false = each device/tab runs its own independent timer
+  continuousMode: false // true = focus timer keeps running past 0:00 into overtime instead of auto-stopping; use End & Log to finish
 };
 
 let state = {
@@ -123,6 +124,7 @@ function _pushTimerState(extra) {
     sessionsBeforeLong: state.settings.sessionsBeforeLong,
     totalSeconds: state.totalTime,
     status: state.status,
+    continuousMode: state.mode === 'work' && !!state.settings.continuousMode,
     updatedBy: Auth._getDeviceId(),
     ...extra,
   });
@@ -184,6 +186,14 @@ function tick() {
   renderTimer();
   syncPip();
   if (state.timeLeft <= 0) {
+    // Continuous Mode (work sessions only): don't auto-stop at 0 — keep
+    // running into overtime so sessions that run long still get fully
+    // tracked. Gently alerts once right at the crossing, then stays silent;
+    // the session only actually ends (and logs the real total) via End & Log.
+    if (state.mode === 'work' && state.settings.continuousMode) {
+      if (state.timeLeft === 0) { playAlarm(); sendNotification(); }
+      return;
+    }
     clearInterval(tickInterval);
     onTimerEnd();
   }
@@ -317,13 +327,19 @@ function _adoptRemoteTimerState(remote) {
 
   if (remote.status === 'running' && remote.endsAt) {
     const remaining = Math.round((new Date(remote.endsAt) - Date.now()) / 1000);
-    if (remaining <= 0) {
+    if (remaining <= 0 && !remote.continuousMode) {
       // Finished while no device was actively watching — try to claim and process it.
       _applyingRemoteTimer = false;
       _currentEndsAt = remote.endsAt;
       onTimerEnd();
       return;
     }
+    // Continuous Mode: endsAt passing doesn't mean "done" — it's still
+    // running into overtime (negative remaining) until manually ended.
+    // Adopt the flag the session actually started with so tick() on this
+    // device keeps behaving consistently, even if this device's own
+    // Continuous Mode setting differs.
+    if (typeof remote.continuousMode === 'boolean') state.settings.continuousMode = remote.continuousMode;
     _currentEndsAt = remote.endsAt;
     state.timeLeft = remaining;
     state.status = 'running';
@@ -389,21 +405,27 @@ function applyClockType() {
 
 // ─── Render ───────────────────────────────────────────────────────────────────
 function renderTimer() {
-  const mins = Math.floor(state.timeLeft / 60).toString().padStart(2, '0');
-  const secs = (state.timeLeft % 60).toString().padStart(2, '0');
-  const timeStr = `${mins}:${secs}`;
+  // Continuous Mode can push timeLeft negative (overtime) — show "+MM:SS"
+  // instead of garbled negative minutes/seconds.
+  const overtime = state.timeLeft < 0;
+  const absSeconds = Math.abs(state.timeLeft);
+  const mins = Math.floor(absSeconds / 60).toString().padStart(2, '0');
+  const secs = (absSeconds % 60).toString().padStart(2, '0');
+  const timeStr = `${overtime ? '+' : ''}${mins}:${secs}`;
 
   document.getElementById('time-display-analog').textContent = timeStr;
   document.getElementById('time-display-digital').textContent = timeStr;
+  document.getElementById('time-display-digital')?.classList.toggle('is-overtime', overtime);
+  document.getElementById('time-display-analog')?.classList.toggle('is-overtime', overtime);
 
   // Update page title
   document.title = `${timeStr} — Flow Timer`;
 
-  // Analog clock
-  drawAnalogClock(document.getElementById('main-clock'), state.timeLeft, state.totalTime);
+  // Analog clock — clamp to 0 during overtime so it just reads "complete" rather than winding backwards
+  drawAnalogClock(document.getElementById('main-clock'), Math.max(0, state.timeLeft), state.totalTime);
 
   // Digital progress bar
-  const pct = state.totalTime > 0 ? (state.timeLeft / state.totalTime) * 100 : 100;
+  const pct = state.totalTime > 0 ? Math.max(0, Math.min(100, (state.timeLeft / state.totalTime) * 100)) : 100;
   const fill = document.getElementById('digital-progress-fill');
   if (fill) fill.style.width = `${pct}%`;
 
@@ -642,6 +664,8 @@ function updateSettingsUI() {
   document.getElementById('autostart-toggle').checked = s.autoStart;
   const syncToggleEl = document.getElementById('sync-timer-toggle');
   if (syncToggleEl) syncToggleEl.checked = s.syncTimerAcrossDevices !== false;
+  const continuousToggleEl = document.getElementById('continuous-mode-toggle');
+  if (continuousToggleEl) continuousToggleEl.checked = !!s.continuousMode;
   const certModeEl = document.getElementById('cert-mode-select');
   if (certModeEl) certModeEl.value = s.certMode || 'always';
   document.querySelectorAll('.cert-template-pick').forEach(b =>
@@ -1606,6 +1630,11 @@ function bindEvents() {
     } else {
       stopTimerSync();
     }
+  });
+
+  document.getElementById('continuous-mode-toggle')?.addEventListener('change', e => {
+    state.settings.continuousMode = e.target.checked;
+    saveToStorage();
   });
 
   document.getElementById('cert-mode-select')?.addEventListener('change', e => {

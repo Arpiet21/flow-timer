@@ -432,7 +432,10 @@ kbd {
   font-variant-numeric: tabular-nums;
   color: var(--text);
   line-height: 1;
+  transition: color 0.3s;
 }
+/* Continuous Mode overtime — signals you're past the planned duration without being alarming */
+#time-display-digital.is-overtime { color: #ff6b2b; }
 
 #digital-progress-bar {
   width: 100%;
@@ -457,8 +460,10 @@ kbd {
   letter-spacing: 4px;
   font-variant-numeric: tabular-nums;
   color: var(--text-muted);
+  transition: color 0.3s;
   margin-top: -4px;
 }
+#time-display-analog.is-overtime { color: #ff6b2b; }
 
 /* ─── Sound Options ──────────────────────────────────────────────────────────── */
 .sound-options {
