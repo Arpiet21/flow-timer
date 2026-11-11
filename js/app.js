@@ -53,6 +53,7 @@ function init() {
   renderActivityHeatmap();
   if (typeof LunarReminders !== 'undefined') LunarReminders.init();
   if (typeof Certificate !== 'undefined') Certificate.init();
+  if (typeof WhatsNew !== 'undefined') WhatsNew.init();
 }
 
 function todayStr() {

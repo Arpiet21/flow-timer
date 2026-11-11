@@ -115,9 +115,16 @@
     if (typeof startTimerSync === 'function') startTimerSync();
     // Apply accent color (etc.) saved from any device on this account
     if (typeof syncUserPreferences === 'function') syncUserPreferences();
-    // Hero Mode — load profile, catch up on streak evaluation, mount HUD
+    // Hero Mode — load profile, catch up on streak evaluation, mount HUD.
+    // What's New's auto-popup is chained after GameHUD.init() resolves (which
+    // itself resolves only after deciding whether to show the onboarding
+    // wizard) so a brand-new account never gets two modals stacked at once.
     if (typeof GameLayer !== 'undefined') {
-      GameLayer.init().then(() => { if (typeof GameHUD !== 'undefined') GameHUD.init(); });
+      GameLayer.init()
+        .then(() => (typeof GameHUD !== 'undefined' ? GameHUD.init() : null))
+        .then(() => { if (typeof WhatsNew !== 'undefined') WhatsNew.maybeAutoShow(); });
+    } else if (typeof WhatsNew !== 'undefined') {
+      WhatsNew.maybeAutoShow();
     }
   });
 
@@ -137,6 +144,7 @@
     <div class="logo">⏱ Flow Timer</div>
     <div class="header-actions">
       <button class="icon-btn" id="hero-mode-btn" title="Hero Mode">🎮</button>
+      <button class="icon-btn" id="whats-new-btn" title="What's New">📣</button>
       <button class="icon-btn" id="theme-btn" title="Toggle theme (T)">☀</button>
       <button class="icon-btn" id="settings-btn" title="Settings (S)">⚙</button>
       <button class="icon-btn" id="history-btn" title="Session History (H)">📋</button>
@@ -1389,6 +1397,15 @@
 
   </main>
 
+  <!-- 📣 What's New — short changelog, reachable anytime + shown once per batch -->
+  <div id="whats-new-modal" class="cert-modal" style="display:none;">
+    <div class="cert-modal-dialog whats-new-dialog">
+      <div class="cert-modal-title">📣 What's New</div>
+      <div id="whats-new-body" class="whats-new-scroll"></div>
+      <button class="btn-accent-sm" id="whats-new-close-btn">Got it</button>
+    </div>
+  </div>
+
   <!-- 🎤 Voice Assistant — floating, visible across all tabs -->
   <button id="voice-assistant-btn" class="voice-assistant-btn" title="Voice command">🎤</button>
 
@@ -1465,6 +1482,7 @@
   <script src="js/music.js"></script>
   <script src="js/lunar-reminders.js"></script>
   <script src="js/certificate.js"></script>
+  <script src="js/whats-new.js"></script>
   <script src="js/hero.js"></script>
   <script src="js/hero-ui.js"></script>
   <script src="js/app.js"></script>
