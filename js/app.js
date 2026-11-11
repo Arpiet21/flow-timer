@@ -578,6 +578,57 @@ function updateStartBtn() {
   btn.textContent = state.status === 'running' ? 'Pause'
     : state.status === 'paused' ? 'Resume' : 'Start';
   btn.dataset.action = state.status === 'running' ? 'pause' : 'start';
+
+  // "End & Log" only makes sense mid-focus-session — not idle, not on a break.
+  const endBtn = document.getElementById('end-btn');
+  if (endBtn) endBtn.style.display = (state.mode === 'work' && state.status !== 'idle') ? '' : 'none';
+}
+
+// Stops the current focus session early and logs the actual elapsed minutes
+// as a real session (XP, certificate, history) — unlike Reset, which discards
+// elapsed time entirely. Does not advance session dots or auto-switch to a
+// break the way a natural completion does, since ending early isn't "finishing
+// a pomodoro." Mirrors _processTimerEnd()'s work-mode logging, but with the
+// real elapsed minutes instead of the full configured duration.
+function endSessionEarly() {
+  if (state.mode !== 'work' || state.status === 'idle') return;
+  const elapsedMinutes = Math.floor((state.totalTime - state.timeLeft) / 60);
+
+  clearInterval(tickInterval);
+  tickInterval = null;
+  state.status = 'idle';
+  _currentEndsAt = null;
+  setFocusAssist(false);
+  if (typeof musicStop === 'function') musicStop();
+
+  if (elapsedMinutes >= 1) {
+    if (typeof Auth !== 'undefined' && Auth.isLoggedIn()) {
+      Auth.logSession('work', elapsedMinutes, state.task, { ended_early: true }).then(async sessionId => {
+        let milestone = null;
+        if (sessionId && typeof GameLayer !== 'undefined') {
+          const result = await GameLayer.award('focus_session', { sourceId: sessionId, minutes: elapsedMinutes, task: state.task });
+          if (result && result.hourMilestones && result.hourMilestones.length) {
+            const topHour = result.hourMilestones[result.hourMilestones.length - 1];
+            milestone = { hour: topHour, tier: GameLayer.tierForHour(topHour) };
+          }
+        }
+        if (typeof Certificate !== 'undefined') {
+          Certificate.onSessionComplete({ durationMin: elapsedMinutes, taskTitle: state.task, milestone });
+        }
+      });
+    } else if (typeof Certificate !== 'undefined') {
+      Certificate.onSessionComplete({ durationMin: elapsedMinutes, taskTitle: state.task });
+    }
+    addLocalHistory(state.mode, elapsedMinutes, state.task);
+    loadHistory();
+    renderActivityHeatmap();
+  }
+
+  state.totalTime = getDuration(state.mode);
+  state.timeLeft = state.totalTime;
+  renderTimer();
+  updateStartBtn();
+  _pushTimerState({ endsAt: null, remainingSeconds: state.timeLeft });
 }
 
 function updateSettingsUI() {
@@ -1346,6 +1397,7 @@ function closeNavDrawer() {
 
 function bindEvents() {
   document.getElementById('start-btn').addEventListener('click', toggleStartPause);
+  document.getElementById('end-btn').addEventListener('click', endSessionEarly);
   document.getElementById('reset-btn').addEventListener('click', resetTimer);
   document.getElementById('theme-btn').addEventListener('click', toggleTheme);
   document.getElementById('pip-btn').addEventListener('click', () => pipWindow ? closePip() : openPip());

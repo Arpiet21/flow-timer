@@ -270,6 +270,7 @@
       <!-- Controls -->
       <div class="controls">
         <button class="btn-primary" id="start-btn" data-action="start">Start</button>
+        <button class="btn-secondary" id="end-btn" title="End now and log the minutes worked" style="display:none;">⏹ End</button>
         <button class="btn-secondary" id="reset-btn" title="Reset (R)">↺</button>
       </div>
 
@@ -786,7 +787,12 @@
       <div class="card task-dashboard-card" id="task-dashboard-card">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px;">
           <span class="task-section-title" style="margin:0;">📊 Task Dashboard</span>
-          <button id="task-dashboard-add-btn" class="btn-secondary" style="font-size:0.78rem;padding:6px 12px;">+ Add Task</button>
+          <div style="display:flex;align-items:center;gap:12px;">
+            <label style="font-size:0.78rem;display:flex;align-items:center;gap:5px;cursor:pointer;color:var(--text-muted);">
+              <input type="checkbox" id="task-dashboard-show-done"> Show completed
+            </label>
+            <button id="task-dashboard-add-btn" class="btn-secondary" style="font-size:0.78rem;padding:6px 12px;">+ Add Task</button>
+          </div>
         </div>
         <div class="task-dashboard-scroll">
           <table class="task-dashboard-table">
@@ -799,6 +805,7 @@
                 <th>Days Elapsed</th>
                 <th>Progress</th>
                 <th>Details</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody id="task-dashboard-tbody"></tbody>

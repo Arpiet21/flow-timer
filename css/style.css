@@ -1556,6 +1556,23 @@ kbd {
 }
 .task-dashboard-empty-cell { color: var(--text-muted); opacity: 0.5; }
 
+.task-dashboard-row-done .task-dashboard-name { text-decoration: line-through; opacity: 0.6; }
+.task-dashboard-row-done { opacity: 0.75; }
+.task-dashboard-actions { display: flex; gap: 6px; white-space: nowrap; }
+.task-dashboard-complete-btn, .task-dashboard-del-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  border-radius: 6px;
+  width: 26px; height: 26px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s, background 0.2s;
+}
+.task-dashboard-complete-btn:hover { border-color: var(--accent); color: var(--accent); }
+.task-dashboard-complete-btn.is-done { background: var(--accent); border-color: var(--accent); color: #000; }
+.task-dashboard-del-btn:hover { border-color: #e92845; color: #e92845; }
+
 /* ─── Task Activity Calendar ─────────────────────────────────────────────────── */
 .task-calendar-card {
   padding: 14px 16px 16px;

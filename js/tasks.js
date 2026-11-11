@@ -126,25 +126,29 @@ const TaskCalendar = {
 };
 
 // ─── Task Dashboard (Sr./Name/Given Date/Type/Days Elapsed/Progress/Details) ──
-// Shows only pending, non-recurring tasks — completed tasks are history, and
-// recurring tasks (habits you do some days, not others) don't fit a single
-// "pending since X days" framing, so they get their own board below instead.
+// Shows pending, non-recurring tasks by default — completed ones are hidden
+// unless "Show completed" is checked (recurring tasks never fit a single
+// "pending since X days" framing, so they always get their own board below).
 const TaskDashboard = {
   _bound: false,
+  _lastTasks: [], // cached so the "Show completed" checkbox can re-render without a fresh fetch
 
   render(tasks) {
     const tbody = document.getElementById('task-dashboard-tbody');
     if (!tbody) return;
     this._bindRowEvents();
+    if (tasks) this._lastTasks = tasks;
 
     const todayMs = new Date().setHours(0, 0, 0, 0);
     const esc = s => (typeof TaskManager !== 'undefined' ? TaskManager._esc(s) : s);
-    const all = tasks || [];
+    const all = this._lastTasks || [];
+    const showDone = document.getElementById('task-dashboard-show-done')?.checked;
 
-    const pending  = all.filter(t => !t.completed && !(t.recurring_days?.length > 0));
+    const nonRecurring = all.filter(t => !(t.recurring_days?.length > 0));
+    const visible = showDone ? nonRecurring : nonRecurring.filter(t => !t.completed);
     const recurring = all.filter(t => t.recurring_days?.length > 0);
 
-    const rows = pending.map(t => {
+    const rows = visible.map(t => {
       const givenDate = t.allocated_date || t.created_at?.slice(0, 10) || null;
       const givenMs = givenDate ? new Date(givenDate + 'T00:00:00').setHours(0, 0, 0, 0) : todayMs;
       const daysElapsed = Math.max(0, Math.round((todayMs - givenMs) / 86400000));
@@ -152,17 +156,17 @@ const TaskDashboard = {
       const subDone = subtasks.filter(s => s.completed).length;
       const progressPct = subtasks.length ? Math.round((subDone / subtasks.length) * 100) : 0;
       const progressLabel = subtasks.length ? `${subDone}/${subtasks.length}` : 'Pending';
-      return { id: t.id, title: t.title || '(untitled)', givenDate, category: t.category, details: t.details || '', daysElapsed, progressPct, progressLabel };
+      return { id: t.id, title: t.title || '(untitled)', completed: !!t.completed, givenDate, category: t.category, details: t.details || '', daysElapsed, progressPct, progressLabel };
     });
 
-    // Longest-open tasks first — surfaces what's been sitting the longest.
-    rows.sort((a, b) => b.daysElapsed - a.daysElapsed);
+    // Pending first (longest-open surfaced), completed after.
+    rows.sort((a, b) => (a.completed === b.completed) ? (b.daysElapsed - a.daysElapsed) : (a.completed ? 1 : -1));
 
     if (!rows.length) {
-      tbody.innerHTML = `<tr><td colspan="7" class="task-dashboard-empty">No pending tasks — you're all caught up. Completed tasks move to history.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="8" class="task-dashboard-empty">No pending tasks — you're all caught up.${showDone ? '' : ' Check "Show completed" to see finished ones.'}</td></tr>`;
     } else {
       tbody.innerHTML = rows.map((r, i) => `
-        <tr>
+        <tr class="${r.completed ? 'task-dashboard-row-done' : ''}">
           <td>${i + 1}</td>
           <td class="task-dashboard-name">${esc(r.title)}</td>
           <td class="task-dashboard-date-cell" data-id="${r.id}" data-date="${r.givenDate || ''}">
@@ -174,10 +178,14 @@ const TaskDashboard = {
           <td>
             <div class="task-dashboard-progress-wrap">
               <div class="task-dashboard-progress-bar"><div class="task-dashboard-progress-fill" style="width:${r.progressPct}%"></div></div>
-              <span class="task-dashboard-progress-label">${r.progressLabel}</span>
+              <span class="task-dashboard-progress-label">${r.completed ? 'Done' : r.progressLabel}</span>
             </div>
           </td>
           <td class="task-dashboard-details" title="${esc(r.details)}">${r.details ? esc(r.details) : '<span class="task-dashboard-empty-cell">—</span>'}</td>
+          <td class="task-dashboard-actions">
+            <button class="task-dashboard-complete-btn${r.completed ? ' is-done' : ''}" data-id="${r.id}" title="${r.completed ? 'Mark pending' : 'Mark complete'}">${r.completed ? '↺' : '✓'}</button>
+            <button class="task-dashboard-del-btn" data-id="${r.id}" data-title="${esc(r.title)}" title="Delete task">🗑</button>
+          </td>
         </tr>
       `).join('');
     }
@@ -210,6 +218,18 @@ const TaskDashboard = {
     if (this._bound) return;
     this._bound = true;
     document.getElementById('task-dashboard-tbody')?.addEventListener('click', e => {
+      const completeBtn = e.target.closest('.task-dashboard-complete-btn');
+      if (completeBtn) {
+        if (typeof TaskManager !== 'undefined') TaskManager.toggleComplete(completeBtn.dataset.id);
+        return;
+      }
+      const delBtn = e.target.closest('.task-dashboard-del-btn');
+      if (delBtn) {
+        if (confirm(`Delete "${delBtn.dataset.title}"? This can't be undone.`) && typeof TaskManager !== 'undefined') {
+          TaskManager.deleteTask(delBtn.dataset.id);
+        }
+        return;
+      }
       const editBtn = e.target.closest('.task-dashboard-date-edit-btn');
       if (!editBtn) return;
       const cell = editBtn.closest('.task-dashboard-date-cell');
@@ -229,6 +249,7 @@ const TaskDashboard = {
         if (!committed && typeof TaskManager !== 'undefined') TaskManager._render();
       });
     });
+    document.getElementById('task-dashboard-show-done')?.addEventListener('change', () => this.render());
   }
 };
 
