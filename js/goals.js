@@ -100,11 +100,20 @@ const GoalCascade = (() => {
     } else {
       listEl.innerHTML = visions.map(v => `
         <div class="goal-vision-card" data-id="${v.id}">
-          <div class="goal-vision-card-title">🌟 ${_esc(v.title)}</div>
-          <div class="goal-vision-card-progress">${_countFilled(v.id)} / 7 levels set</div>
+          <div class="goal-vision-card-body">
+            <div class="goal-vision-card-title">🌟 ${_esc(v.title)}</div>
+            <div class="goal-vision-card-progress">${_countFilled(v.id)} / 7 levels set</div>
+          </div>
+          <button type="button" class="goal-vision-del-btn" data-id="${v.id}" data-title="${_esc(v.title)}" title="Delete this cascade">🗑</button>
         </div>`).join('');
-      listEl.querySelectorAll('.goal-vision-card').forEach(card => {
-        card.addEventListener('click', () => _openCascade(card.dataset.id));
+      listEl.querySelectorAll('.goal-vision-card-body').forEach(body => {
+        body.addEventListener('click', () => _openCascade(body.closest('.goal-vision-card').dataset.id));
+      });
+      listEl.querySelectorAll('.goal-vision-del-btn').forEach(btn => {
+        btn.addEventListener('click', e => {
+          e.stopPropagation(); // don't also trigger the card's open-cascade click
+          _deleteCascade(btn.dataset.id, btn.dataset.title);
+        });
       });
     }
     document.getElementById('goals-cascade-picker').style.display = '';
@@ -302,6 +311,18 @@ const GoalCascade = (() => {
     } else {
       _renderLevels();
     }
+  }
+
+  // Direct delete from the cascade list — same effect as opening a cascade
+  // and deleting its Someday level, just without having to open it first.
+  // Confirmed because, unlike a single level, this can wipe a fully filled
+  // 7-level cascade in one click.
+  async function _deleteCascade(cascadeId, title) {
+    if (!confirm(`Delete the entire "${title}" goal cascade? This removes all 7 levels and can't be undone.`)) return;
+    const toDelete = _levelsFor(cascadeId);
+    for (const g of toDelete) await Auth.deleteGoal(g.id);
+    await _reloadQuiet();
+    _renderCascadeList();
   }
 
   async function _suggestForLevel(level) {
