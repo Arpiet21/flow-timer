@@ -2978,6 +2978,8 @@ kbd {
 }
 .hero-powerup-chip:hover { border-color: var(--accent); }
 .hero-powerup-chip.is-done { background: var(--accent); border-color: var(--accent); color: #000; font-weight: 700; }
+.hero-powerup-chip.is-maxed { opacity: 0.85; }
+.hero-powerup-count { font-size: 0.68rem; font-weight: 800; opacity: 0.8; }
 
 /* ── Hero panel (modal with tabs: Power-ups & Bad Guys / Shop / Stats / Identity) ── */
 .hero-panel-dialog { max-width: 420px; }

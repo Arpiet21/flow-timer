@@ -18,7 +18,8 @@ const GameLayer = (() => {
     taskSize: { small: 10, medium: 25, large: 50 },
     challengeMultiplier: 1.5,
     powerup: 5,
-    powerupDailyMax: 8,
+    powerupRepsPerDay: 4, // each power-up can be tapped (and earn XP) up to this many times per day
+    powerupDailyMax: 8,   // total power-up XP-earning taps/day across ALL power-ups combined
     badguy: 15,
     badguyDailyMax: 3,
     superbetterDay: 50,
@@ -345,7 +346,7 @@ const GameLayer = (() => {
     switch (type) {
       case 'task':             return `task_${payload.sourceId}`;
       case 'focus_session':    return `session_${payload.sourceId}`;
-      case 'powerup':          return `powerup_${payload.sourceId}_${payload.dayKey || dayKey()}`;
+      case 'powerup':          return `powerup_${payload.sourceId}_${payload.dayKey || dayKey()}_${payload.repIndex || 1}`;
       case 'badguy':           return `battle_${payload.sourceId}`;
       case 'superbetter_day':  return `sbday_${payload.dayKey || dayKey()}`;
       case 'goal':              return `goal_${payload.sourceId}`;
@@ -379,7 +380,12 @@ const GameLayer = (() => {
       delta.quests = 1;
       meta.quest = true;
     } else if (type === 'powerup') {
-      if ((day.powerupsDone || []).length >= R.powerupDailyMax) return { xp: 0, coins: 0, delta: {}, meta: { capped: true } };
+      // Repeatable up to powerupRepsPerDay taps per power-up per day (each
+      // one its own ledger entry via repIndex), still inside the overall
+      // powerupDailyMax cap shared across every power-up combined.
+      const repsForThis = (day.powerupsDone || []).filter(id => id === payload.sourceId).length;
+      if (repsForThis >= R.powerupRepsPerDay) return { xp: 0, coins: 0, delta: {}, meta: { capped: true, reason: 'rep-cap' } };
+      if ((day.powerupsDone || []).length >= R.powerupDailyMax) return { xp: 0, coins: 0, delta: {}, meta: { capped: true, reason: 'day-cap' } };
       xp = R.powerup;
       delta.powerupsDone = [payload.sourceId];
     } else if (type === 'badguy') {

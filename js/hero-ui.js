@@ -177,26 +177,34 @@ const GameHUD = (() => {
     const [allPowerups, day] = await Promise.all([GameLayer.Powerups.list(), GameLayer.getGameDay()]);
     const powerups = allPowerups.filter(p => GameLayer.isScheduledToday(p.recurring_days));
     if (!powerups.length) { el.style.display = 'none'; return; }
-    const doneSet = new Set(day.powerupsDone || []);
-    el.innerHTML = powerups.map(p => `
-      <button type="button" class="hero-powerup-chip${doneSet.has(p.id) ? ' is-done' : ''}" data-id="${p.id}">
-        ${p.emoji || '⚡'} ${_esc(p.name)}
-      </button>`).join('');
+    const repsOf = id => (day.powerupsDone || []).filter(pid => pid === id).length;
+    el.innerHTML = powerups.map(p => {
+      const reps = repsOf(p.id);
+      const maxed = reps >= GameLayer.rules.powerupRepsPerDay;
+      return `
+      <button type="button" class="hero-powerup-chip${reps > 0 ? ' is-done' : ''}${maxed ? ' is-maxed' : ''}" data-id="${p.id}">
+        ${p.emoji || '⚡'} ${_esc(p.name)}${reps > 0 ? `<span class="hero-powerup-count">×${reps}</span>` : ''}
+      </button>`;
+    }).join('');
     el.querySelectorAll('.hero-powerup-chip').forEach(btn => {
-      btn.addEventListener('click', () => _togglePowerup(btn.dataset.id));
+      btn.addEventListener('click', () => _tapPowerup(btn.dataset.id));
     });
     el.style.display = 'flex';
   }
 
-  async function _togglePowerup(id) {
+  // Each tap is its own rep, up to powerupRepsPerDay (4) — tap 1 = +5 XP
+  // shown as "×1", tap 2 = another +5 XP shown as "×2", and so on. No
+  // undo-by-tap anymore (ambiguous which rep you'd be undoing); past the
+  // rep cap, further taps just explain why nothing more happened.
+  async function _tapPowerup(id) {
     const day = await GameLayer.getGameDay();
-    const done = (day.powerupsDone || []).includes(id);
-    if (done) {
-      await GameLayer.revoke(`powerup_${id}_${GameLayer.dayKey()}`);
-    } else {
-      const result = await GameLayer.award('powerup', { sourceId: id });
-      if (!result) _showPlainToast('Daily power-up limit reached (8/day)');
+    const repsForThis = (day.powerupsDone || []).filter(pid => pid === id).length;
+    if (repsForThis >= GameLayer.rules.powerupRepsPerDay) {
+      _showPlainToast(`Maxed for today (${GameLayer.rules.powerupRepsPerDay}/${GameLayer.rules.powerupRepsPerDay}) — resets tomorrow`);
+      return;
     }
+    const result = await GameLayer.award('powerup', { sourceId: id, repIndex: repsForThis + 1 });
+    if (!result) _showPlainToast('Daily power-up limit reached (8/day)');
   }
 
   // Break-time nudge — called from app.js's switchMode() when entering a break
@@ -306,16 +314,19 @@ const GameHUD = (() => {
     const [powerups, day, history] = await Promise.all([
       GameLayer.Powerups.list(), GameLayer.getGameDay(), GameLayer.listGameDays(14),
     ]);
-    const doneSet = new Set(day.powerupsDone || []);
+    const repsOf = id => (day.powerupsDone || []).filter(pid => pid === id).length;
     body.innerHTML = `
       <div class="hero-panel-section-title">Power-ups</div>
       <div class="hero-panel-list">
-        ${powerups.length ? powerups.map(p => `
+        ${powerups.length ? powerups.map(p => {
+          const reps = repsOf(p.id);
+          const maxed = reps >= GameLayer.rules.powerupRepsPerDay;
+          return `
           <div class="hero-panel-row hero-panel-row-stack">
             <div class="hero-panel-row-top">
               <span class="hero-panel-row-title">${p.emoji || '⚡'} ${_esc(p.name)}</span>
               <div class="hero-panel-row-actions">
-                <button class="hero-panel-btn-sm${doneSet.has(p.id) ? ' hero-panel-btn-accent' : ''}" data-id="${p.id}" data-action="toggle">${doneSet.has(p.id) ? '✓ Done' : 'Mark done'}</button>
+                <button class="hero-panel-btn-sm${reps > 0 ? ' hero-panel-btn-accent' : ''}" data-id="${p.id}" data-action="toggle">${maxed ? `✓ ×${reps} (maxed)` : (reps > 0 ? `✓ ×${reps} — tap again` : 'Mark done')}</button>
                 <button class="hero-panel-btn-sm" data-id="${p.id}" data-action="edit-notes">📝</button>
                 <button class="hero-panel-btn-sm" data-id="${p.id}" data-action="edit-days">📅</button>
                 <button class="hero-panel-btn-sm" data-id="${p.id}" data-action="delete">🗑</button>
@@ -334,7 +345,8 @@ const GameHUD = (() => {
                 <textarea class="task-field hero-panel-notes-input" data-id="${p.id}" id="hero-edit-notes-${p.id}" placeholder="Notes (optional)… Enter for a new line." rows="2">${_esc(p.description || '')}</textarea>
                 <button class="hero-panel-btn-sm hero-panel-btn-accent" data-id="${p.id}" data-action="save-notes">Save</button>
               </div>` : ''}
-          </div>`).join('') : '<div class="hero-panel-empty">No power-ups yet — add one below.</div>'}
+          </div>`;
+        }).join('') : '<div class="hero-panel-empty">No power-ups yet — add one below.</div>'}
       </div>
       <div class="hero-panel-add-row-stack">
         <div class="hero-panel-add-row">
@@ -347,7 +359,7 @@ const GameHUD = (() => {
       </div>
     `;
     body.querySelectorAll('[data-action="toggle"]').forEach(btn => btn.addEventListener('click', async () => {
-      await _togglePowerup(btn.dataset.id);
+      await _tapPowerup(btn.dataset.id);
       _renderPowerupsTab(body);
     }));
     body.querySelectorAll('[data-action="delete"]').forEach(btn => btn.addEventListener('click', async () => {

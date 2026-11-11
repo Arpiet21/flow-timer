@@ -269,6 +269,31 @@ them. Scoped deliberately narrow — cosmetic only, not separate save slots:
 - Can't delete the active identity (must switch away first) — keeps the
   invariant that `activeIdentityId` always points at something real.
 
+## v1.4 addition — repeatable power-ups (multi-tap)
+
+Added per user request: tapping a power-up chip multiple times in one day
+now increments a visible count (×1, ×2, ×3, ×4) and awards XP each time,
+instead of the original once-per-day toggle. Capped at `powerupRepsPerDay`
+(4) per power-up; a 5th tap is a no-op with a toast explaining why, rather
+than silently cycling the display back to 1 with no backing effect (that
+cosmetic-only cycling was considered and rejected as more confusing than
+useful once XP stops accruing).
+
+- Ledger id gained a `repIndex` segment (`powerup_{id}_{dayKey}_{repIndex}`)
+  so each rep is its own idempotent award instead of one shared slot.
+- `gameDays.powerupsDone` can now contain the same power-up id multiple
+  times (once per rep) — this was already an array, so no schema change;
+  rep count for a given power-up is just `.filter(id => id === p.id).length`.
+  SuperBetter Day's "≥3 power-ups" check (`.length >= 3`) was deliberately
+  left reading total reps, not distinct power-ups — 4 reps of one power-up
+  now satisfies it same as 3 different ones, which was judged fine (still
+  represents real activity) rather than worth the extra complexity of
+  tracking distinctness.
+- Undo-by-tap was removed (previously tapping a done power-up un-awarded
+  it) — no longer makes sense once a tap always means "+1 rep," and which
+  specific rep you'd be undoing was ambiguous. No replacement UI for
+  removing a mistaken tap exists yet; out of scope unless asked for.
+
 ## Known v1 limitations (acceptable, not bugs)
 
 - Streak-freeze "frozen" flag is shown on the Stats tab's day bars (❄️), not
