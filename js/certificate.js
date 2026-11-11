@@ -14,10 +14,17 @@ const Certificate = (() => {
   const HEIGHT_STORY = 1920;
   const MIN_DURATION_MIN = 10;
 
+  // Each template now also carries a badge look (ring = metallic conic-gradient
+  // rim, badgeBg = the circle's fill, glow = soft halo color) — the Apple
+  // Watch / Audible achievement-badge treatment: a hero medallion first,
+  // the stat as a big bold number under it, everything else secondary.
   const TEMPLATES = {
-    minimal:  { bg: '#FFFFFF', text: '#111111', accent: '#111111', muted: 'rgba(17,17,17,0.55)' },
-    dark:     { bg: '#0E0E10', text: '#F5F1EA', accent: '#F5A623', muted: 'rgba(245,241,234,0.55)' },
-    gradient: { bg: 'linear-gradient(135deg,#2b0b3f 0%,#7b2ff7 55%,#f72585 100%)', text: '#FFFFFF', accent: '#ffd60a', muted: 'rgba(255,255,255,0.65)' },
+    minimal:  { bg: '#FFFFFF', text: '#111111', accent: '#111111', muted: 'rgba(17,17,17,0.55)',
+      icon: '⏱', ring: 'conic-gradient(from 180deg,#cfcfcf,#111111,#cfcfcf,#111111,#cfcfcf)', badgeBg: '#f3f3f3', glow: 'rgba(17,17,17,0.18)' },
+    dark:     { bg: '#0E0E10', text: '#F5F1EA', accent: '#F5A623', muted: 'rgba(245,241,234,0.55)',
+      icon: '⏱', ring: 'conic-gradient(from 180deg,#F5A623,#ffe3a8,#F5A623,#8a5a00,#F5A623)', badgeBg: '#1c1c1f', glow: 'rgba(245,166,35,0.35)' },
+    gradient: { bg: 'linear-gradient(135deg,#2b0b3f 0%,#7b2ff7 55%,#f72585 100%)', text: '#FFFFFF', accent: '#ffd60a', muted: 'rgba(255,255,255,0.65)',
+      icon: '✨', ring: 'conic-gradient(from 180deg,#ffd60a,#f72585,#7b2ff7,#ffd60a)', badgeBg: 'rgba(0,0,0,0.28)', glow: 'rgba(255,214,10,0.4)' },
   };
 
   // Hour-milestone cards — escalating tiers keyed by GameLayer.tierForHour()
@@ -25,10 +32,14 @@ const Certificate = (() => {
   // free, never premium-gated — these are rarer, bigger moments than the
   // routine per-session card. See GAME_LAYER_NOTES.md.
   const MILESTONE_TIERS = {
-    1: { emoji: '🥉', label: 'Bronze milestone',    bg: 'linear-gradient(135deg,#3a2a1a 0%,#6b4226 100%)',                 text: '#FFF8F0', accent: '#cd7f32', muted: 'rgba(255,248,240,0.6)' },
-    2: { emoji: '🥈', label: 'Silver milestone',    bg: 'linear-gradient(135deg,#232526 0%,#5a5a5a 100%)',                 text: '#FFFFFF', accent: '#d8d8d8', muted: 'rgba(255,255,255,0.6)' },
-    3: { emoji: '🥇', label: 'Gold milestone',      bg: 'linear-gradient(135deg,#4a3700 0%,#caa23d 60%,#ffe29a 100%)',     text: '#2a1a00', accent: '#3a2400', muted: 'rgba(42,26,0,0.6)' },
-    4: { emoji: '🏆', label: 'Legendary milestone', bg: 'linear-gradient(135deg,#1a0b2e 0%,#7b2ff7 55%,#f72585 100%)',     text: '#FFFFFF', accent: '#ffd60a', muted: 'rgba(255,255,255,0.65)' },
+    1: { emoji: '🥉', label: 'Bronze milestone',    bg: 'linear-gradient(135deg,#3a2a1a 0%,#6b4226 100%)',             text: '#FFF8F0', accent: '#cd7f32', muted: 'rgba(255,248,240,0.6)',
+      ring: 'conic-gradient(from 180deg,#cd7f32,#f0c080,#cd7f32,#7a4a1a,#cd7f32)', badgeBg: 'rgba(0,0,0,0.3)', glow: 'rgba(205,127,50,0.45)' },
+    2: { emoji: '🥈', label: 'Silver milestone',    bg: 'linear-gradient(135deg,#232526 0%,#5a5a5a 100%)',             text: '#FFFFFF', accent: '#d8d8d8', muted: 'rgba(255,255,255,0.6)',
+      ring: 'conic-gradient(from 180deg,#e8e8e8,#ffffff,#c0c0c0,#808080,#e8e8e8)', badgeBg: 'rgba(0,0,0,0.3)', glow: 'rgba(216,216,216,0.4)' },
+    3: { emoji: '🥇', label: 'Gold milestone',      bg: 'linear-gradient(135deg,#4a3700 0%,#caa23d 60%,#ffe29a 100%)', text: '#2a1a00', accent: '#3a2400', muted: 'rgba(42,26,0,0.6)',
+      ring: 'conic-gradient(from 180deg,#caa23d,#fff0c0,#caa23d,#8a6a1a,#caa23d)', badgeBg: 'rgba(255,255,255,0.35)', glow: 'rgba(202,162,61,0.5)' },
+    4: { emoji: '🏆', label: 'Legendary milestone', bg: 'linear-gradient(135deg,#1a0b2e 0%,#7b2ff7 55%,#f72585 100%)', text: '#FFFFFF', accent: '#ffd60a', muted: 'rgba(255,255,255,0.65)',
+      ring: 'conic-gradient(from 180deg,#ffd60a,#ff6ec7,#7b2ff7,#ffd60a)', badgeBg: 'rgba(0,0,0,0.3)', glow: 'rgba(255,214,10,0.5)' },
   };
 
   let _pending = null; // { durationMin, taskTitle, streakDay, goalTitle, timestamp, isMilestone?, milestoneHour?, milestoneTier? }
@@ -154,46 +165,63 @@ const Certificate = (() => {
       width:${WIDTH}px; height:${height}px; position:fixed; left:0; top:0; z-index:-1; pointer-events:none;
       background:${T.bg}; color:${T.text};
       font-family:'Segoe UI', system-ui, sans-serif;
-      display:flex; flex-direction:column; justify-content:space-between;
+      display:flex; flex-direction:column; align-items:center; justify-content:space-between;
+      text-align:center;
       padding:${pad}px; box-sizing:border-box;
     `;
 
     const streakChip = session.streakDay
-      ? `<div style="display:inline-flex;align-items:center;gap:8px;background:rgba(128,128,128,0.18);border-radius:999px;padding:10px 22px;font-size:28px;font-weight:700;align-self:flex-start;">🔥 Day ${session.streakDay}</div>`
+      ? `<div style="display:inline-flex;align-items:center;gap:8px;background:rgba(128,128,128,0.18);border-radius:999px;padding:10px 22px;font-size:26px;font-weight:700;margin-bottom:36px;">🔥 Day ${session.streakDay}</div>`
       : '';
 
     const taskLine = session.taskTitle
-      ? `<div style="font-size:34px;opacity:0.85;margin-top:16px;">${_escHtml(_truncate(session.taskTitle, 40))}</div>`
+      ? `<div style="font-size:32px;opacity:0.85;margin-top:20px;max-width:80%;">${_escHtml(_truncate(session.taskTitle, 40))}</div>`
       : '';
 
     const goalLine = session.goalTitle
-      ? `<div style="font-size:28px;color:${T.accent};margin-top:12px;">→ toward: ${_escHtml(_truncate(session.goalTitle, 48))}</div>`
+      ? `<div style="font-size:26px;color:${T.accent};margin-top:12px;max-width:80%;">→ toward: ${_escHtml(_truncate(session.goalTitle, 48))}</div>`
       : '';
 
     const userLine = session.userLine
-      ? `<div style="font-size:30px;font-style:italic;opacity:0.9;margin-top:28px;border-left:4px solid ${T.accent};padding-left:20px;">"${_escHtml(session.userLine)}"</div>`
+      ? `<div style="font-size:28px;font-style:italic;opacity:0.9;margin-top:28px;max-width:80%;">"${_escHtml(session.userLine)}"</div>`
       : '';
 
+    // Badge: a metallic-ring medallion (Apple Watch / Audible award style) —
+    // outer disc paints the conic-gradient "ring", inset disc covers the
+    // center so only a rim shows, icon/emoji sits on top. Glow is a blurred
+    // box-shadow halo rather than a separate element (one less layer for
+    // html-to-image to rasterize).
+    const badgeIcon = session.isMilestone ? T.emoji : T.icon;
+    const badgeSize = 300;
+    const badge = `
+      <div style="width:${badgeSize}px;height:${badgeSize}px;border-radius:50%;background:${T.ring};
+        box-shadow:0 0 90px 18px ${T.glow}; display:flex;align-items:center;justify-content:center;padding:12px;box-sizing:border-box;">
+        <div style="width:100%;height:100%;border-radius:50%;background:${T.badgeBg};
+          display:flex;align-items:center;justify-content:center;">
+          <span style="font-size:140px;line-height:1;">${badgeIcon}</span>
+        </div>
+      </div>
+    `;
+
     const headline = session.isMilestone
-      ? `${T.emoji} ${session.milestoneHour.toLocaleString()} Hour${session.milestoneHour === 1 ? '' : 's'} of Focus!`
-      : 'This hour counted.';
-    const subline = session.isMilestone
-      ? T.label
-      : `${session.durationMin} min deep work`;
+      ? `${session.milestoneHour.toLocaleString()} HOUR${session.milestoneHour === 1 ? '' : 'S'}`
+      : `${session.durationMin} MIN`;
+    const subline = session.isMilestone ? T.label : 'This hour counted.';
 
     node.innerHTML = `
-      <div>
+      <div style="display:flex;flex-direction:column;align-items:center;">
         ${streakChip}
-        <div style="font-size:64px;font-weight:800;line-height:1.15;margin-top:${streakChip ? '28px' : '0'};">${headline}</div>
-        <div style="font-size:42px;font-weight:700;color:${T.accent};margin-top:20px;">${subline}</div>
+        ${badge}
+        <div style="font-size:88px;font-weight:800;letter-spacing:0.02em;line-height:1.1;margin-top:40px;">${headline}</div>
+        <div style="font-size:38px;font-weight:600;color:${T.accent};margin-top:10px;">${subline}</div>
         ${taskLine}
         ${goalLine}
         ${userLine}
       </div>
-      <div>
-        <div style="font-size:26px;opacity:${templateName === 'minimal' ? 0.5 : 0.6};margin-bottom:${Math.round(height * 0.045)}px;">${_formatTimestamp(session.timestamp)}</div>
-        <div style="display:flex;justify-content:flex-end;">
-          <div style="font-size:26px;opacity:0.6;letter-spacing:0.02em;">flowtimer.app</div>
+      <div style="width:100%;">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;opacity:${templateName === 'minimal' ? 0.5 : 0.6};">
+          <div style="font-size:24px;">${_formatTimestamp(session.timestamp)}</div>
+          <div style="font-size:24px;letter-spacing:0.02em;">flowtimer.app</div>
         </div>
       </div>
     `;
