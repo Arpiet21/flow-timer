@@ -240,7 +240,7 @@ const GoalCascade = (() => {
     _renderLevels();
 
     if (typeof GameLayer === 'undefined') return;
-    // Toasts/Epic-Win modal are triggered centrally by game-ui.js's GameLayer.onChange
+    // Toasts/Epic-Win modal are triggered centrally by hero-ui.js's GameLayer.onChange
     // listener (every award() call notifies 'award' regardless of caller) — not here,
     // to avoid double-firing.
     if (completed) {

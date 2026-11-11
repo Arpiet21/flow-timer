@@ -1,6 +1,6 @@
 /* ── Hero Mode — UI layer (HUD, toasts, modals, quest board, power-ups,
    bad guys, rewards shop, secret identity, onboarding wizard, stats) ───────
-   All rendering only — js/game.js owns the data/Firestore engine. Containers
+   All rendering only — js/hero.js owns the data/Firestore engine. Containers
    are pre-declared in index.html (display:none) and populated here, following
    the same pattern as js/certificate.js. See GAME_LAYER_NOTES.md. ── */
 const GameHUD = (() => {

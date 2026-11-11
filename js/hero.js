@@ -1,6 +1,8 @@
 /* ── Hero Mode — gamification engine (XP, levels, streaks, ledger) ──────────
    SuperBetter-style layer on top of existing focus/task/goal events. Pure
-   data/Firestore module — js/game-ui.js owns all rendering.
+   data/Firestore module — js/hero-ui.js owns all rendering. (Files are named
+   hero*.js, not game*.js — some corporate firewalls block asset URLs
+   containing "game"; see GAME_LAYER_NOTES.md.)
    Firestore (compat SDK, matches firebase-client.js): users/{uid}/game/profile,
    xpLedger/{eventId}, gameDays/{dayKey}, powerups/{id}, badGuys/{id},
    battles/{id}, rewards/{id}, redemptions/{id}. See GAME_LAYER_NOTES.md for

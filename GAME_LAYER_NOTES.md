@@ -7,9 +7,9 @@ place the implementation deviates from the literal spec, and why.
 
 ## Stack adaptation
 
-- `src/game/*.ts` → two plain `<script>`-loaded files: `js/game.js` (engine —
+- `src/game/*.ts` → two plain `<script>`-loaded files: `js/hero.js` (engine —
   rules, levels, dayKey, ledger transactions, streak eval, CRUD for powerups/
-  bad guys/rewards) and `js/game-ui.js` (all rendering — HUD, toasts, modals,
+  bad guys/rewards) and `js/hero-ui.js` (all rendering — HUD, toasts, modals,
   quest board, panels, wizard). No hooks/components; DOM is built with
   template strings and `innerHTML`, the same pattern `js/certificate.js` uses.
   Containers are pre-declared in `index.html` with `display:none` and
@@ -106,7 +106,7 @@ panel's Power-ups tab, not inline in the wizard, to keep the wizard short.
 
 Three independent toast implementations already exist in this codebase
 (`certificate.js`, `tasks.js`, and `voice-assistant.js` delegating to
-`tasks.js`'s). Rather than add a 4th divergent copy, `js/game-ui.js` has its
+`tasks.js`'s). Rather than add a 4th divergent copy, `js/hero-ui.js` has its
 own tiny `_toastEl()`/`_showXpToast()`/`_showPlainToast()` using a single
 cached node — same pattern as `certificate.js`'s `_toast()` — scoped to Hero
 Mode UI only. This is not a refactor of the existing three; they're untouched.
