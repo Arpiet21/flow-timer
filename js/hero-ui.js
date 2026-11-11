@@ -535,13 +535,37 @@ const GameHUD = (() => {
   }
 
   async function _renderIdentityTab(body) {
+    // Sequential, not Promise.all — listIdentities() may bootstrap-set
+    // profile.activeIdentityId on first ever call, and getProfile() must
+    // see that write, not a stale cached profile read concurrently with it.
+    const identities = await GameLayer.listIdentities();
     const profile = await GameLayer.getProfile();
+    const activeId = profile && profile.activeIdentityId;
     body.innerHTML = `
       <div class="hero-panel-section-title">Secret Identity</div>
       <input type="text" id="hero-identity-name" class="task-field" placeholder="Hero name" maxlength="30" value="${_esc(profile ? profile.heroName : '')}">
       <input type="text" id="hero-identity-inspired" class="task-field" placeholder="Inspired by… (optional)" maxlength="60" value="${_esc(profile ? profile.inspiredBy : '')}">
       <input type="text" id="hero-identity-strength" class="task-field" placeholder="Your strength… (optional)" maxlength="60" value="${_esc(profile ? profile.strength : '')}">
       <button class="hero-panel-btn-sm hero-panel-btn-accent" id="hero-identity-save">Save</button>
+
+      <div class="hero-panel-section-title" style="margin-top:6px;">Your Identities</div>
+      <div class="hero-panel-row-sub">Level, XP, streak and coins are shared across all of them — switching is just cosmetic.</div>
+      <div class="hero-panel-list">
+        ${identities.map(id => `
+          <div class="hero-panel-row">
+            <span class="hero-panel-row-title">${_esc(id.heroName)}${id.id === activeId ? ' ⭐' : ''}</span>
+            <div class="hero-panel-row-actions">
+              ${id.id === activeId
+                ? `<button class="hero-panel-btn-sm hero-panel-btn-accent" disabled>Active</button>`
+                : `<button class="hero-panel-btn-sm" data-id="${id.id}" data-action="switch-identity">Switch</button>
+                   <button class="hero-panel-btn-sm" data-id="${id.id}" data-action="delete-identity">🗑</button>`}
+            </div>
+          </div>`).join('')}
+      </div>
+      <div class="hero-panel-add-row">
+        <input type="text" id="hero-new-identity-name" class="task-field" placeholder="New identity name…" maxlength="30">
+        <button class="hero-panel-btn-sm hero-panel-btn-accent" id="hero-new-identity-save">+ Add</button>
+      </div>
     `;
     document.getElementById('hero-identity-save')?.addEventListener('click', async () => {
       await GameLayer.setIdentity({
@@ -550,6 +574,24 @@ const GameHUD = (() => {
         strength: document.getElementById('hero-identity-strength')?.value,
       });
       _showPlainToast('Identity saved');
+      _renderIdentityTab(body);
+    });
+    body.querySelectorAll('[data-action="switch-identity"]').forEach(btn => btn.addEventListener('click', async () => {
+      await GameLayer.switchIdentity(btn.dataset.id);
+      _renderIdentityTab(body);
+    }));
+    body.querySelectorAll('[data-action="delete-identity"]').forEach(btn => btn.addEventListener('click', async () => {
+      const result = await GameLayer.deleteIdentity(btn.dataset.id);
+      if (!result.ok) _showPlainToast('Switch away from this identity before deleting it');
+      _renderIdentityTab(body);
+    }));
+    document.getElementById('hero-new-identity-save')?.addEventListener('click', async () => {
+      const input = document.getElementById('hero-new-identity-name');
+      const name = input?.value.trim();
+      if (!name) return;
+      await GameLayer.createIdentity({ heroName: name, inspiredBy: '', strength: '' });
+      input.value = '';
+      _renderIdentityTab(body);
     });
   }
 

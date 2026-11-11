@@ -200,6 +200,12 @@ const GameLayer = (() => {
     _notify('enabledChanged', _cache.profile);
   }
 
+  // Edits the fields of the currently *active* identity. Progress (XP,
+  // level, streak, coins) is never per-identity — only these three fields
+  // are. profile.heroName/inspiredBy/strength is a denormalized cache of
+  // whichever identities/{id} doc is active, kept here so every existing
+  // read site (HUD, wizard, modals) didn't need to change for multi-identity
+  // support — only the Identity tab's list/switch/create/delete is new.
   async function setIdentity({ heroName, inspiredBy, strength }) {
     const uid = _uid();
     if (!uid) return null;
@@ -212,8 +218,81 @@ const GameLayer = (() => {
     const profile = await getProfile();
     _cache.profile = { ...(profile || _defaultProfile()), ...patch };
     await _col('game').doc('profile').set(patch, { merge: true });
+    const activeId = _cache.profile.activeIdentityId;
+    if (activeId) {
+      try { await _col('identities').doc(activeId).set(patch, { merge: true }); } catch (_) {}
+    }
     _notify('identityChanged', _cache.profile);
     return _cache.profile;
+  }
+
+  // First call ever bootstraps a single identities/{id} doc from whatever
+  // heroName/inspiredBy/strength already existed on the profile (pre-
+  // multi-identity accounts), so nobody's existing identity disappears.
+  async function listIdentities() {
+    const col = _col('identities');
+    if (!col) return [];
+    try {
+      const snap = await col.get();
+      let rows = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      if (!rows.length) {
+        const profile = await getProfile();
+        const seed = {
+          heroName: (profile && profile.heroName) || 'Hero',
+          inspiredBy: (profile && profile.inspiredBy) || '',
+          strength: (profile && profile.strength) || '',
+          createdAt: nowIso(),
+        };
+        const ref = await col.add(seed);
+        await _col('game').doc('profile').set({ activeIdentityId: ref.id }, { merge: true });
+        _cache.profile = { ...(_cache.profile || _defaultProfile()), activeIdentityId: ref.id };
+        rows = [{ id: ref.id, ...seed }];
+      }
+      return rows;
+    } catch (_) { return []; }
+  }
+
+  async function createIdentity({ heroName, inspiredBy, strength }) {
+    const col = _col('identities');
+    if (!col) return null;
+    const data = {
+      heroName: (heroName || 'Hero').toString().slice(0, 30),
+      inspiredBy: (inspiredBy || '').toString().slice(0, 60),
+      strength: (strength || '').toString().slice(0, 60),
+      createdAt: nowIso(),
+    };
+    const ref = await col.add(data);
+    await switchIdentity(ref.id, data); // new identity becomes active immediately
+    return ref.id;
+  }
+
+  async function switchIdentity(identityId, knownData) {
+    const uid = _uid();
+    if (!uid) return null;
+    let data = knownData;
+    if (!data) {
+      const snap = await _col('identities').doc(identityId).get();
+      if (!snap.exists) return null;
+      data = snap.data();
+    }
+    const patch = {
+      heroName: data.heroName || 'Hero', inspiredBy: data.inspiredBy || '', strength: data.strength || '',
+      activeIdentityId: identityId, updatedAt: nowIso(),
+    };
+    const profile = await getProfile();
+    _cache.profile = { ...(profile || _defaultProfile()), ...patch };
+    await _col('game').doc('profile').set(patch, { merge: true });
+    _notify('identityChanged', _cache.profile);
+    return _cache.profile;
+  }
+
+  async function deleteIdentity(identityId) {
+    const profile = await getProfile();
+    if (profile && profile.activeIdentityId === identityId) return { ok: false, reason: 'active' };
+    try {
+      await _col('identities').doc(identityId).delete();
+      return { ok: true };
+    } catch (_) { return { ok: false, reason: 'error' }; }
   }
 
   async function pinChallenge(goalId) {
@@ -704,6 +783,7 @@ const GameLayer = (() => {
     rules: XP_RULES, titles: TITLES,
     levelFromXp, xpForNextLevel, titleForLevel, dayKey, isScheduledToday, tierForHour,
     init, getProfile, setEnabled, setIdentity, markOnboarded, pinChallenge, pinActiveBadGuy, isTaskChallengeLinked,
+    listIdentities, createIdentity, switchIdentity, deleteIdentity,
     award, revoke, evaluateDay, getGameDay, listGameDays,
     redeemReward, listRedemptions, logBattle, listBattlesThisWeek, listBattles,
     Powerups, BadGuys, Rewards,

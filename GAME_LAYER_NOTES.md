@@ -245,6 +245,30 @@ legendary tier recurs every further 1,000 rather than growing a 5th+ tier).
   already awarded are not undone by anything (there's no "uncomplete a focus
   session" UI path in this app to begin with, so this has never come up).
 
+## v1.3 addition — multiple Secret Identities
+
+Added per user request: save several hero identities and switch between
+them. Scoped deliberately narrow — cosmetic only, not separate save slots:
+
+- New `users/{uid}/identities/{id}` collection, each doc just
+  `{ heroName, inspiredBy, strength, createdAt }`. `profile.activeIdentityId`
+  points at whichever one is current.
+- `profile.heroName/inspiredBy/strength` stay exactly as they were before
+  this feature — a denormalized cache of the active identity, kept in sync
+  by `switchIdentity()`/`setIdentity()`. Every existing read site (HUD,
+  onboarding wizard, celebration modals) needed zero changes; only the
+  Identity tab gained list/create/switch/delete UI.
+- XP, level, streak, coins, power-ups, bad guys, rewards — none of it is
+  per-identity. Switching identity is purely a display change. (The
+  alternative — fully separate profiles per identity — was explicitly
+  considered and rejected as a much larger change touching nearly every
+  Hero Mode surface; not what was asked for.)
+- First-ever `listIdentities()` call bootstraps a single identity doc from
+  whatever heroName/inspiredBy/strength already existed on the profile, so
+  accounts that set an identity before this feature shipped don't lose it.
+- Can't delete the active identity (must switch away first) — keeps the
+  invariant that `activeIdentityId` always points at something real.
+
 ## Known v1 limitations (acceptable, not bugs)
 
 - Streak-freeze "frozen" flag is shown on the Stats tab's day bars (❄️), not
