@@ -3005,6 +3005,16 @@ kbd {
 .hero-panel-add-row { display: flex; gap: 6px; }
 .hero-panel-add-row input, .hero-panel-add-row select { flex: 1; }
 .hero-panel-add-row-stack { display: flex; flex-direction: column; gap: 6px; }
+.hero-panel-notes-input { width: 100%; resize: vertical; min-height: 44px; font-family: inherit; box-sizing: border-box; }
+.hero-panel-row-notes {
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: rgba(255,255,255,0.03);
+  border-radius: 8px;
+  padding: 6px 10px;
+}
 
 /* ── Stacked rows (power-ups w/ schedule+streak, bad guys w/ HP bar) ──────── */
 .hero-panel-row-stack { flex-direction: column; align-items: stretch; gap: 6px; }

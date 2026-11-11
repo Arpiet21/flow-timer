@@ -274,6 +274,7 @@ const GameHUD = (() => {
 
   const DAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
   let _editingPowerupDays = null; // id currently showing its day-picker open
+  let _editingPowerupNotes = null; // id currently showing its notes textarea open
   let _newPowerupDays = []; // days picked for the not-yet-created power-up
 
   function _dayPickerHtml(idAttr, selectedDays) {
@@ -315,16 +316,23 @@ const GameHUD = (() => {
               <span class="hero-panel-row-title">${p.emoji || '⚡'} ${_esc(p.name)}</span>
               <div class="hero-panel-row-actions">
                 <button class="hero-panel-btn-sm${doneSet.has(p.id) ? ' hero-panel-btn-accent' : ''}" data-id="${p.id}" data-action="toggle">${doneSet.has(p.id) ? '✓ Done' : 'Mark done'}</button>
+                <button class="hero-panel-btn-sm" data-id="${p.id}" data-action="edit-notes">📝</button>
                 <button class="hero-panel-btn-sm" data-id="${p.id}" data-action="edit-days">📅</button>
                 <button class="hero-panel-btn-sm" data-id="${p.id}" data-action="delete">🗑</button>
               </div>
             </div>
             <div class="hero-panel-row-sub">${_scheduleLabel(p.recurring_days)}</div>
+            ${p.description && _editingPowerupNotes !== p.id ? `<div class="hero-panel-row-notes">${_esc(p.description)}</div>` : ''}
             ${_streakStripHtml(p.id, p.recurring_days, history)}
             ${_editingPowerupDays === p.id ? `
               <div class="hero-day-edit-row">
                 ${_dayPickerHtml(p.id, p.recurring_days)}
                 <button class="hero-panel-btn-sm hero-panel-btn-accent" data-id="${p.id}" data-action="save-days">Save</button>
+              </div>` : ''}
+            ${_editingPowerupNotes === p.id ? `
+              <div class="hero-day-edit-row">
+                <textarea class="task-field hero-panel-notes-input" data-id="${p.id}" id="hero-edit-notes-${p.id}" placeholder="Notes (optional)… Enter for a new line." rows="2">${_esc(p.description || '')}</textarea>
+                <button class="hero-panel-btn-sm hero-panel-btn-accent" data-id="${p.id}" data-action="save-notes">Save</button>
               </div>` : ''}
           </div>`).join('') : '<div class="hero-panel-empty">No power-ups yet — add one below.</div>'}
       </div>
@@ -333,6 +341,7 @@ const GameHUD = (() => {
           <input type="text" id="hero-new-powerup-name" class="task-field" placeholder="New power-up… (e.g. Stretch)" maxlength="40">
           <button class="hero-panel-btn-sm hero-panel-btn-accent" id="hero-new-powerup-save">Add</button>
         </div>
+        <textarea id="hero-new-powerup-notes" class="task-field hero-panel-notes-input" placeholder="Notes (optional) — why it matters, how to do it… Enter for a new line." rows="2"></textarea>
         <div class="hero-panel-row-sub">Schedule (optional — blank = every day)</div>
         ${_dayPickerHtml('new', _newPowerupDays)}
       </div>
@@ -348,6 +357,16 @@ const GameHUD = (() => {
     }));
     body.querySelectorAll('[data-action="edit-days"]').forEach(btn => btn.addEventListener('click', () => {
       _editingPowerupDays = _editingPowerupDays === btn.dataset.id ? null : btn.dataset.id;
+      _renderPowerupsTab(body);
+    }));
+    body.querySelectorAll('[data-action="edit-notes"]').forEach(btn => btn.addEventListener('click', () => {
+      _editingPowerupNotes = _editingPowerupNotes === btn.dataset.id ? null : btn.dataset.id;
+      _renderPowerupsTab(body);
+    }));
+    body.querySelectorAll('[data-action="save-notes"]').forEach(btn => btn.addEventListener('click', async () => {
+      const textarea = document.getElementById(`hero-edit-notes-${btn.dataset.id}`);
+      await GameLayer.Powerups.update(btn.dataset.id, { description: (textarea?.value || '').trim() });
+      _editingPowerupNotes = null;
       _renderPowerupsTab(body);
     }));
     body.querySelectorAll('[data-action="save-days"]').forEach(btn => btn.addEventListener('click', async () => {
@@ -369,10 +388,13 @@ const GameHUD = (() => {
     }));
     document.getElementById('hero-new-powerup-save')?.addEventListener('click', async () => {
       const input = document.getElementById('hero-new-powerup-name');
+      const notesInput = document.getElementById('hero-new-powerup-notes');
       const name = input?.value.trim();
       if (!name) return;
-      await GameLayer.Powerups.create({ name, emoji: '⚡', description: '', recurring_days: [..._newPowerupDays] });
+      const description = (notesInput?.value || '').trim(); // unlimited length — just a free-text note, not shown on the compact chip
+      await GameLayer.Powerups.create({ name, emoji: '⚡', description, recurring_days: [..._newPowerupDays] });
       input.value = '';
+      if (notesInput) notesInput.value = '';
       _newPowerupDays = [];
       _renderPowerupsTab(body);
       _refreshPowerupChips();
