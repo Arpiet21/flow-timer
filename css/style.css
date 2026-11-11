@@ -1495,6 +1495,14 @@ kbd {
   color: var(--text);
 }
 .task-dashboard-table tr:last-child td { border-bottom: none; }
+/* Actions column stays reachable without scrolling the wide table all the way right */
+.task-dashboard-table-main th:last-child,
+.task-dashboard-table-main td:last-child {
+  position: sticky;
+  right: 0;
+  background: var(--surface);
+  box-shadow: -6px 0 8px -6px rgba(0,0,0,0.4);
+}
 .task-dashboard-row-done { opacity: 0.55; }
 .task-dashboard-name {
   max-width: 220px;
@@ -1557,7 +1565,6 @@ kbd {
 .task-dashboard-empty-cell { color: var(--text-muted); opacity: 0.5; }
 
 .task-dashboard-row-done .task-dashboard-name { text-decoration: line-through; opacity: 0.6; }
-.task-dashboard-row-done { opacity: 0.75; }
 .task-dashboard-actions { display: flex; gap: 6px; white-space: nowrap; }
 .task-dashboard-complete-btn, .task-dashboard-del-btn {
   background: transparent;
