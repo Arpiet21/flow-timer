@@ -124,11 +124,22 @@ const GameLayer = (() => {
   // ── Defaults ──────────────────────────────────────────────────────────────
   function _defaultProfile() {
     return {
-      enabled: true, heroName: 'Hero', inspiredBy: '', strength: '',
+      enabled: true, heroName: 'Hero', inspiredBy: '', strength: '', onboarded: false,
       totalXp: 0, coins: 0, currentStreak: 0, longestStreak: 0, freezes: 0,
       lastEvaluatedDayKey: null, currentChallengeGoalId: null, activeBadGuyId: null,
+      lifetimeFocusMinutes: 0,
       createdAt: nowIso(), updatedAt: nowIso(),
     };
+  }
+
+  // Hour-milestone card tier — escalates by order of magnitude and caps at
+  // 1,000 (which then just recurs every further 1,000 hours rather than
+  // growing a 5th+ tier). See GAME_LAYER_NOTES.md.
+  function tierForHour(hour) {
+    if (hour % 1000 === 0) return 4;
+    if (hour % 100 === 0) return 3;
+    if (hour % 10 === 0) return 2;
+    return 1;
   }
 
   function _defaultDay() {
@@ -136,6 +147,9 @@ const GameLayer = (() => {
   }
 
   // ── Profile ───────────────────────────────────────────────────────────────
+  // `onboarded` (and the rest of the Secret Identity) lives here in Firestore,
+  // not localStorage — so the hero-mode wizard only ever shows once per
+  // *account*, not once per browser/device. See GAME_LAYER_NOTES.md.
   async function getProfile(forceRefresh) {
     const uid = _uid();
     if (!uid) return null;
@@ -144,13 +158,28 @@ const GameLayer = (() => {
       const ref = _col('game').doc('profile');
       const snap = await ref.get();
       if (snap.exists) {
-        _cache.profile = snap.data();
+        const data = snap.data();
+        if (data.onboarded === undefined) {
+          // Profile predates the `onboarded` field — it already existed, so
+          // treat it as already onboarded rather than re-showing the wizard.
+          data.onboarded = true;
+          ref.set({ onboarded: true }, { merge: true }).catch(() => {});
+        }
+        _cache.profile = data;
       } else {
         _cache.profile = _defaultProfile();
         await ref.set(_cache.profile);
       }
     } catch (_) { /* keep whatever is cached, even if null */ }
     return _cache.profile;
+  }
+
+  async function markOnboarded() {
+    const uid = _uid();
+    if (!uid) return;
+    const profile = await getProfile();
+    _cache.profile = { ...(profile || _defaultProfile()), onboarded: true };
+    await _col('game').doc('profile').set({ onboarded: true, updatedAt: nowIso() }, { merge: true });
   }
 
   async function init() {
@@ -379,6 +408,20 @@ const GameLayer = (() => {
           updatedAt: nowIso(),
         };
 
+        // Hour-milestone cards — tracked off real session minutes (uncapped),
+        // not the day-capped focusMinutesXp used for the XP economy, so a
+        // heavy-use day doesn't under-count toward lifetime hours.
+        let hourMilestones = [];
+        if (type === 'focus_session') {
+          const oldLifetimeMin = profile.lifetimeFocusMinutes || 0;
+          const minutesAdded = Math.max(0, Math.floor(payload.minutes || 0));
+          const newLifetimeMin = oldLifetimeMin + minutesAdded;
+          const oldHour = Math.floor(oldLifetimeMin / 60);
+          const newHour = Math.floor(newLifetimeMin / 60);
+          for (let h = oldHour + 1; h <= newHour; h++) hourMilestones.push(h);
+          newProfile.lifetimeFocusMinutes = newLifetimeMin;
+        }
+
         tx.set(ledgerRef, {
           eventId, type, sourceId: payload.sourceId || null,
           xp, coins, dayKey: dk, dayDelta: delta, createdAt: nowIso(),
@@ -390,7 +433,7 @@ const GameLayer = (() => {
           tx.set(badGuyRef, { currentHp: boss.defeated ? boss.maxHp : boss.newHp, defeatedCount: boss.defeatedCount }, { merge: true });
         }
 
-        return { xp, coins, oldXp: profile.totalXp || 0, profile: newProfile, day: newDay, meta, dayKey: dk, boss };
+        return { xp, coins, oldXp: profile.totalXp || 0, profile: newProfile, day: newDay, meta, dayKey: dk, boss, hourMilestones };
       });
     } catch (e) { console.error('[GameLayer] award failed', type, e); return null; }
 
@@ -659,8 +702,8 @@ const GameLayer = (() => {
 
   return {
     rules: XP_RULES, titles: TITLES,
-    levelFromXp, xpForNextLevel, titleForLevel, dayKey, isScheduledToday,
-    init, getProfile, setEnabled, setIdentity, pinChallenge, pinActiveBadGuy, isTaskChallengeLinked,
+    levelFromXp, xpForNextLevel, titleForLevel, dayKey, isScheduledToday, tierForHour,
+    init, getProfile, setEnabled, setIdentity, markOnboarded, pinChallenge, pinActiveBadGuy, isTaskChallengeLinked,
     award, revoke, evaluateDay, getGameDay, listGameDays,
     redeemReward, listRedemptions, logBattle, listBattlesThisWeek, listBattles,
     Powerups, BadGuys, Rewards,

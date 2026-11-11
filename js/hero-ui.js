@@ -39,7 +39,7 @@ const GameHUD = (() => {
     }
     await _ensureDefaultsIfFirstTime();
     await _refreshAll();
-    _maybeShowWizardPrompt();
+    await _maybeShowWizardPrompt();
   }
 
   function _bindStaticControls() {
@@ -541,8 +541,12 @@ const GameHUD = (() => {
     } catch (_) {}
   }
 
-  function _maybeShowWizardPrompt() {
-    if (localStorage.getItem('flow-hero-wizard-seen') === 'true') return;
+  // Gated on the account's Firestore profile, not per-browser localStorage —
+  // so the wizard (and the Secret Identity it sets) is shared across every
+  // device the same person logs into, not re-asked on each new one.
+  async function _maybeShowWizardPrompt() {
+    const profile = await GameLayer.getProfile();
+    if (profile && profile.onboarded) return;
     _openWizard();
   }
 
@@ -559,7 +563,7 @@ const GameHUD = (() => {
   }
 
   function _skipWizard() {
-    localStorage.setItem('flow-hero-wizard-seen', 'true');
+    GameLayer.markOnboarded();
     const modal = document.getElementById('hero-wizard-modal');
     if (modal) modal.style.display = 'none';
   }
@@ -629,11 +633,11 @@ const GameHUD = (() => {
   }
 
   async function _finishWizard() {
-    localStorage.setItem('flow-hero-wizard-seen', 'true');
     const modal = document.getElementById('hero-wizard-modal');
     if (modal) modal.style.display = 'none';
 
     await GameLayer.setIdentity({ heroName: _wizardData.heroName, inspiredBy: _wizardData.inspiredBy, strength: _wizardData.strength });
+    await GameLayer.markOnboarded();
     await GameLayer.setEnabled(true);
 
     // Defaults were already seeded by _ensureDefaultsIfFirstTime() in init();

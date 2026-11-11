@@ -20,7 +20,18 @@ const Certificate = (() => {
     gradient: { bg: 'linear-gradient(135deg,#2b0b3f 0%,#7b2ff7 55%,#f72585 100%)', text: '#FFFFFF', accent: '#ffd60a', muted: 'rgba(255,255,255,0.65)' },
   };
 
-  let _pending = null; // { durationMin, taskTitle, streakDay, goalTitle, timestamp }
+  // Hour-milestone cards — escalating tiers keyed by GameLayer.tierForHour()
+  // (1,2,3 = every 10x; 4 caps and recurs every further 1,000 hours). Always
+  // free, never premium-gated — these are rarer, bigger moments than the
+  // routine per-session card. See GAME_LAYER_NOTES.md.
+  const MILESTONE_TIERS = {
+    1: { emoji: '🥉', label: 'Bronze milestone',    bg: 'linear-gradient(135deg,#3a2a1a 0%,#6b4226 100%)',                 text: '#FFF8F0', accent: '#cd7f32', muted: 'rgba(255,248,240,0.6)' },
+    2: { emoji: '🥈', label: 'Silver milestone',    bg: 'linear-gradient(135deg,#232526 0%,#5a5a5a 100%)',                 text: '#FFFFFF', accent: '#d8d8d8', muted: 'rgba(255,255,255,0.6)' },
+    3: { emoji: '🥇', label: 'Gold milestone',      bg: 'linear-gradient(135deg,#4a3700 0%,#caa23d 60%,#ffe29a 100%)',     text: '#2a1a00', accent: '#3a2400', muted: 'rgba(42,26,0,0.6)' },
+    4: { emoji: '🏆', label: 'Legendary milestone', bg: 'linear-gradient(135deg,#1a0b2e 0%,#7b2ff7 55%,#f72585 100%)',     text: '#FFFFFF', accent: '#ffd60a', muted: 'rgba(255,255,255,0.65)' },
+  };
+
+  let _pending = null; // { durationMin, taskTitle, streakDay, goalTitle, timestamp, isMilestone?, milestoneHour?, milestoneTier? }
   let _activeTemplate = null; // template the currently-open modal is rendering
 
   function init() {
@@ -51,15 +62,30 @@ const Certificate = (() => {
   }
 
   // ── Called from app.js right after a work session is logged ──────────────
-  async function onSessionComplete({ durationMin, taskTitle }) {
-    if (!durationMin || durationMin < MIN_DURATION_MIN) return;
-
+  // `milestone` ({ hour, tier }), when present, means this session just
+  // crossed a cumulative-hours milestone — that card always wins over (and
+  // replaces) the routine per-session one for this particular completion.
+  async function onSessionComplete({ durationMin, taskTitle, milestone }) {
     let streakDay = null;
     try {
       if (typeof Auth !== 'undefined' && Auth.isLoggedIn()) streakDay = await Auth.getStreak('work');
     } catch (_) {}
 
-    const goalTitle = null; // no task↔goal link in the data model yet — see CLAUDE.md note
+    if (milestone && milestone.hour) {
+      _pending = {
+        durationMin, taskTitle: taskTitle || null,
+        streakDay: streakDay > 1 ? streakDay : null,
+        goalTitle: null, timestamp: new Date(),
+        isMilestone: true, milestoneHour: milestone.hour, milestoneTier: milestone.tier,
+      };
+      _saveToGallery(_pending);
+      _openModal(); // always shown, never gated by certMode/premium
+      return;
+    }
+
+    if (!durationMin || durationMin < MIN_DURATION_MIN) return;
+
+    const goalTitle = null; // no task↔goal link wired into this call site yet — see CLAUDE.md note
 
     _pending = {
       durationMin,
@@ -81,13 +107,15 @@ const Certificate = (() => {
     if (!(typeof Auth !== 'undefined' && Auth.isLoggedIn())) return;
     try {
       await Auth.createCertificate({
-        session_id:   `${Date.now()}`,
-        duration_min: session.durationMin,
-        task_title:   session.taskTitle,
-        goal_title:   session.goalTitle,
-        streak_day:   session.streakDay,
-        user_line:    null,
-        template:     _certTemplate(),
+        session_id:     `${Date.now()}`,
+        duration_min:   session.durationMin,
+        task_title:     session.taskTitle,
+        goal_title:     session.goalTitle,
+        streak_day:     session.streakDay,
+        user_line:      null,
+        template:       session.isMilestone ? `milestone-${session.milestoneTier}` : _certTemplate(),
+        is_milestone:   !!session.isMilestone,
+        milestone_hour: session.isMilestone ? session.milestoneHour : null,
       });
     } catch (_) {}
   }
@@ -111,7 +139,9 @@ const Certificate = (() => {
 
   // ── Build the offscreen card node for a given session + template + size ──
   function buildCardNode(session, templateName, variant) {
-    const T = TEMPLATES[templateName] || TEMPLATES.minimal;
+    const T = session.isMilestone
+      ? (MILESTONE_TIERS[session.milestoneTier] || MILESTONE_TIERS[1])
+      : (TEMPLATES[templateName] || TEMPLATES.minimal);
     const height = variant === 'story' ? HEIGHT_STORY : HEIGHT_FEED;
     const pad = Math.round(WIDTH * 0.09);
 
@@ -144,11 +174,18 @@ const Certificate = (() => {
       ? `<div style="font-size:30px;font-style:italic;opacity:0.9;margin-top:28px;border-left:4px solid ${T.accent};padding-left:20px;">"${_escHtml(session.userLine)}"</div>`
       : '';
 
+    const headline = session.isMilestone
+      ? `${T.emoji} ${session.milestoneHour.toLocaleString()} Hour${session.milestoneHour === 1 ? '' : 's'} of Focus!`
+      : 'This hour counted.';
+    const subline = session.isMilestone
+      ? T.label
+      : `${session.durationMin} min deep work`;
+
     node.innerHTML = `
       <div>
         ${streakChip}
-        <div style="font-size:64px;font-weight:800;line-height:1.15;margin-top:${streakChip ? '28px' : '0'};">This hour counted.</div>
-        <div style="font-size:42px;font-weight:700;color:${T.accent};margin-top:20px;">${session.durationMin} min deep work</div>
+        <div style="font-size:64px;font-weight:800;line-height:1.15;margin-top:${streakChip ? '28px' : '0'};">${headline}</div>
+        <div style="font-size:42px;font-weight:700;color:${T.accent};margin-top:20px;">${subline}</div>
         ${taskLine}
         ${goalLine}
         ${userLine}
@@ -183,13 +220,21 @@ const Certificate = (() => {
     const modal = document.getElementById('cert-modal');
     const previewWrap = document.getElementById('cert-preview-wrap');
     const lockedNote = document.getElementById('cert-locked-note');
+    const titleEl = modal ? modal.querySelector('.cert-modal-title') : null;
     if (!modal || !_pending) return;
 
     modal.style.display = 'flex';
     if (previewWrap) previewWrap.innerHTML = '<div class="cert-preview-loading">Rendering…</div>';
 
-    _activeTemplate = forceTemplate || _certTemplate();
-    if (lockedNote) lockedNote.style.display = _isPremium() ? 'none' : 'block';
+    _activeTemplate = _pending.isMilestone ? 'milestone' : (forceTemplate || _certTemplate());
+    // Milestone cards are never premium-gated and always use their tier's
+    // own look, not the user's minimal/dark/gradient preference.
+    if (lockedNote) lockedNote.style.display = (_pending.isMilestone || _isPremium()) ? 'none' : 'block';
+    if (titleEl) {
+      titleEl.textContent = _pending.isMilestone
+        ? `${(MILESTONE_TIERS[_pending.milestoneTier] || MILESTONE_TIERS[1]).emoji} Milestone unlocked!`
+        : 'This hour counted. 🎴';
+    }
 
     try {
       const dataUrl = await renderPng(_pending, _activeTemplate, 'feed');
@@ -226,6 +271,9 @@ const Certificate = (() => {
       goalTitle:   record.goal_title || null,
       userLine:    record.user_line || null,
       timestamp:   record.created_at ? new Date(record.created_at) : new Date(),
+      isMilestone: !!record.is_milestone,
+      milestoneHour: record.milestone_hour || null,
+      milestoneTier: record.is_milestone && record.template ? parseInt(String(record.template).split('-')[1], 10) || 1 : null,
     };
   }
 
@@ -237,8 +285,13 @@ const Certificate = (() => {
 
   // ── Share flow: Web Share API with file → download + clipboard fallback ──
   function _caption(session) {
-    const parts = ['This hour counted.'];
-    parts.push(`${session.durationMin} min${session.taskTitle ? ' on ' + session.taskTitle : ''}.`);
+    const parts = [];
+    if (session.isMilestone) {
+      parts.push(`${session.milestoneHour.toLocaleString()} hour${session.milestoneHour === 1 ? '' : 's'} of focus, logged.`);
+    } else {
+      parts.push('This hour counted.');
+      parts.push(`${session.durationMin} min${session.taskTitle ? ' on ' + session.taskTitle : ''}.`);
+    }
     if (session.streakDay) parts.push(`Day ${session.streakDay}.`);
     parts.push('⏳ flowtimer.app?utm_source=certificate');
     return parts.join(' ').slice(0, 200);
@@ -257,7 +310,7 @@ const Certificate = (() => {
       const caption = _caption(_pending);
 
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({ files: [file], text: caption, title: 'This hour counted.' });
+        await navigator.share({ files: [file], text: caption, title: _pending.isMilestone ? 'Milestone unlocked!' : 'This hour counted.' });
       } else {
         // Fallback: download PNG + copy caption to clipboard (iOS Safari file-share support is inconsistent)
         const a = document.createElement('a');

@@ -96,9 +96,14 @@ this codebase, built on the `.cert-modal` backdrop+dialog shell. Because
 there was no existing "new user onboarding" flow to append steps to either,
 the spec's "existing users see a dismissible card → wizard" and "new users
 get the same 3 steps appended to onboarding" paths collapse into one: the
-same wizard modal, shown once (gated by a `flow-hero-wizard-seen` localStorage
-flag, same convention as `flow-pwa-dismissed`) regardless of account age.
-Step 2 (power-up picking) only lets the user toggle the 6 seeded defaults —
+same wizard modal, shown once (originally gated by a `flow-hero-wizard-seen`
+localStorage flag, same convention as `flow-pwa-dismissed` — **moved to a
+`profile.onboarded` field in Firestore** after it caused the wizard to
+re-prompt for Secret Identity on every new device/browser the same account
+logged into, since localStorage isn't shared across devices; a profile
+written before this field existed is treated as already-onboarded the first
+time it's read, so existing users aren't re-prompted either) regardless of
+account age. Step 2 (power-up picking) only lets the user toggle the 6 seeded defaults —
 "or add your own" from the spec is reachable afterward via the 🎮 Hero Mode
 panel's Power-ups tab, not inline in the wizard, to keep the wizard short.
 
@@ -207,6 +212,38 @@ demon."
   quest/power-up damage to the active bad guy is unaffected — it has its own
   separate day counters). Kept this coupling rather than decoupling
   HP-dealing from XP-earning to avoid a second, parallel cap system.
+
+## v1.2 addition — cumulative-hours milestone cards
+
+Added per user request: a card every cumulative focus-hour, tiered by order
+of magnitude (1hr bronze, 10hr silver, 100hr gold, 1000hr legendary, then the
+legendary tier recurs every further 1,000 rather than growing a 5th+ tier).
+
+- **Extends the existing Hour Certificate pipeline** (`js/certificate.js`)
+  rather than building a parallel system — same DOM-node → html-to-image →
+  PNG rendering, same `#cert-modal`, same `users/{uid}/certificates` gallery
+  (tagged `is_milestone`/`milestone_hour`). `GameLayer.award()`'s
+  `focus_session` branch now also tracks a **lifetime, uncapped**
+  `profile.lifetimeFocusMinutes` (separate from `gameDays.focusMinutesXp`,
+  which is capped at 480/day for the XP economy and would under-count real
+  cumulative hours) and returns which whole-hour boundaries this session
+  crossed. A long session can cross more than one hour at once; only the
+  highest is card-worthy, so `app.js` picks `hourMilestones[last]`.
+- **Priority over the routine card, never both**: `app.js`'s session-complete
+  hook was restructured to `await` the `GameLayer.award()` result *before*
+  calling `Certificate.onSessionComplete()`, instead of firing both
+  independently — so a milestone, when one fires, replaces the routine "This
+  hour counted." card for that completion rather than both popping up back
+  to back. Trade-off: the certificate now waits on one Firestore round-trip
+  it didn't before (previously fired immediately); deemed worth it for
+  correctness. Signed-out users (no Hero Mode) still get the routine card
+  immediately, unchanged.
+- **Never premium-gated**: unlike the regular Minimal/Dark/Gradient templates,
+  all 4 milestone tiers are free for everyone — they're a reward for lifetime
+  usage, not a style preference to upsell.
+- **Not reversible**: like Boss HP, `lifetimeFocusMinutes` and any milestone
+  already awarded are not undone by anything (there's no "uncomplete a focus
+  session" UI path in this app to begin with, so this has never come up).
 
 ## Known v1 limitations (acceptable, not bugs)
 

@@ -219,20 +219,31 @@ function _processTimerEnd() {
   if (state.mode === 'work') {
     // Log to Firebase Firestore
     if (typeof Auth !== 'undefined' && Auth.isLoggedIn()) {
-      Auth.logSession(state.mode, state.settings.work, state.task).then(sessionId => {
+      Auth.logSession(state.mode, state.settings.work, state.task).then(async sessionId => {
         // Hero Mode XP — only full completions earn XP, never the pagehide
         // partial-credit path (see GAME_LAYER_NOTES.md).
+        let milestone = null;
         if (sessionId && typeof GameLayer !== 'undefined') {
-          GameLayer.award('focus_session', { sourceId: sessionId, minutes: state.settings.work, task: state.task });
+          const result = await GameLayer.award('focus_session', { sourceId: sessionId, minutes: state.settings.work, task: state.task });
+          if (result && result.hourMilestones && result.hourMilestones.length) {
+            const topHour = result.hourMilestones[result.hourMilestones.length - 1];
+            milestone = { hour: topHour, tier: GameLayer.tierForHour(topHour) };
+          }
+        }
+        // Hour Certificate — shareable session card. Awaiting the Hero Mode
+        // result first (rather than firing independently) so a cumulative
+        // hour-milestone card can take priority over the routine per-session
+        // card instead of both popping up back to back.
+        if (typeof Certificate !== 'undefined') {
+          Certificate.onSessionComplete({ durationMin: state.settings.work, taskTitle: state.task, milestone });
         }
       });
+    } else if (typeof Certificate !== 'undefined') {
+      // Not signed in — no Hero Mode/milestones possible, but still show the routine card
+      Certificate.onSessionComplete({ durationMin: state.settings.work, taskTitle: state.task });
     }
     // Save to local history
     addLocalHistory(state.mode, state.settings.work, state.task);
-    // Hour Certificate — shareable session card
-    if (typeof Certificate !== 'undefined') {
-      Certificate.onSessionComplete({ durationMin: state.settings.work, taskTitle: state.task });
-    }
 
     state.session++;
     if (state.session > state.settings.sessionsBeforeLong) state.session = 1;
