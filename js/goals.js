@@ -175,7 +175,7 @@ const GoalCascade = (() => {
     } else {
       body = `
         <div class="goal-level-input-row">
-          <input type="text" class="task-field goal-level-input" data-level="${L.level}" placeholder="${_escHtml(L.placeholder)}">
+          <input type="text" class="task-field goal-level-input" data-level="${L.level}" placeholder="${_esc(L.placeholder)}">
           <button class="btn-accent-sm goal-level-save-btn" data-level="${L.level}">Save</button>
           <button class="goal-level-ai-btn" data-level="${L.level}" title="AI Suggest">✨ AI Suggest</button>
           ${goal ? `<button class="goal-level-cancel-btn" data-level="${L.level}" title="Cancel">✕</button>` : ''}
