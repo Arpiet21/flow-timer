@@ -534,6 +534,7 @@ const GameHUD = (() => {
       <div class="hero-stats-bars">
         ${days.map(d => `
           <div class="hero-stats-bar-col">
+            <div class="hero-stats-bar-value">${d.xpTotal || 0}</div>
             <div class="hero-stats-bar" style="height:${Math.round(((d.xpTotal || 0) / maxXp) * 100)}%" title="${d.xpTotal || 0} XP"></div>
             <div class="hero-stats-bar-label">${dow[new Date(d.dayKey + 'T00:00:00').getDay()]}${d.superbetterDay ? ' 🎉' : ''}${d.frozen ? ' ❄️' : ''}</div>
           </div>`).join('')}

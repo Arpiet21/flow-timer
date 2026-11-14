@@ -3087,8 +3087,9 @@ kbd {
 @media (max-width: 640px) { .hero-xp-toast { bottom: 140px; } }
 
 /* ── Stats panel ───────────────────────────────────────────────────────────── */
-.hero-stats-bars { display: flex; align-items: flex-end; gap: 4px; height: 90px; }
+.hero-stats-bars { display: flex; align-items: flex-end; gap: 4px; height: 108px; }
 .hero-stats-bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; justify-content: flex-end; height: 100%; }
+.hero-stats-bar-value { font-size: 0.64rem; font-weight: 700; color: var(--text); }
 .hero-stats-bar { width: 100%; max-width: 18px; background: var(--accent); border-radius: 3px 3px 0 0; min-height: 2px; }
 .hero-stats-bar-label { font-size: 0.6rem; color: var(--text-muted); }
 .hero-stats-summary-row { display: flex; justify-content: space-between; font-size: 0.78rem; color: var(--text-muted); }
